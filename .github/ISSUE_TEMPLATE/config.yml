@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Sicherheitslücke privat melden
+    url: https://github.com/MediaPublishing/ainauten-voice/security/advisories/new
+    about: Für Sicherheitsprobleme. Nicht öffentlich als Issue posten.
+  - name: Download und Installationshilfe
+    url: https://voice.ainauten.com/
+    about: Aktuelle Beta, Prüfsumme und Anleitung für den ersten Start.

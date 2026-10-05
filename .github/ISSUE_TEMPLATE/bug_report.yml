@@ -1,0 +1,43 @@
+name: Fehler melden
+description: Etwas funktioniert in AInauten Voice nicht wie erwartet.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Bitte keine privaten Daten:** keine Diktate, kein Audio, keine Verlaufsdatenbank, kein komplettes Wörterbuch, keine API-Schlüssel. Ein kurzes, erfundenes Beispiel reicht.
+        Sicherheitslücken bitte nicht hier, sondern [privat melden](https://github.com/MediaPublishing/ainauten-voice/security/advisories/new).
+  - type: input
+    id: version
+    attributes:
+      label: App-Version
+      description: Einstellungen → Updates, z. B. 0.1.2 (6)
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS-Version und Mac
+      placeholder: macOS 15.5, MacBook Air M2, 16 GB
+    validations:
+      required: true
+  - type: input
+    id: target
+    attributes:
+      label: Betroffene App
+      description: In welche App hast du diktiert?
+      placeholder: Mail, Slack, Safari …
+  - type: textarea
+    id: steps
+    attributes:
+      label: Schritte und Ergebnis
+      description: Was hast du gemacht, was ist passiert, was hast du erwartet?
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Datenschutz
+      options:
+        - label: Meine Meldung enthält keine privaten Diktate, Namen, Zugangsdaten oder Audio.
+          required: true

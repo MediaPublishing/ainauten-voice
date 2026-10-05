@@ -24,7 +24,7 @@ Alternative reine Dashboard-Aufnahme verworfen, weil sie Einstellungen und Zahle
 
 | Referenz | Übernommene Ebene | Entscheidung und Grenze |
 |---|---|---|
-| voicedock-promo-video/out/AInauten-Voice_Promo_DE_16x9.mp4, Scene S3 bei 9,4 s | Bild, Nauti, Violett, Stimme-zu-Text-Demo | Originalfilm unverändert lokal ausliefern, echtes Standbild als Poster; Illustration ausdrücklich als solche kennzeichnen. Keine neue Sprecher-/Musikgenerierung. |
+| Eigenes AInauten-Voice-Promovideo, Szene bei 9,4 s | Bild, Nauti, Violett, Stimme-zu-Text-Demo | Originalfilm unverändert lokal ausliefern, echtes Standbild als Poster; Illustration ausdrücklich als solche kennzeichnen. Keine neue Sprecher-/Musikgenerierung. |
 | Bisherige AInauten-Voice-Seite und site/index.html | Nutzungsweg und bekannte Fakten | Installation, Beta-/Privacy-/Downloadhinweise und Screenshot-Tabs behalten. Reiner Screenshot als Hero ist die konkrete Anti-Referenz. |
 | site/assets/screenshots/overview.png und dictionary/statistics/styles | Produktbeleg | Die echten nativen Vorschauen bleiben im Produktbereich. Persönliche Inhalte und korrigierte Farbdarstellungen nicht als neue Live-App ausgeben. |
 

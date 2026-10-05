@@ -20,7 +20,7 @@ https://github.com/user-attachments/assets/bf5a39be-fa37-4d6b-8ff7-f2203b581335
 
 **macOS blockiert den Start?** Die Beta ist noch nicht Apple-notarisiert. Wähle **Fertig**, dann **Systemeinstellungen → Datenschutz & Sicherheit → Dennoch öffnen**. [Anleitung mit Bildern](https://voice.ainauten.com/installation.html), auch offline im DMG unter **00 - ZUERST LESEN.html**. Bei einer Meldung über eine beschädigte oder schädliche App gilt diese Anleitung nicht.
 
-**Du brauchst:** einen Mac mit Apple Silicon (M1 oder neuer), macOS 14+, mindestens 8 GB RAM und 8 GB freien Speicher. 16 GB RAM empfohlen. Die Modelle werden einmal heruntergeladen; danach kannst du lokal und offline diktieren.
+**Du brauchst:** einen Mac mit Apple Silicon und macOS 14 oder neuer (Build-Ziel; getestet bisher auf neueren macOS-Versionen) sowie rund 8 GB freien Speicher. Die Modelle (etwa 3 GB) werden einmalig von Hugging Face geladen, danach diktierst du lokal und offline.
 
 ## Was die App kann
 
@@ -63,4 +63,6 @@ Der Quellcode ist öffentlich einsehbar. Für den eigenen App-Code wurde bislang
 
 </details>
 
-Entwickelt von [AInauten](https://www.ainauten.com/). AInauten Voice ist ein eigenständiges Projekt und steht nicht mit Wispr Flow in Verbindung.
+Entwickelt von [AInauten](https://www.ainauten.com/). AInauten Voice ist ein eigenständiges Projekt ohne Verbindung zu Wispr. Wispr Flow ist eine Marke ihres Inhabers.
+
+Fehler und Ideen: [Issue anlegen](https://github.com/MediaPublishing/ainauten-voice/issues/new/choose). Sicherheitslücken bitte [privat melden](https://github.com/MediaPublishing/ainauten-voice/security/advisories/new).
