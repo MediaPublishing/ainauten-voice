@@ -6,6 +6,7 @@ import pathlib
 import plistlib
 import shutil
 import subprocess
+from app_bundle import verify_runtime
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 GUIDE = ROOT / 'Resources/InstallerGuide'
@@ -29,6 +30,7 @@ def create_dmg(app, output):
     if app.name != 'AInauten Voice.app' or info.get('CFBundleIdentifier') != 'com.mediapublishing.VoiceWispr':
         raise ValueError('Expected the AInauten Voice app bundle')
     version = info['CFBundleShortVersionString']
+    verify_runtime(app)
     subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
     output.mkdir(parents=True, exist_ok=True)
     dmg = output / f'AInauten-Voice-{version}-arm64.dmg'

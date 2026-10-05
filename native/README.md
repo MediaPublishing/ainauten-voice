@@ -10,6 +10,8 @@ Das lokale Paket ist mit einer lokalen Identität oder ad-hoc signiert. Apple De
 
 `scripts/package.py` und `scripts/package_dmg.py` verwenden dieselbe Anleitung aus `Resources/InstallerGuide`. Mit `python3 scripts/package_dmg.py --app /Pfad/zu/AInauten\ Voice.app` lässt sich ein bestehendes signiertes App-Bundle unverändert neu verpacken, ohne interne Beta-Funktionen in die öffentliche Version zu übernehmen.
 
+Vor dem DMG-Bau werden die Bibliothekspfade des arm64-Laufzeitprogramms und seiner Abhängigkeiten geprüft. Eine gültige Codesignatur allein reicht dafür nicht: Ein Bundle mit nicht auffindbarer `llama.framework` wird vor der Installer-Erstellung abgewiesen. Für interne Oberflächenprüfungen ebenfalls ein vollständig gepacktes Debug-Bundle mit `@executable_path/../Frameworks` verwenden; das unveränderte SwiftPM-Programm allein genügt nicht. `python3 scripts/app_bundle.py /Pfad/zu/App.app` prüft das Bundle ohne Start, `python3 scripts/check-app-bundle.py` testet fehlende Pfade, fehlende Abhängigkeiten und das Verschieben der App mit isolierten Fixtures.
+
 ## Entwickeln
 
 Command Line Tools mit Swift 6.2+, Python 3 nur für den Paketbau. Endnutzer benötigen keine Entwicklungswerkzeuge und keinen separaten Server.
