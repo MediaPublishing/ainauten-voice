@@ -8,7 +8,7 @@ Kürzel halten, sprechen, loslassen. AInauten Voice schreibt deinen Text in das 
 
 ## In 36 Sekunden erklärt
 
-https://github.com/user-attachments/assets/95a90b19-aea8-41cc-b28f-28d6cf89eee9
+https://github.com/user-attachments/assets/bf5a39be-fa37-4d6b-8ff7-f2203b581335
 
 *Deutsch, mit Ton. Die Videografiken zeigen die Bedienung mit Beispieldaten.*
 
