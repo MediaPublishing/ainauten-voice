@@ -24,6 +24,10 @@ Keine vollständige praktische Abnahme für alle Mikrofone, Apps, langen Aufnahm
 
 Der Entwicklungsstand enthält einen vorbereiteten, separat signierten Sparkle-Updatekanal und eine ausgeschaltete Forschungs-Beta für Lippenlesen. Beides gehört noch nicht zum öffentlichen Download. Kameraqualität und deutsche Lippenleseerkennung sind nicht allgemein abgenommen. Forschungsmodelle werden nicht mitgeliefert und unterliegen teilweise nichtkommerziellen Lizenzen.
 
+## Neuerer Entwicklungsstand
+
+Der neuere Quellstand enthält einen standardmäßig ausgeschalteten Fehlerbericht-Ausbau. Dafür wurden 265 portable Vertragsfälle sowie 17 lokale JavaScript-Tests geprüft. Lokale Prüfungen sind kein Nachweis für aktivierten öffentlichen Fehlerempfang oder automatische AI-Reparaturen. Diese Funktionen werden noch nicht allgemein ausgeliefert.
+
 ## Reproduzierbare Prüfungen
 
 ```sh

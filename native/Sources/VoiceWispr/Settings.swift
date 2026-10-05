@@ -5,11 +5,11 @@ import VoiceWisprCore
 
 enum SettingsSection: String, CaseIterable, Identifiable {
     case overview = "Übersicht", history = "Verlauf", statistics = "Statistik"
-    case setup = "Einrichtung", dictation = "Diktieren", formatting = "Text & Stil", dictionary = "Wörterbuch", migration = "Wispr Flow", privacy = "Datenschutz", updates = "Updates", beta = "Beta"
+    case setup = "Einrichtung", dictation = "Diktieren", formatting = "Text & Stil", dictionary = "Wörterbuch", migration = "Wispr Flow", privacy = "Datenschutz", updates = "Updates", beta = "Beta", help = "Hilfe"
     var id: String { rawValue }
-    var icon: String { switch self { case .overview: "waveform"; case .history: "clock.arrow.circlepath"; case .statistics: "chart.bar.xaxis"; case .setup: "checklist"; case .dictation: "keyboard"; case .formatting: "text.alignleft"; case .dictionary: "character.book.closed"; case .migration: "arrow.left.arrow.right"; case .privacy: "lock"; case .updates: "arrow.triangle.2.circlepath"; case .beta: "flask" } }
+    var icon: String { switch self { case .overview: "waveform"; case .history: "clock.arrow.circlepath"; case .statistics: "chart.bar.xaxis"; case .setup: "checklist"; case .dictation: "keyboard"; case .formatting: "text.alignleft"; case .dictionary: "character.book.closed"; case .migration: "arrow.left.arrow.right"; case .privacy: "lock"; case .updates: "arrow.triangle.2.circlepath"; case .beta: "flask"; case .help: "questionmark.circle" } }
     var isMain: Bool { [.overview, .history, .statistics, .dictionary, .formatting].contains(self) }
-    var previewName: String { switch self { case .overview: "overview"; case .history: "history"; case .statistics: "statistics"; case .dictionary: "dictionary"; case .updates: "updates"; case .beta: "beta"; default: "" } }
+    var previewName: String { switch self { case .overview: "overview"; case .history: "history"; case .statistics: "statistics"; case .dictionary: "dictionary"; case .updates: "updates"; case .beta: "beta"; case .help: "help"; default: "" } }
 }
 
 /// Models come first so the large download runs while the user completes the
@@ -71,7 +71,9 @@ struct SettingsView: View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 10) { Image(systemName: "waveform").font(.system(size: 22, weight: .medium)); Text("AInauten Voice").font(.system(size: 17, weight: .semibold)) }.padding(.bottom, 28).padding(.top, 12)
-                ForEach([SettingsSection.overview, .history, .statistics, .dictionary, .formatting] + (settingsExpanded ? [.dictation, .setup, .migration, .privacy, .updates, .beta] : [])) { item in
+                ScrollView {
+                VStack(alignment: .leading, spacing: 4) {
+                ForEach([SettingsSection.overview, .history, .statistics, .dictionary, .formatting] + (settingsExpanded ? [.dictation, .setup, .migration, .privacy, .updates, .beta, .help] : [])) { item in
                     Button { section = item; focusedSection = item } label: {
                         Label(item.rawValue, systemImage: item.icon).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 9).padding(.horizontal, 10)
                             .background(section == item ? Color.accentColor.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 7))
@@ -89,7 +91,8 @@ struct SettingsView: View {
                             .accessibilityLabel("Kaffee spendieren, öffnet Buy Me a Coffee im Browser")
                     }
                 }
-                Spacer()
+                }
+                }.scrollIndicators(.hidden)
                 Button {
                     settingsExpanded.toggle()
                     if settingsExpanded { section = .dictation; focusedSection = .dictation }
@@ -119,8 +122,9 @@ struct SettingsView: View {
                 ScrollViewReader { scroll in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
+                        if section != .help { CrashReportNotice(reports: model.reports) { section = .help; focusedSection = .help } }
                         if let error = model.errorMessage {
-                            HStack(alignment: .top) { Image(systemName: "exclamationmark.triangle"); Text(error).textSelection(.enabled); Spacer(); WindowCloseButton(label: "Fehlermeldung schließen") { model.dismissError() } }.padding(12).background(Color.orange.opacity(0.09), in: RoundedRectangle(cornerRadius: 8))
+                            HStack(alignment: .top) { Image(systemName: "exclamationmark.triangle"); Text(error).textSelection(.enabled); Spacer(); Button("Melden") { section = .help; focusedSection = .help }; WindowCloseButton(label: "Fehlermeldung schließen") { model.dismissError() } }.padding(12).background(Color.orange.opacity(0.09), in: RoundedRectangle(cornerRadius: 8))
                         }
                         if !model.importReceipt.isEmpty && (section == .setup || section == .migration) {
                             VStack(alignment: .leading, spacing: 4) {
@@ -140,6 +144,7 @@ struct SettingsView: View {
                         case .privacy: privacy
                         case .updates: UpdateSettingsView(updates: model.updates)
                         case .beta: beta
+                        case .help: ErrorReportView(reports: model.reports)
                         }
                         Spacer(minLength: 20)
                     }.padding(.horizontal, 28).padding(.top, 4).padding(.bottom, 28).frame(maxWidth: section.isMain ? .infinity : 800, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading).id("page-top")

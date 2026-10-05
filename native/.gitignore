@@ -9,3 +9,5 @@ artifacts/
 *.app
 *.aiff
 fixtures/generated/
+Vendor/bootstrap-backup-*/
+Vendor/bootstrap-staging-*/

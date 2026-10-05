@@ -1,5 +1,5 @@
 {
-  "originHash" : "01546a2db7ba3720d6a8edf44a547cb715e6f04d325c27d8b2b61eeb5380722c",
+  "originHash" : "ba9eb109aba704cd990f1c71a785585890b784dbefa65d51e53964aeddc1d9a7",
   "pins" : [
     {
       "identity" : "fluidaudio",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "0b1f46289fe27d95b5e66ad8be46e64f5ee02ae7",
         "version" : "0.17.5"
+      }
+    },
+    {
+      "identity" : "kscrash",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kstenerud/KSCrash.git",
+      "state" : {
+        "revision" : "95a8895d75f3c22aa9ad9f2a15d2fbd97b0a55e2",
+        "version" : "2.5.1"
       }
     },
     {

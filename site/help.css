@@ -1,0 +1,27 @@
+.help-header { display:flex; align-items:center; justify-content:space-between; padding-block:28px; gap:20px; }
+.help-main { max-width:800px; padding-block:35px 60px; }
+.help-main h1 { font-size:clamp(2rem,4vw,3rem); margin:8px 0 14px; }
+.help-main h2 { font-size:1.2rem; margin-bottom:12px; }
+.help-intro { margin-bottom:34px; }
+#report-form { display:grid; gap:24px; }
+#report-form fieldset { border:0; border-top:1px solid var(--border, oklch(80% 0.01 290)); padding:20px 0 0; margin:0; min-width:0; }
+#report-form legend { font-weight:700; padding-right:14px; }
+#report-form label { display:block; margin-bottom:8px; }
+#report-form label span,.field-note { font-size:.85rem; opacity:.72; }
+#report-form input:not([type=checkbox]),#report-form textarea { display:block; width:100%; max-width:100%; box-sizing:border-box; color:inherit; font:inherit; border:1px solid oklch(65% 0.015 290); border-radius:8px; padding:10px 12px; background:oklch(99% 0.005 290); margin:6px 0 14px; }
+#report-form input[type=file] { font-size:.85rem; }
+.help-fields { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+.field-note,.report-preview p { line-height:1.5; max-width:72ch; }
+#report-form details { padding-block:6px; }
+#report-form summary { cursor:pointer; padding:8px 0; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+#report-form summary::after { position:static; flex:0 0 auto; }
+#preview { font-size:.8rem; line-height:1.45; overflow:auto; max-height:260px; background:oklch(96% 0.012 290); padding:14px; border-radius:8px; white-space:pre-wrap; overflow-wrap:anywhere; }
+#report-form .report-consent { display:flex; align-items:flex-start; gap:10px; line-height:1.5; }
+.report-consent input { margin-top:5px; }
+.report-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.report-actions button { cursor:pointer; font:inherit; }
+.report-actions button:disabled { opacity:.5; cursor:default; }
+.report-actions .text-link { border:0; background:transparent; color:inherit; padding:12px; }
+.help-install { border-top:1px solid oklch(80% 0.01 290); margin-top:38px; padding-top:24px; }
+.help-footer { padding-block:24px; font-size:.85rem; }
+@media(max-width:540px) { .help-header { align-items:flex-start; font-size:.85rem; } .help-fields { grid-template-columns:1fr 1fr; } .help-fields label:last-child { grid-column:1 / -1; } .help-main { padding-top:18px; } }

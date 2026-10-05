@@ -42,9 +42,15 @@ Eine native Diktier-App für Apple Silicon: Kürzel halten, sprechen, loslassen.
 
 **Voraussetzungen:** Apple Silicon (M1 oder neuer), macOS 14+, mindestens 8 GB RAM, 16 GB empfohlen. Für Modelle/Entpacken mindestens 8 GB freien Platz einplanen. Modelle werden einmalig heruntergeladen; danach funktionieren Erkennung und lokale Optimierung offline. Intel-Macs, Windows und iPhone gehören nicht zu dieser Version.
 
-**macOS blockiert den ersten Start?** Die Beta ist lokal signiert und noch nicht Apple-notarisiert. Klicke in der Warnung auf **Fertig (Done)**. Öffne dann **Systemeinstellungen → Datenschutz & Sicherheit (Privacy & Security)** und wähle neben AInauten Voice **Dennoch öffnen (Open Anyway)**. Bestätige anschließend **Öffnen (Open)**. Diese Option erscheint erst, nachdem du die App einmal aus Programme zu öffnen versucht hast. [Schritt-für-Schritt-Anleitung](https://voice.ainauten.com/installation.html), auch im DMG unter **00 - ZUERST LESEN**. Sicherheitsfunktionen nicht global abschalten. Bei Warnungen über eine beschädigte oder schädliche App gilt diese Anleitung nicht. Updates werden in der öffentlichen Beta derzeit manuell über den Download installiert.
+**macOS blockiert den ersten Start?** Die Beta ist lokal signiert und noch nicht Apple-notarisiert. Klicke in der Warnung auf **Fertig (Done)**. Öffne dann **Systemeinstellungen → Datenschutz & Sicherheit (Privacy & Security)** und wähle neben AInauten Voice **Dennoch öffnen (Open Anyway)**. Bestätige anschließend **Öffnen (Open)**. Diese Option erscheint erst, nachdem du die App einmal aus Programme zu öffnen versucht hast. [Schritt-für-Schritt-Anleitung](https://voice.ainauten.com/installation.html), auch im DMG unter **00 - ZUERST LESEN**. Sicherheitsfunktionen nicht global abschalten. Bei Warnungen über eine beschädigte oder schädliche App gilt diese Anleitung nicht. Der signierte automatische Updatekanal ist eingerichtet. Der öffentliche Download 0.1.1, Build 2 enthält noch keinen Updater und benötigt einmalig den nächsten updatefähigen Installer. In updatefähigen Versionen lässt sich die automatische Suche samt Download unter Einstellungen → Updates einschalten; die Installation erfolgt beim Beenden/Neustart. Aktuell bietet der Kanal noch kein neues Release an.
 
 Bereits installiertes Voice Wispr: Beende die alte App und ersetze sie durch AInauten Voice. Bundle-ID, Datenordner und Schlüsselbunddienste bleiben kompatibel; Wörterbuch, Einstellungen und Verlauf bleiben erhalten. Die neue App heißt sichtbar AInauten Voice, der bestehende Datenordner heißt weiterhin Voice Wispr.
+
+## Mit einem Agent installieren
+
+Bitte deinen Agent: **„Installiere AInauten Voice auf meinem Mac. Lies zuerst AGENTS.md und docs/agent-installation.md im Repository https://github.com/MediaPublishing/ainauten-voice. Verwende die veröffentlichte Beta, prüfe die Prüfsumme und erhalte bestehende Einstellungen.“**
+
+Der Agent kann die geprüfte App herunterladen und installieren. Mikrofon und Bedienungshilfen bestätigst du selbst in macOS; bei der noch nicht notarisierten Beta auch den ersten Start. Du brauchst keinen GitHub-Login. [Installationsanleitung für Agent und Nutzer](docs/agent-installation.md).
 
 ## Datenschutz
 
@@ -62,7 +68,7 @@ SwiftUI/AppKit · FluidAudio 0.17.5 mit Parakeet v3 und Silero VAD · eingebette
 
 Der Quellcode ist öffentlich einsehbar. README, Screenshots und Prüfstand sind ohne Anmeldung zugänglich. Die App verwendet lizenzierte Open-Source-Komponenten; die Veröffentlichung des eigenen Quellcodes erteilt selbst keine Open-Source-Lizenz. Die Lizenzhinweise stehen unten.
 
-Der Download auf der Website ist die geprüfte Beta **0.1.1, Build 2**. Der Entwicklungsstand enthält zusätzlich einen vorbereiteten Sparkle-Updatekanal und eine standardmäßig ausgeschaltete Forschungs-Beta für visuelle Spracherkennung. Diese Funktionen sind nicht Bestandteil des aktuellen öffentlichen Downloads. Forschungsmodelle werden nicht mitgeliefert; ihre Nutzung unterliegt eigenen, teilweise nichtkommerziellen Lizenzen. [Hinweise zu Forschungsmodellen](native/lipreading_runtime/licenses/NOTICE-Research-Models.txt).
+Der Download auf der Website ist die geprüfte Beta **0.1.1, Build 2**. Der Entwicklungsstand enthält zusätzlich einen vorbereiteten Sparkle-Updatekanal und eine standardmäßig ausgeschaltete Forschungs-Beta für visuelle Spracherkennung. Diese Funktionen sind nicht Bestandteil des aktuellen öffentlichen Downloads. Der Quellstand enthält zudem einen noch nicht allgemein aktivierten privaten Fehlerbericht-Ausbau; die separate Fehler-Inbox bleibt privat. Forschungsmodelle werden nicht mitgeliefert; ihre Nutzung unterliegt eigenen, teilweise nichtkommerziellen Lizenzen. [Hinweise zu Forschungsmodellen](native/lipreading_runtime/licenses/NOTICE-Research-Models.txt).
 
 ## Entwicklung
 

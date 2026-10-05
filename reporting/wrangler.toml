@@ -1,0 +1,18 @@
+name = "ainauten-voice-reports"
+main = "worker.mjs"
+compatibility_date = "2026-10-04"
+workers_dev = false
+preview_urls = false
+# The existing Pages project forwards the two approved API paths using REPORTING.
+# No public workers.dev endpoint or DNS change is required.
+[vars]
+REPORTING_ENABLED = "false"
+GITHUB_REPOSITORY = "MediaPublishing/ainauten-voice-feedback"
+[observability]
+enabled = false
+[[durable_objects.bindings]]
+name = "INBOX"
+class_name = "ReportInbox"
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ReportInbox"]

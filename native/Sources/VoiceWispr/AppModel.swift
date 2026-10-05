@@ -166,6 +166,7 @@ extension AppModel {
 private struct NoSpeechDetected: LocalizedError { let errorDescription: String? }
 
 @MainActor final class AppModel: NSObject, ObservableObject, NSWindowDelegate, NSApplicationDelegate {
+    let reports = ErrorReportController()
     @Published var document = ExportDocument() { didSet { scheduleSave(); updateHotkey() } }
     @Published var state: PillState = .loading { didSet { updatePillVisibility() } }
     @Published var status = "Einrichtung abschließen"
@@ -355,6 +356,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         }
         #endif
         makeMenu()
+        reports.start(preview: previewMode)
         updates.busy = { [weak self] in
             guard let self else { return true }
             return UpdatePolicy.busy(recording: self.state == .recording,
@@ -370,7 +372,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         lipHotkey.onFailure = { [weak self] message in self?.lipStatus = message }
         if let preview {
             #if DEBUG
-            if ["overview", "history", "statistics", "dictionary", "updates", "beta"].contains(preview) {
+            if ["overview", "history", "statistics", "dictionary", "updates", "beta", "help"].contains(preview) {
                 loadHistoryPreview(empty: CommandLine.arguments.contains("--preview-empty"))
                 document.settings.onboardingComplete = true; modelsReady = true; microphoneGranted = true; accessibilityGranted = true
                 settingsNavigation = SettingsNavigation(section: SettingsSection.allCases.first { $0.previewName == preview } ?? .overview, setupStep: nil)
@@ -457,7 +459,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             return
         }
         Task {
-            do { document = try await store.load() } catch { errorMessage = "Einstellungen konnten nicht geladen werden: \(error.localizedDescription)" }
+            do { document = try await store.load() } catch { errorMessage = "Einstellungen konnten nicht geladen werden: \(error.localizedDescription)"; reports.record(component: .settings, code: .settingsLoadFailed) }
             loading = false
             wisprInstalled = WisprSwitch.installedURL != nil
             refreshImportPreview()
@@ -486,6 +488,8 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         settingsItem.target = self; appMenu.addItem(settingsItem)
         let updateItem = NSMenuItem(title: "Nach Updates suchen …", action: #selector(checkUpdates), keyEquivalent: "")
         updateItem.target = self; appMenu.addItem(updateItem)
+        let reportItem = NSMenuItem(title: "Fehler melden …", action: #selector(openReportHelp), keyEquivalent: "")
+        reportItem.target = self; appMenu.addItem(reportItem)
         let quitItem = NSMenuItem(title: "AInauten Voice beenden", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self; appMenu.addItem(quitItem); appItem.submenu = appMenu
         mainMenu.addItem(appItem)
@@ -504,6 +508,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         statusItem?.menu = menu
     }
     @objc private func openSettings() { navigate(to: .dictation) }
+    @objc private func openReportHelp() { navigate(to: .help) }
     @objc private func checkUpdates() {
         navigate(to: .updates)
         updates.check()
@@ -610,7 +615,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             guard !quitting else { return }
             modelsReady = true; state = .paused; status = "Bereit"
         }
-        catch { modelsReady = false; errorMessage = error.localizedDescription; status = "Modelle prüfen" }
+        catch { modelsReady = false; errorMessage = error.localizedDescription; status = "Modelle prüfen"; reports.record(component: .models, code: .modelLoadFailed) }
         preparing = false; updateHotkey()
     }
     func refreshImportPreview() {
@@ -650,6 +655,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 importFailed = true
                 importReceipt = "Der Import konnte nicht vollständig bestätigt werden. Prüfe den gespeicherten Bestand, bevor du ihn erneut startest."
                 errorMessage = error.localizedDescription
+                reports.record(component: .migration, code: .importFailed)
             }
         }
     }
@@ -818,6 +824,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 if practice { Task { try? await Task.sleep(for: .seconds(1.5)); guard self.sessionID == nil, self.state == .success, self.results.first?.id == result.id else { return }; self.state = .paused; self.updateHotkey() } }
             } catch let partial as PartialDictationError {
                 guard sessionID == id, !Task.isCancelled else { return }
+                reports.record(component: .recognition, code: .processingFailed)
                 results.insert(partial.result, at: 0); results = Array(results.prefix(5))
                 if practice {
                     practiceFeedback.fail(id, message: "Die Erkennung wurde unterbrochen. Der folgende Teiltext ist unvollständig. " + partial.localizedDescription, partial: partial.result)
@@ -832,7 +839,10 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 guard sessionID == id, !Task.isCancelled else { return }
                 if practice { fail(silence.localizedDescription) } else { showNoSpeech() }
             } catch is CancellationError {} catch {
-                if sessionID == id { fail(error.localizedDescription, title: error is SpeechInputError ? "Audio zu kurz" : "Aufnahme nicht erkannt") }
+                if sessionID == id {
+                    if !(error is SpeechInputError) { reports.record(component: .recognition, code: .processingFailed) }
+                    fail(error.localizedDescription, title: error is SpeechInputError ? "Audio zu kurz" : "Aufnahme nicht erkannt")
+                }
             }
         }
     }
