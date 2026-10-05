@@ -14,7 +14,7 @@ Prüfen: npm run check
 Gebautes Paket prüfen: python3 check.py --root dist
 Paket vorbereiten: python3 build.py --package ../native/artifacts/ZEITSTEMPEL --promo-video /absoluter/pfad/AInauten-Voice_Promo_DE_16x9.mp4
 Nur Website aktualisieren: python3 build.py --existing-site /absoluter/pfad/zum/bisherigen/dist
-Deploy: wrangler pages deploy dist --project-name ainauten-voice --branch main
+Deploy aus dem Verzeichnis `site/`: `wrangler pages deploy dist --project-name ainauten-voice --branch main`. Die dortige `wrangler.toml` muss geladen werden, damit die vorhandene `REPORTING`-Service-Bindung mit ausgeliefert wird. Danach `/api/reports/<UUID>` ohne Betreiberzugang prüfen: HTTP 401, nicht 503. Keine Secrets in Pages hinterlegen.
 Ziel: https://voice.ainauten.com/
 
 `build.py` baut und prüft die gemeinsame Shell vor dem Kopieren. Ein bestehender signierter Updatekanal muss mit `--updates` erhalten bleiben. Den Download bei einer reinen Website-Änderung aus dem bereits veröffentlichten Paket übernehmen; dadurch wird keine neue App-Version veröffentlicht.

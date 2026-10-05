@@ -100,6 +100,7 @@ if root != source:
     release = json.loads((root / 'downloads/release.json').read_text())
     assert release['version'] == version and release['build'] == int(info['CFBundleVersion'])
     assert release['updaterIncluded'] is True and release['automaticUpdatesByDefault'] is True
+    assert release['reportDeliveryEnabled'] == info.get('AInautenReportDeliveryEnabled', False)
 print(f'SITE PASS: {len(page.refs)} links/assets, four screenshots, release {version}, local player/no autoplay, nine German captions, privacy/install information')
 
 # A claimed illustrated guide must ship its two locally served images.
@@ -109,7 +110,15 @@ assert guide.count('installation-images/') == 2
 for name in ['macos-warnung.png', 'dennoch-oeffnen.png']:
     assert (guide_root/'installation-images'/name).is_file()
 help_html = (root/'help.html').read_text()
-assert 'data-reporting-enabled="false"' in help_html
+reporting_enabled = info.get('AInautenReportDeliveryEnabled') is True
+assert f'data-reporting-enabled="{str(reporting_enabled).lower()}"' in help_html, 'Website and app reporting flags differ'
+assert 'id="consent" type="checkbox"' in help_html
+assert 'Cloudflare' in help_html and 'private GitHub' in help_html
+if reporting_enabled:
+    assert 'Versand noch nicht aktiv' not in help_html
+    import tomllib
+    config = tomllib.loads((source/'wrangler.toml').read_text())
+    assert any(s.get('binding') == 'REPORTING' and s.get('service') == 'ainauten-voice-reports' for s in config.get('services', [])), 'Missing private reporting service binding'
 assert f'id="build" value="{info["CFBundleVersion"]}"' in help_html
 assert 'buymeacoffee.com' not in text, 'Support link belongs in help, not primary navigation'
-print('INSTALLER/HELP PASS: two illustrated installation steps, consistent support version, inactive receiver identified')
+print('INSTALLER/HELP PASS: two illustrated installation steps, consistent support version, reporting flags and consent consistent')

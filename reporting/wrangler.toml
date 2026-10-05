@@ -6,7 +6,7 @@ preview_urls = false
 # The existing Pages project forwards the two approved API paths using REPORTING.
 # No public workers.dev endpoint or DNS change is required.
 [vars]
-REPORTING_ENABLED = "false"
+REPORTING_ENABLED = "true"
 GITHUB_REPOSITORY = "MediaPublishing/ainauten-voice-feedback"
 [observability]
 enabled = false
