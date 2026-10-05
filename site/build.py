@@ -73,7 +73,7 @@ if dist.exists():
     archived = root.parent / 'native/artifacts' / ('site-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
     dist.rename(archived)
 dist.mkdir()
-for name in ['index.html', 'styles.css', 'app.js', '_headers', 'robots.txt', 'sitemap.xml', 'help.html', 'help.css', 'help.mjs', 'report-schema.mjs', '_routes.json', '404.html']:
+for name in ['index.html', 'styles.css', 'app.js', '_headers', 'robots.txt', 'sitemap.xml', 'help.html', 'help.css', 'help.mjs', 'report-schema.mjs', '_routes.json', '404.html', 'favicon.ico']:
     shutil.copy2(root / name, dist / name)
 help_page = dist / 'help.html'
 help_text = help_page.read_text()
@@ -91,6 +91,11 @@ index.write_text(html.replace('href="/styles.css"', f'href="/styles.css?v={style
 guide = root.parent / 'native/Resources/InstallerGuide'
 for name in ['installation.html', 'installation.css']:
     shutil.copy2(guide / name, dist / name)
+# Icons belong to the online guide; keep the standalone offline installer intact.
+online_guide = dist / 'installation.html'
+guide_html = online_guide.read_text()
+require(guide_html.count('</head>') == 1, 'Installation guide head missing')
+online_guide.write_text(guide_html.replace('</head>', '<link rel="icon" href="/favicon.ico?v=1" sizes="32x32" type="image/x-icon"><link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" sizes="180x180"></head>'))
 shutil.copytree(guide/'installation-images', dist/'installation-images', ignore=shutil.ignore_patterns('*.md'))
 shutil.copytree(root / 'assets', dist / 'assets', ignore=shutil.ignore_patterns('*.mp4'))
 video = dist / 'assets/video/ainauten-voice-promo-de.mp4'
