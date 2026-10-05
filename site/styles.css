@@ -69,3 +69,15 @@ h1,h2,h3{letter-spacing:0}
 .copy-button{border:1px solid var(--line);border-radius:7px;padding:7px 12px;background:var(--paper);color:var(--ink);font-size:13px;font-weight:650;cursor:pointer}
 .copy-button:hover{border-color:var(--ink)}
 @media(max-width:760px){.download-section{gap:28px}.download-actions{width:100%;max-width:none}.download-notice{max-width:none}.download-install ol{font-size:14px}.download-install p{font-size:14px}}
+.trademark-note{margin-top:18px;font-size:12px;line-height:1.6;color:var(--muted)}
+/* Standalone pages (404, privacy draft) keep a light header; the shared shell stays on the main page. */
+.page-header{border-bottom:1px solid var(--line);background:var(--paper)}
+.page-header .wrap{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.page-brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-size:14px;font-weight:800;letter-spacing:.06em}
+.page-brand strong{color:var(--accent);font-weight:800}
+.page-main{padding-block:72px 96px}
+.page-footer{border-top:1px solid var(--line);background:var(--soft);padding-block:24px}
+.page-footer .wrap{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px;color:var(--muted)}
+.notfound .lead{max-width:48ch}
+.notfound-actions{display:flex;flex-wrap:wrap;align-items:center;gap:14px 26px;margin-top:8px}
+.notfound-actions .text-link{font-size:14px}

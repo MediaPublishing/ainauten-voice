@@ -90,7 +90,12 @@ for (const button of document.querySelectorAll('[data-copy]')) {
       await navigator.clipboard.writeText(source.textContent.trim());
       button.textContent = 'Kopiert';
     } catch {
-      button.textContent = 'Bitte markieren und kopieren';
+      // Without clipboard permission, select the command so ⌘C copies it.
+      const range = document.createRange();
+      range.selectNodeContents(source);
+      getSelection().removeAllRanges();
+      getSelection().addRange(range);
+      button.textContent = 'Markiert, mit ⌘C kopieren';
     }
     clearTimeout(reset);
     reset = setTimeout(() => { button.textContent = label; }, 2500);

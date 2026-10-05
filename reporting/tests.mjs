@@ -180,3 +180,8 @@ test('a collector created before the tombstone columns is migrated in place',()=
   assert.equal(row.issue,9);assert(row.seen>Date.now()-60000);assert.equal(row.reason,null);
   fixture(undefined,db);assert.equal(db.prepare('SELECT count(*) AS n FROM groups').get().n,1);
 });
+test('Pages leaves every other path to static assets, so a 404 page keeps its status',async()=>{
+  const seen=[],env={REPORTING:{fetch:async()=>new Response('report')},ASSETS:{fetch:async r=>{seen.push(new URL(r.url).pathname);return new Response('Seite nicht gefunden',{status:404});}}};
+  for(const path of ['/does-not-exist','/api/other','/api/reportsx'])assert.equal((await pages.fetch(new Request('https://voice.ainauten.com'+path),env)).status,404);
+  assert.deepEqual(seen,['/does-not-exist','/api/other','/api/reportsx']);
+});
