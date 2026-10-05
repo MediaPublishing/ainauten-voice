@@ -4,7 +4,7 @@ Stand: 5. Oktober 2026. **Beta, praktische Gesamtabnahme teilweise offen.**
 
 ## Öffentlicher Download
 
-Version **0.1.7, Build 11** für Apple Silicon, macOS 14 als Build-Ziel. Die App ist lokal signiert und nutzt Hardened Runtime, ist jedoch noch nicht Apple-notarisiert. Die Signatur benötigt derzeit eine Ausnahme für Bibliotheksvalidierung.
+Version **0.1.9, Build 13** für Apple Silicon, macOS 14 als Build-Ziel. Die App ist lokal signiert und nutzt Hardened Runtime, ist jedoch noch nicht Apple-notarisiert. Die Signatur benötigt derzeit eine Ausnahme für Bibliotheksvalidierung.
 
 Der Download enthält den separat signierten Sparkle-Updater, Hilfe, einen aktivierten privaten Fehlerempfang sowie eine deutsche und englische Oberfläche. Automatische Updates sind standardmäßig aktiv; eine ausdrücklich gespeicherte Abschaltung bleibt erhalten. Fehlerberichte werden nur mit Zustimmung gesendet, automatische Fehlerübermittlung bleibt standardmäßig aus. Automatische AI-Reparaturen sind nicht aktiviert.
 
@@ -16,8 +16,10 @@ Der Download enthält den separat signierten Sparkle-Updater, Hilfe, einen aktiv
 - Deutsch, Englisch und Sprachwechsel wurden mit reproduzierbaren Textfällen sowie öffentlichen FLEURS-Sprachaufnahmen geprüft. Die Sprachtests haben auch Fehler ergeben; sie belegen keine durchgehend erfüllten Qualitätsziele.
 - Die aktuelle lokale Textoptimierung bestand elf unveränderte Textfälle und zwei Prüfungen mit einem Transkriptadapter. Eine Zitatprüfung nutzte den sicheren Originaltext-Rückfall. Diese Tests verwenden das echte lokale Textmodell, jedoch keine Mikrofonaufnahme oder Spracherkennung; die Einstellungen blieben unverändert.
 - Vier aktuelle TextEdit-Prüfungen bestätigten Auswahlersetzung, Einfügen am Cursor, langen Text und die Ablehnung eines gewechselten Ziels in eigenen Testdokumenten. Sie prüfen die Zustellung im Core, keine physische Aufnahme oder vollständige Ziel-App-Matrix.
+- Für die Auswahländerung bestanden **83 gezielte Vertragsfälle** und ein weiterer tatsächlicher Lauf aller elf Textfälle sowie beider Pipelineprüfungen.
+- Ein isolierter Vergleich der Auswahl im Textmodell umfasste sechs vollständige Läufe und alle elf bisherigen Textfälle. Die Ausgaben blieben identisch. Der Median der gepaarten Fallquotienten sank um rund 15 %; dies ist ein begrenzter Modellzeitvergleich, keine Messung bis zur Einfügung in eine andere App. [Details und Grenzen](formatter-selection-2026-10-05.md).
 - Screenshots und Promo-Material zeigen ausschließlich ausdrücklich gekennzeichnete Beispieldaten.
-- App-Signatur, DMG-Integrität, öffentlicher Download und signierter Updatekanal wurden für 0.1.7, Build 11 geprüft. Die Offline-Installationsanleitung liegt im DMG.
+- App-Signatur, DMG-Integrität, öffentlicher Download und signierter Updatekanal wurden für 0.1.9, Build 13 geprüft. Die Offline-Installationsanleitung liegt im DMG.
 
 ## Sprachrückmeldung und unpersönlicher Probetest
 

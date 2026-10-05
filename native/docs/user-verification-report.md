@@ -10,6 +10,7 @@ Diese Fassung wird mit der App ausgeliefert. Sie enthält keine Diktate, Namen o
 - Deutsch, Englisch und Sprachwechsel mit reproduzierbaren synthetischen Fällen und öffentlichen FLEURS-Sprachaufnahmen.
 - Deutsche und englische Oberfläche mit direktem Sprachwechsel, unveränderten Diktatsprachen und lokalisierten Menü- und Bedienelementen.
 - Native Oberfläche, lokale Modelle und einzelne Einfügeziele auf einem Apple-Silicon-Mac mit macOS 27.
+- Schnellere lokale Textoptimierung mit unveränderten Wortschutzregeln und identischen Ausgaben in elf Textfällen eines sechsfachen Vergleichs; kein allgemeiner Geschwindigkeitsnachweis.
 - App-Signatur, eingebettete App im DMG und Download.
 - Gebündelte deutsche und englische Sprachdateien ohne Zugriff auf einen Entwicklungsordner; kontrollierter Rückfall bei fehlenden Sprachdateien.
 - Geschützte Cloud-Empfängerfreigabe, Grenzen für Einstellungsdateien und Fehlermeldungen, sichere Entwicklungs-Dateinamen.
