@@ -192,6 +192,99 @@ final class GestureTests: XCTestCase {
         XCTAssertTrue(hotkey.handle(.keyDown, event: event) != nil); XCTAssertEqual(actions, [.cancel])
     }
 
+    @MainActor func testControlZKeepsRecordingAfterZReleaseAndStopsOnControlRelease() throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true
+        hotkey.shortcut = Shortcut(keyCode: 6, modifiers: 1 << 18)
+        var actions: [DictationGesture] = []; hotkey.onGesture = { actions.append($0) }
+        let pointer = Unmanaged.passUnretained(hotkey).toOpaque()
+        let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 6, keyDown: true)); down.flags = .maskControl
+        let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 6, keyDown: false)); up.flags = .maskControl
+        XCTAssertNil(GlobalHotkey.eventCallback(.keyDown, event: down, pointer: pointer))
+        XCTAssertNil(GlobalHotkey.eventCallback(.keyUp, event: up, pointer: pointer))
+        Thread.sleep(forTimeInterval: 0.2)
+        XCTAssertEqual(actions, [.start]); XCTAssertFalse(hotkey.expiryTimerRunning)
+        let modifiers = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 56, keyDown: true))
+        modifiers.flags = [.maskControl, .maskShift]
+        XCTAssertTrue(GlobalHotkey.eventCallback(.flagsChanged, event: modifiers, pointer: pointer)?.takeUnretainedValue() === modifiers)
+        modifiers.flags = .maskControl
+        _ = GlobalHotkey.eventCallback(.flagsChanged, event: modifiers, pointer: pointer)
+        XCTAssertEqual(actions, [.start])
+        modifiers.flags = []
+        XCTAssertTrue(GlobalHotkey.eventCallback(.flagsChanged, event: modifiers, pointer: pointer)?.takeUnretainedValue() === modifiers)
+        XCTAssertEqual(actions, [.start, .stop])
+    }
+    @MainActor func testControlZReleaseBeforeZConsumesLateRepeatAndKeyUpWhileDisabled() throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true
+        hotkey.shortcut = Shortcut(keyCode: 6, modifiers: 1 << 18)
+        var actions: [DictationGesture] = []
+        hotkey.onGesture = { actions.append($0); if $0 == .stop { hotkey.enabled = false } }
+        let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 6, keyDown: true)); down.flags = .maskControl
+        _ = hotkey.handle(.keyDown, event: down)
+        Thread.sleep(forTimeInterval: 0.2)
+        let controlUp = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 59, keyDown: false))
+        XCTAssertTrue(hotkey.handle(.flagsChanged, event: controlUp)?.takeUnretainedValue() === controlUp)
+        XCTAssertEqual(actions, [.start, .stop])
+        down.flags = []; down.setIntegerValueField(.keyboardEventAutorepeat, value: 1)
+        XCTAssertNil(hotkey.handle(.keyDown, event: down))
+        let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 6, keyDown: false))
+        XCTAssertNil(hotkey.handle(.keyUp, event: up))
+        down.setIntegerValueField(.keyboardEventAutorepeat, value: 0)
+        XCTAssertTrue(hotkey.handle(.keyDown, event: down)?.takeUnretainedValue() === down)
+        XCTAssertEqual(actions, [.start, .stop])
+    }
+    @MainActor func testControlZFullChordDoubleTapStillEntersHandsFree() throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true
+        hotkey.shortcut = Shortcut(keyCode: 6, modifiers: 1 << 18)
+        var actions: [DictationGesture] = []; hotkey.onGesture = { actions.append($0) }
+        let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 6, keyDown: true)); down.flags = .maskControl
+        let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 6, keyDown: false)); up.flags = .maskControl
+        let controlUp = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 59, keyDown: false))
+        for _ in 0..<2 {
+            XCTAssertNil(hotkey.handle(.keyDown, event: down))
+            XCTAssertNil(hotkey.handle(.keyUp, event: up))
+            _ = hotkey.handle(.flagsChanged, event: controlUp)
+        }
+        XCTAssertEqual(actions, [.start, .handsFree])
+        XCTAssertNil(hotkey.handle(.keyDown, event: down))
+        XCTAssertNil(hotkey.handle(.keyUp, event: up))
+        _ = hotkey.handle(.flagsChanged, event: controlUp)
+        XCTAssertEqual(actions, [.start, .handsFree, .stop])
+        hotkey.uninstall()
+    }
+    @MainActor func testControlZCancelFencesTheRemainingReleaseEvents() throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true; hotkey.cancellationEnabled = true
+        hotkey.shortcut = Shortcut(keyCode: 6, modifiers: 1 << 18)
+        var actions: [DictationGesture] = []; hotkey.onGesture = { actions.append($0) }
+        let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 6, keyDown: true)); down.flags = .maskControl
+        _ = hotkey.handle(.keyDown, event: down)
+        let escape = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 53, keyDown: true))
+        XCTAssertNil(hotkey.handle(.keyDown, event: escape))
+        let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 6, keyDown: false)); up.flags = .maskControl
+        XCTAssertNil(hotkey.handle(.keyUp, event: up))
+        let controlUp = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 59, keyDown: false))
+        _ = hotkey.handle(.flagsChanged, event: controlUp)
+        XCTAssertEqual(actions, [.start, .cancel])
+        _ = hotkey.handle(.keyDown, event: down)
+        XCTAssertEqual(actions, [.start, .cancel, .start])
+    }
+    @MainActor func testControlZRequiresTheConfiguredChordAndRepeatedZDoesNotStop() throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true
+        hotkey.shortcut = Shortcut(keyCode: 6, modifiers: 1 << 18)
+        var actions: [DictationGesture] = []; hotkey.onGesture = { actions.append($0) }
+        let control = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 59, keyDown: true)); control.flags = .maskControl
+        XCTAssertTrue(hotkey.handle(.flagsChanged, event: control)?.takeUnretainedValue() === control)
+        let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 6, keyDown: true)); down.flags = [.maskControl, .maskShift]
+        XCTAssertTrue(hotkey.handle(.keyDown, event: down)?.takeUnretainedValue() === down)
+        XCTAssertEqual(actions, [])
+        down.flags = .maskControl
+        let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 6, keyDown: false)); up.flags = .maskControl
+        for _ in 0..<2 {
+            XCTAssertNil(hotkey.handle(.keyDown, event: down))
+            XCTAssertNil(hotkey.handle(.keyUp, event: up))
+        }
+        XCTAssertEqual(actions, [.start])
+    }
+
     func testHoldReleaseStops() {
         let m = DictationGestureMachine()
         XCTAssertEqual(m.down(at: 1), .start)

@@ -12,6 +12,10 @@ Release-Pakete sind mit der festen lokalen Identität signiert und nutzen Harden
 
 Vor dem DMG-Bau werden die Bibliothekspfade des arm64-Laufzeitprogramms und seiner Abhängigkeiten geprüft. Eine gültige Codesignatur allein reicht dafür nicht: Ein Bundle mit nicht auffindbarer `llama.framework` wird vor der Installer-Erstellung abgewiesen. Für interne Oberflächenprüfungen ebenfalls ein vollständig gepacktes Debug-Bundle mit `@executable_path/../Frameworks` verwenden; das unveränderte SwiftPM-Programm allein genügt nicht. `python3 scripts/app_bundle.py /Pfad/zu/App.app` prüft das Bundle ohne Start, `python3 scripts/check-app-bundle.py` testet fehlende Pfade, fehlende Abhängigkeiten und das Verschieben der App mit isolierten Fixtures.
 
+## Diktieren mit Strg+Z
+
+Beim Halten-Kürzel Strg+Z genügt es, die Kombination einmal zu drücken und anschließend nur Strg festzuhalten. Z darf losgelassen werden; das Diktat endet beim Loslassen von Strg. Für den Freihändig-Modus die vollständige Kombination zweimal kurz drücken und loslassen.
+
 ## Entwickeln
 
 Command Line Tools mit Swift 6.2+ oder passendes Xcode, Python 3 nur für den Paketbau. Für die normale Agent-Installation nutze die geprüfte Download-Beta gemäß [Installationsanleitung](../docs/agent-installation.md). Der Paketbau des optionalen Forschungs-Installers setzt derzeit zusätzlich uv 0.12.5 aus Homebrew voraus; `scripts/package.py` prüft den festen Paketpfad. Endnutzer benötigen keine Entwicklungswerkzeuge und keinen separaten Server.
