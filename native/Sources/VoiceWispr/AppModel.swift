@@ -100,12 +100,12 @@ extension AppModel {
         updateHotkey()
         operation = Task {
             do {
-                try await camera.start(sessionID: id) { [weak self] message in
+                try await camera.start(sessionID: id, onError: { [weak self] message in
                     Task { @MainActor in
                         guard let self, self.sessionID == id else { return }
-                        if message.contains("Beta-Aufnahme") { self.stop() } else { self.fail(message, title: "Kamera prüfen") }
+                        self.fail(message, title: "Kamera prüfen")
                     }
-                }
+                }, onLimit: { [weak self] in Task { @MainActor in guard let self, self.sessionID == id else { return }; self.stop() } })
                 guard sessionID == id, state == .recording else { return }
                 captureReady = true; startedAt = ProcessInfo.processInfo.systemUptime
                 status = "Lautlos sprechen · höchstens 30 Sekunden"
@@ -187,30 +187,56 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     let reports = ErrorReportController()
     @Published var document = ExportDocument() { didSet { scheduleSave(); updateHotkey() } }
     @Published var state: PillState = .loading { didSet { updatePillVisibility(); if state != oldValue { announceState() } } }
-    @Published var status = "Einrichtung abschließen"
+    @Published private var statusMessage: LocalizedMessage = .key("status.setup", [])
+    var status: String {
+        get { statusMessage.text }
+        set {
+            statusMessage = L10n.message(newValue)
+            statusRevision &+= 1
+        }
+    }
+    /// A new feedback generation invalidates old timers, independent of translation.
+    private var statusRevision: UInt64 = 0
     @Published var level: Float = 0
     @Published var captureReady = false
     @Published var captureStartupMilliseconds: Double?
+    /// Stable UI state for a delayed recording pipeline; views must not parse
+    /// the localized status string.
+    @Published private(set) var recordingDelayed = false
     @Published var elapsed: TimeInterval = 0
     @Published var results: [DictationResult] = []
     @Published var practiceFeedback = PracticeFeedback()
-    @Published var recoveryReason = ""
+    @Published private var recoveryReasonMessage: LocalizedMessage = L10n.message("")
+    var recoveryReason: String {
+        get { recoveryReasonMessage.text }
+        set { recoveryReasonMessage = L10n.message(newValue) }
+    }
     @Published var recoverySelection: UUID?
-    @Published var recoveryClipboardStatus = ""
+    enum RecoveryClipboardState: String { case empty, copied, restored, unavailable, failed, changed, preserved, restoreFailed }
+    @Published private var recoveryClipboardState: RecoveryClipboardState = .empty
+    var recoveryClipboardStatus: String { recoveryClipboardState == .empty ? "" : L10n.text("recovery.clipboard.\(recoveryClipboardState.rawValue)") }
     @Published var recoveryCanUndo = false
     @Published var recoveryTransient = false
     @Published var recoveryTextHeight: CGFloat = 44
     @Published var recoveryCountdownRemaining: TimeInterval = 5
     @Published var recoveryCountdownPaused = false
     /// A failed attempt must not masquerade as, or copy, a previous result.
-    @Published var recoveryFailureTitle: String?
+    @Published private var recoveryFailureTitleMessage: LocalizedMessage?
+    var recoveryFailureTitle: String? {
+        get { recoveryFailureTitleMessage?.text }
+        set { recoveryFailureTitleMessage = newValue.map { L10n.message($0) } }
+    }
     private var recoveryCopiedID: UUID?
     private var recoveryClipboard = ClipboardRecovery()
     private var recoveryTimer: Timer?
     private var recoveryCountdown: FeedbackCountdown?
     private var recoveryHovered = false
     @Published var downloadFraction: Double = 0
-    @Published var downloadLabel = ""
+    @Published private var downloadLabelMessage: LocalizedMessage = L10n.message("")
+    var downloadLabel: String {
+        get { downloadLabelMessage.text }
+        set { downloadLabelMessage = L10n.message(newValue) }
+    }
     @Published var downloading = false
     @Published var preparing = false
     @Published var modelsReady = false
@@ -221,7 +247,11 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     @Published var lipPreparing = false
     @Published var lipInstalling = false
     @Published var lipSession = false
-    @Published var lipStatus = "Noch nicht eingerichtet"
+    @Published private var lipStatusMessage: LocalizedMessage = L10n.message("Noch nicht eingerichtet")
+    var lipStatus: String {
+        get { lipStatusMessage.text }
+        set { lipStatusMessage = L10n.message(newValue) }
+    }
     private let camera = CameraCapture()
     private let lipHotkey = GlobalHotkey()
     private let lipInstaller = LipReadingInstaller()
@@ -234,12 +264,24 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     @Published var importPreviewLoaded = false
     @Published var importRefreshing = false
     @Published var importing = false
-    @Published var importReceipt = ""
+    @Published private var importReceiptMessage: LocalizedMessage = L10n.message("")
+    var importReceipt: String {
+        get { importReceiptMessage.text }
+        set { importReceiptMessage = L10n.message(newValue) }
+    }
     @Published var importFailed = false
     @Published var importRevision = 0
-    @Published var switchReceipt = ""
+    @Published private var switchReceiptMessage: LocalizedMessage = L10n.message("")
+    var switchReceipt: String {
+        get { switchReceiptMessage.text }
+        set { switchReceiptMessage = L10n.message(newValue) }
+    }
     @Published var switchingWispr = false
-    @Published var errorMessage: String?
+    @Published private var errorMessageMessage: LocalizedMessage?
+    var errorMessage: String? {
+        get { errorMessageMessage?.text }
+        set { errorMessageMessage = newValue.map { L10n.message($0) } }
+    }
     var practiceComplete: Bool { document.settings.practiceCompleted ?? document.settings.onboardingComplete }
     @Published var loginEnabled = SMAppService.mainApp.status == .enabled
     @Published var canUndoImport = false
@@ -252,13 +294,25 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     @Published var historyStatistics = HistoryStatistics()
     @Published var allHistoryStatistics = HistoryStatistics()
     @Published var historyLoading = false
-    @Published var historyError: String?
-    @Published var historySaveError: String?
+    @Published private var historyErrorMessage: LocalizedMessage?
+    var historyError: String? {
+        get { historyErrorMessage?.text }
+        set { historyErrorMessage = newValue.map { L10n.message($0) } }
+    }
+    @Published private var historySaveErrorMessage: LocalizedMessage?
+    var historySaveError: String? {
+        get { historySaveErrorMessage?.text }
+        set { historySaveErrorMessage = newValue.map { L10n.message($0) } }
+    }
     @Published var historyQuery = ""
     @Published var historyCollection: HistoryCollection = .all
     @Published var historyPeriod: HistoryPeriod = .all
     @Published var historyCopyID: UUID?
-    @Published var historyNotice = ""
+    @Published private var historyNoticeMessage: LocalizedMessage = L10n.message("")
+    var historyNotice: String {
+        get { historyNoticeMessage.text }
+        set { historyNoticeMessage = L10n.message(newValue) }
+    }
     var historyStore = HistoryStore(url: ModelPaths.support.appendingPathComponent("history.sqlite"))
     var historyRequestID = UUID()
     var historyReadTask: Task<Void, Never>?
@@ -313,7 +367,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     var practiceAudioSource: String? {
         #if DEBUG
         guard previewMode, CommandLine.arguments.contains("--preview-ui=practice") else { return nil }
-        guard let path = CommandLine.arguments.first(where: { $0.hasPrefix("--practice-fixture=") })?.dropFirst("--practice-fixture=".count) else { return "Keine Testdatei ausgewählt" }
+        guard let path = CommandLine.arguments.first(where: { $0.hasPrefix("--practice-fixture=") })?.dropFirst("--practice-fixture=".count) else { return L10n.text("practice.noFixture") }
         let name = URL(fileURLWithPath: String(path)).lastPathComponent
         let code = name.split(separator: "-").first.map(String.init) ?? ""
         let language = ["de": "Deutsch", "en": "Englisch"][code]
@@ -379,6 +433,9 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         }
         #endif
         makeMenu()
+        interfaceLanguageObserver = NotificationCenter.default.addObserver(forName: InterfaceLanguageStore.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.interfaceLanguageChanged() }
+        }
         reports.start(preview: previewMode)
         updates.busy = { [weak self] in
             guard let self else { return true }
@@ -471,6 +528,18 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 traceRecoveryPreview("waiting-for-shortcut")
             }
             if preview == "practice" { loadPracticeFixture() }
+            // Exercise live language changes while a modal editor is open.
+            // Preview preferences are isolated; this never touches user data.
+            for argument in CommandLine.arguments where argument.hasPrefix("--preview-language-switch=") {
+                let parts = argument.dropFirst("--preview-language-switch=".count).split(separator: ":")
+                guard parts.count == 2, let language = InterfaceLanguage(rawValue: String(parts[0])),
+                      let seconds = Double(parts[1]), seconds >= 2, seconds <= 120 else { continue }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(seconds))
+                    do { try InterfaceLanguageStore.shared.setChoice(language); print("UI_LANGUAGE_PREVIEW \(language.rawValue)") }
+                    catch { print("UI_LANGUAGE_PREVIEW_SAVE_FAILED") }
+                }
+            }
             if preview == "error", CommandLine.arguments.contains("--test-delivery") {
                 // Public preview text only. Exercise actual delivery through
                 // the nonactivating Pill without audio or persisted settings.
@@ -514,27 +583,46 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         }
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.pill?.position() } }
     }
+    private var interfaceLanguageObserver: NSObjectProtocol?
+    private func interfaceLanguageChanged() {
+        objectWillChange.send()
+        makeMenu()
+        settingsWindow?.title = previewMode ? L10n.text("window.preview") : "AInauten Voice"
+        recoveryWindow?.title = L10n.text("window.result")
+        if recoveryWindow?.isVisible == true { sizeRecovery() }
+    }
     private func makeMenu() {
         let mainMenu = NSMenu(), appMenu = NSMenu(), appItem = NSMenuItem()
-        let settingsItem = NSMenuItem(title: "Einstellungen …", action: #selector(openSettings), keyEquivalent: ",")
+        let settingsItem = NSMenuItem(title: L10n.text("menu.settings"), action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self; appMenu.addItem(settingsItem)
-        let updateItem = NSMenuItem(title: "Nach Updates suchen …", action: #selector(checkUpdates), keyEquivalent: "")
+        let languageItem = NSMenuItem(title: L10n.text("settings.interfaceLanguage"), action: nil, keyEquivalent: "")
+        let languageMenu = NSMenu(title: languageItem.title)
+        languageMenu.autoenablesItems = false
+        for language in InterfaceLanguage.allCases {
+            let title = language == .system ? L10n.text("settings.interfaceLanguage.system") : language == .de ? "Deutsch" : "English"
+            let item = NSMenuItem(title: title, action: #selector(selectInterfaceLanguage(_:)), keyEquivalent: "")
+            item.target = self; item.representedObject = language.rawValue
+            item.state = InterfaceLanguageStore.shared.choice == language ? .on : .off
+            languageMenu.addItem(item)
+        }
+        languageItem.submenu = languageMenu; appMenu.addItem(languageItem)
+        let updateItem = NSMenuItem(title: L10n.text("menu.checkUpdates"), action: #selector(checkUpdates), keyEquivalent: "")
         updateItem.target = self; appMenu.addItem(updateItem)
-        let reportItem = NSMenuItem(title: "Fehler melden …", action: #selector(openReportHelp), keyEquivalent: "")
+        let reportItem = NSMenuItem(title: L10n.text("menu.report"), action: #selector(openReportHelp), keyEquivalent: "")
         reportItem.target = self; appMenu.addItem(reportItem)
-        let quitItem = NSMenuItem(title: "AInauten Voice beenden", action: #selector(quit), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: L10n.text("menu.quit"), action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self; appMenu.addItem(quitItem); appItem.submenu = appMenu
         mainMenu.addItem(appItem)
-        let fileItem = NSMenuItem(title: "Ablage", action: nil, keyEquivalent: ""), fileMenu = NSMenu(title: "Ablage")
-        fileMenu.addItem(withTitle: "Fenster schließen", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        let fileItem = NSMenuItem(title: L10n.text("menu.file"), action: nil, keyEquivalent: ""), fileMenu = NSMenu(title: L10n.text("menu.file"))
+        fileMenu.addItem(withTitle: L10n.text("window.close"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         fileItem.submenu = fileMenu; mainMenu.addItem(fileItem)
-        let editItem = NSMenuItem(title: "Bearbeiten", action: nil, keyEquivalent: ""), editMenu = NSMenu(title: "Bearbeiten")
-        for (title, selector, key) in [("Rückgängig", Selector(("undo:")), "z"), ("Ausschneiden", #selector(NSText.cut(_:)), "x"), ("Kopieren", #selector(NSText.copy(_:)), "c"), ("Einfügen", #selector(NSText.paste(_:)), "v"), ("Alles auswählen", #selector(NSText.selectAll(_:)), "a")] { editMenu.addItem(withTitle: title, action: selector, keyEquivalent: key) }
+        let editItem = NSMenuItem(title: L10n.text("menu.edit"), action: nil, keyEquivalent: ""), editMenu = NSMenu(title: L10n.text("menu.edit"))
+        for (title, selector, key) in [(L10n.text("menu.undo"), Selector(("undo:")), "z"), (L10n.text("menu.cut"), #selector(NSText.cut(_:)), "x"), (L10n.text("menu.copy"), #selector(NSText.copy(_:)), "c"), (L10n.text("menu.paste"), #selector(NSText.paste(_:)), "v"), (L10n.text("menu.selectAll"), #selector(NSText.selectAll(_:)), "a")] { editMenu.addItem(withTitle: title, action: selector, keyEquivalent: key) }
         editItem.submenu = editMenu; mainMenu.addItem(editItem); NSApplication.shared.mainMenu = mainMenu
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        if statusItem == nil { statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength) }
         statusItem?.button?.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "AInauten Voice")
         let menu = NSMenu()
-        for (title, selector) in [("AInauten Voice öffnen", #selector(openOverview)), ("Diktatverlauf", #selector(openHistory)), ("Letzte Ergebnisse", #selector(openResults)), ("Tastenkürzel aktiv", #selector(togglePause)), ("Zu Wispr Flow zurückwechseln", #selector(returnToWispr)), ("Beenden", #selector(quit))] {
+        for (title, selector) in [(L10n.text("menu.open"), #selector(openOverview)), (L10n.text("menu.history"), #selector(openHistory)), (L10n.text("menu.results"), #selector(openResults)), (L10n.text("menu.shortcutsEnabled"), #selector(togglePause)), (L10n.text("menu.returnToWispr"), #selector(returnToWispr)), (L10n.text("menu.quitShort"), #selector(quit))] {
             let item = NSMenuItem(title: title, action: selector, keyEquivalent: ""); item.target = self; menu.addItem(item)
             if selector == #selector(togglePause) { pauseMenuItem = item }
             if selector == #selector(returnToWispr) { wisprMenuItem = item }
@@ -550,8 +638,13 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         let symbol = paused ? "mic.slash" : "waveform"
         if statusSymbol != symbol {
             statusSymbol = symbol
-            statusItem?.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: paused ? "AInauten Voice, Tastenkürzel ausgeschaltet" : "AInauten Voice")
+            statusItem?.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: paused ? L10n.text("menu.voicePaused") : L10n.text("menu.voice"))
         }
+    }
+    @objc private func selectInterfaceLanguage(_ sender: NSMenuItem) {
+        guard let value = sender.representedObject as? String, let language = InterfaceLanguage(rawValue: value) else { return }
+        do { try InterfaceLanguageStore.shared.setChoice(language) }
+        catch { errorMessage = error.localizedDescription }
     }
     @objc private func openSettings() { navigate(to: .dictation) }
     @objc private func openReportHelp() { navigate(to: .help) }
@@ -602,7 +695,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         if !loading && !previewMode && !document.settings.onboardingComplete && canCompleteSetup && !conflict { markSetupComplete() }
         let actualLogin = SMAppService.mainApp.status == .enabled
         if loginEnabled != actualLogin { loginEnabled = actualLogin }
-        if state == .recording, let pipeline { Task { let backlog = await pipeline.backlogSeconds(); if backlog > 30 && self.state == .recording { self.status = "Verarbeitung verzögert sich. Audio bleibt erhalten." } } }
+        if state == .recording, let pipeline { Task { let backlog = await pipeline.backlogSeconds(); if self.state == .recording { self.recordingDelayed = backlog > 30; if backlog > 30 { self.status = "Verarbeitung verzögert sich. Audio bleibt erhalten." } } } }
         updateHotkey()
     }
     private func updateHotkey() {
@@ -626,7 +719,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         let nextState: PillState = allowed ? .ready : preparing || loading ? .loading : conflict ? .conflict : document.settings.paused ? .paused : .needsSetup
         let nextStatus = allowed ? "Bereit zum Diktieren" : preparing || loading ? "Modelle werden geladen" : conflict ? "Wispr Flow läuft. Bitte den Wechsel abschließen." : document.settings.paused ? "Tastenkürzel ausgeschaltet" : !modelsReady ? "Modelle einrichten" : !microphoneGranted ? "Mikrofon freigeben" : "Bedienungshilfen freigeben"
         if state != nextState { state = nextState }
-        if status != nextStatus { status = nextStatus }
+        if statusMessage != L10n.message(nextStatus) { status = nextStatus }
         hotkey.enabled = allowed
     }
     func requestMicrophone() {
@@ -644,7 +737,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         downloadTask = Task {
             do {
                 try await downloader.install { [weak self] current, total, group in
-                    Task { @MainActor in self?.downloadFraction = Double(current) / Double(max(1, total)); self?.downloadLabel = "\(group == "parakeet" ? "Spracherkennung" : "Textoptimierung"): \(ByteCountFormatter.string(fromByteCount: current, countStyle: .file)) von \(ByteCountFormatter.string(fromByteCount: total, countStyle: .file))" }
+                    Task { @MainActor in self?.downloadFraction = Double(current) / Double(max(1, total)); self?.downloadLabelMessage = .key("models.progress", [L10n.text(group == "parakeet" ? "models.recognition" : "models.optimization"), ByteCountFormatter.string(fromByteCount: current, countStyle: .file), ByteCountFormatter.string(fromByteCount: total, countStyle: .file)]) }
                 }
                 downloading = false; await prepareModels()
             } catch is CancellationError { downloading = false; downloadLabel = "Download pausiert. Beim nächsten Start geht es weiter." }
@@ -695,7 +788,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 }
                 document = try await store.load()
                 canUndoImport = true
-                importReceipt = result.summary(savedCount: document.dictionary.count)
+                importReceiptMessage = result.interfaceSummary(savedCount: document.dictionary.count)
                 importRevision += 1
                 updateHotkey()
             } catch {
@@ -714,7 +807,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         switchingWispr = true
         Task {
             let outcome = await WisprSwitch().switchFromWispr()
-            switchReceipt = outcome.reason; switchingWispr = false; refreshPermissions()
+            switchReceiptMessage = outcome.interfaceReason; switchingWispr = false; refreshPermissions()
             if outcome.status == .completed {
                 document.settings.paused = false
                 if canCompleteSetup { markSetupComplete() }
@@ -806,7 +899,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                             }
                         }
                     }
-                }, onError: { [weak self] message in Task { @MainActor in if self?.sessionID == id { if message.contains("20 Minuten") || message.contains("Mikrofon wurde geändert") { self?.stop() } else { self?.fail(message) } } } })
+                }, onError: { [weak self] message in Task { @MainActor in if self?.sessionID == id { self?.fail(message) } } }, onCompletion: { [weak self] in Task { @MainActor in guard let self, self.sessionID == id else { return }; self.stop() } })
                 captureReady = true
                 captureStartupMilliseconds = (ProcessInfo.processInfo.systemUptime - requestedAt) * 1000
                 startedAt = ProcessInfo.processInfo.systemUptime
@@ -883,7 +976,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 }
                 if let context = historyContext { recordHistory(partial.result, context: context, delivery: .notAttempted) }
                 cancel(); state = .error; status = "Teiltext anzeigen"
-                recoveryReason = "Die Erkennung wurde unterbrochen. Dieser Teiltext ist unvollständig und wurde nicht eingefügt. " + partial.localizedDescription
+                recoveryReasonMessage = .joined([.key("recovery.partialPrefix", []), L10n.message(partial.localizedDescription)], " ")
                 errorMessage = recoveryReason; showRecovery()
             } catch let silence as NoSpeechDetected {
                 guard sessionID == id, !Task.isCancelled else { return }
@@ -898,8 +991,8 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     }
     /// The setup page already shows probe errors; the pill must not keep floating on every Space.
     private func resetErrorSoon() {
-        let shown = status
-        Task { try? await Task.sleep(for: .seconds(3)); guard self.sessionID == nil, self.state == .error, self.status == shown, self.recoveryWindow?.isVisible != true else { return }; self.state = .paused; self.updateHotkey() }
+        let shownID = statusRevision
+        Task { try? await Task.sleep(for: .seconds(3)); guard self.sessionID == nil, self.state == .error, self.statusRevision == shownID, self.recoveryWindow?.isVisible != true else { return }; self.state = .paused; self.updateHotkey() }
     }
     /// Sleep must not silently drop what was already said. Finish the recording,
     /// keep processing, and show the text instead of pasting after wake.
@@ -913,14 +1006,15 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     }
     /// VoiceOver users otherwise get no feedback while focus stays in the target app.
     private func announceState() {
-        let message: String? = switch state { case .recording: "Aufnahme läuft"; case .success: status; case .error: status; default: nil }
+        let message: String? = switch state { case .recording: L10n.text("capture.recordingAX"); case .success: status; case .error: status; default: nil }
         guard let message, !message.isEmpty, !previewMode else { return }
         NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested, userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high.rawValue])
     }
     /// Silence is not a failure worth a window. The pill shows it briefly; the hotkey stays live.
     private func showNoSpeech() {
         cancel(); state = .error; status = "Keine Sprache erkannt"; updateHotkey()
-        Task { try? await Task.sleep(for: .seconds(1.5)); guard self.sessionID == nil, self.state == .error, self.status == "Keine Sprache erkannt" else { return }; self.state = .paused; self.updateHotkey() }
+        let noSpeechID = statusRevision
+        Task { try? await Task.sleep(for: .seconds(1.5)); guard self.sessionID == nil, self.state == .error, self.statusRevision == noSpeechID else { return }; self.state = .paused; self.updateHotkey() }
     }
     func useOriginal() {
         guard state == .processing, sessionID != nil else { return }
@@ -982,10 +1076,10 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     }
     var pillActionLabel: String {
         #if DEBUG
-        if previewMode, CommandLine.arguments.contains("--test-delivery") { return "Öffentlichen Einfügetest starten" }
+        if previewMode, CommandLine.arguments.contains("--test-delivery") { return L10n.text("pill.action.testDelivery") }
         #endif
-        if state == .error && quietDeliveryFeedback { return status + " Klicken, um den Text zu prüfen." }
-        return state == .ready ? "Diktat starten. Halten: " + document.settings.shortcut.spokenLabel : state == .error ? "Diktat prüfen" : state == .paused ? "Tastenkürzel wieder einschalten" : "AInauten Voice öffnen: " + status
+        if state == .error && quietDeliveryFeedback { return L10n.text("pill.action.feedback", status) }
+        return state == .ready ? L10n.text("pill.action.start", document.settings.shortcut.spokenLabel) : state == .error ? L10n.text("pill.action.check") : state == .paused ? L10n.text("pill.action.enable") : L10n.text("pill.action.open", status)
     }
     func openFromPill() {
         #if DEBUG
@@ -1011,7 +1105,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             let available = NSScreen.main?.visibleFrame.size ?? NSSize(width: 1120, height: 892)
             let size = NSSize(width: min(1120, available.width), height: min(860, available.height - 32))
             let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-            window.title = previewMode ? "AInauten Voice · Oberflächenprüfung" : "AInauten Voice"; window.minSize = NSSize(width: 640, height: 560); window.isReleasedWhenClosed = false; window.delegate = self
+            window.title = previewMode ? L10n.text("window.preview") : "AInauten Voice"; window.minSize = NSSize(width: 640, height: 560); window.isReleasedWhenClosed = false; window.delegate = self
             if previewMode {
                 if let size = CommandLine.arguments.first(where: { $0.hasPrefix("--window-size=") })?.dropFirst(14).split(separator: "x"), size.count == 2, let width = Double(size[0]), let height = Double(size[1]) { window.setContentSize(NSSize(width: width, height: height)) }
                 if CommandLine.arguments.contains("--appearance=light") { window.appearance = NSAppearance(named: .aqua) }
@@ -1087,7 +1181,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     func presentDelivery(_ outcome: DeliveryOutcome, result: DictationResult) {
         let feedbackID = UUID(); deliveryFeedbackID = feedbackID
         quietDeliveryFeedback = !outcome.shouldShowRecovery && outcome.status != .confirmed
-        recoveryReason = outcome.reason + (result.usedFallback ? " Die Optimierung war nicht verfügbar; verfügbar ist der Originaltext." : "")
+        recoveryReasonMessage = .joined([L10n.message(outcome.reason)] + (result.usedFallback ? [.key("recovery.optimizationFallback", [])] : []), " ")
         recoveryFailureTitle = nil
         if outcome.shouldShowRecovery {
             state = .error; status = "Text verfügbar"; showRecovery(autoCopy: result.isComplete)
@@ -1099,11 +1193,11 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         let finalState: PillState = outcome.status == .confirmed ? .success : .error
         state = finalState
         status = outcome.status == .confirmed ? (result.usedFallback ? "Original eingefügt" : "Eingefügt") : "Einfügen nicht bestätigt. Text über Letzte Ergebnisse verfügbar."
-        let feedbackStatus = status
+        let feedbackStatusID = statusRevision
         updateHotkey()
         Task {
             try? await Task.sleep(for: .seconds(1.5))
-            guard self.sessionID == nil, self.state == finalState, self.status == feedbackStatus,
+            guard self.sessionID == nil, self.state == finalState, self.statusRevision == feedbackStatusID,
                   self.deliveryFeedbackID == feedbackID, self.results.first?.id == result.id,
                   self.recoveryWindow?.isVisible != true else { return }
             self.state = .paused; self.updateHotkey()
@@ -1115,42 +1209,42 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     }
     var recoveryTitle: String {
         if let title = recoveryFailureTitle { return title }
-        if recoveryResult?.isComplete == false { return "Unvollständiger Text" }
-        switch recoveryClipboardStatus {
-        case "In der Zwischenablage": return "Kopiert"
-        case "Vorherige Zwischenablage wiederhergestellt": return "Rückgängig"
-        case "Zwischenablage unverändert", "Kopieren nicht möglich": return "Nicht kopiert"
-        case "Zwischenablage geändert", "Neue Zwischenablage bleibt erhalten": return "Zwischenablage geändert"
-        case "Wiederherstellen nicht möglich": return "Rückgängig nicht möglich"
-        default: return results.isEmpty ? "Diktat nicht verfügbar" : "Erkannter Text"
+        if recoveryResult?.isComplete == false { return L10n.diagnostic("Unvollständiger Text") }
+        switch recoveryClipboardState {
+        case .copied: return L10n.diagnostic("Kopiert")
+        case .restored: return L10n.diagnostic("Rückgängig")
+        case .unavailable, .failed: return L10n.diagnostic("Nicht kopiert")
+        case .changed, .preserved: return L10n.diagnostic("Zwischenablage geändert")
+        case .restoreFailed: return L10n.diagnostic("Rückgängig nicht möglich")
+        default: return L10n.diagnostic(results.isEmpty ? "Diktat nicht verfügbar" : "Erkannter Text")
         }
     }
-    var recoveryDetails: String { [recoveryReason, recoveryFooter, "Letzte Ergebnisse bleiben bis zum Beenden im Menü erreichbar."].filter { !$0.isEmpty }.joined(separator: "\n\n") }
+    var recoveryDetails: String { [recoveryReason, recoveryFooter, L10n.text("recovery.resultsFooter")].filter { !$0.isEmpty }.joined(separator: "\n\n") }
     var recoveryHasCopy: Bool { recoveryCopiedID == recoveryResult?.id && recoveryCanUndo }
     var recoveryFooter: String {
         if recoveryFailureTitle != nil { return recoveryReason }
-        if recoveryResult?.isComplete == false && recoveryHasCopy { return "Unvollständiger Teiltext. Vor dem Einfügen prüfen." }
-        if recoveryHasCopy { return "Mit ⌘V einfügen. Prüfe vorher das Zielfeld." }
-        switch recoveryClipboardStatus {
-        case "Zwischenablage unverändert": return "Vorheriger Inhalt konnte nicht vollständig gesichert werden. Der Text bleibt im Menü Letzte Ergebnisse verfügbar."
-        case "Kopieren nicht möglich": return "Über das Zwischenablage-Symbol erneut versuchen. Der Text bleibt im Menü Letzte Ergebnisse verfügbar."
-        case "Zwischenablage geändert", "Neue Zwischenablage bleibt erhalten": return "Deine neue Kopieraktion bleibt erhalten."
-        case "Vorherige Zwischenablage wiederhergestellt": return "Mit ⌘V fügst du wieder den vorherigen Inhalt ein."
-        case "Wiederherstellen nicht möglich": return "Die vorherige Zwischenablage konnte nicht wiederhergestellt werden."
+        if recoveryResult?.isComplete == false && recoveryHasCopy { return L10n.diagnostic("Unvollständiger Teiltext. Vor dem Einfügen prüfen.") }
+        if recoveryHasCopy { return L10n.diagnostic("Mit ⌘V einfügen. Prüfe vorher das Zielfeld.") }
+        switch recoveryClipboardState {
+        case .unavailable: return L10n.diagnostic("Vorheriger Inhalt konnte nicht vollständig gesichert werden. Der Text bleibt im Menü Letzte Ergebnisse verfügbar.")
+        case .failed: return L10n.diagnostic("Über das Zwischenablage-Symbol erneut versuchen. Der Text bleibt im Menü Letzte Ergebnisse verfügbar.")
+        case .changed, .preserved: return L10n.diagnostic("Deine neue Kopieraktion bleibt erhalten.")
+        case .restored: return L10n.diagnostic("Mit ⌘V fügst du wieder den vorherigen Inhalt ein.")
+        case .restoreFailed: return L10n.diagnostic("Die vorherige Zwischenablage konnte nicht wiederhergestellt werden.")
         default: return recoveryReason
         }
     }
     func showRecovery(autoCopy: Bool = false, activate: Bool = false, resultID: UUID? = nil, transient: Bool = false, failureTitle: String? = nil) {
         recoveryFailureTitle = failureTitle
         recoverySelection = failureTitle == nil ? resultID ?? results.first?.id : nil
-        if failureTitle != nil { recoveryClipboardStatus = ""; recoveryCanUndo = false }
+        if failureTitle != nil { recoveryClipboardState = .empty; recoveryCanUndo = false }
         recoveryTransient = autoCopy || transient
         if autoCopy, document.settings.clipboardCompatibility != false, let result = recoveryResult, result.isComplete { copyRecoveryText(result) }
-        else if recoveryCopiedID != recoveryResult?.id { recoveryClipboardStatus = ""; recoveryCanUndo = false }
-        if recoveryCanUndo && !recoveryClipboard.canUndo { recoveryCanUndo = false; recoveryClipboardStatus = "Zwischenablage geändert" }
+        else if recoveryCopiedID != recoveryResult?.id { recoveryClipboardState = .empty; recoveryCanUndo = false }
+        if recoveryCanUndo && !recoveryClipboard.canUndo { recoveryCanUndo = false; recoveryClipboardState = .changed }
         if recoveryWindow == nil {
             let panel = RecoveryPanel(contentRect: NSRect(x: 0, y: 0, width: 420, height: 160), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-            panel.title = "AInauten Voice Ergebnis"
+            panel.title = L10n.text("window.result")
             if previewMode {
                 if CommandLine.arguments.contains("--appearance=light") { panel.appearance = NSAppearance(named: .aqua) }
                 if CommandLine.arguments.contains("--appearance=dark") { panel.appearance = NSAppearance(named: .darkAqua) }
@@ -1170,7 +1264,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     }
     func selectRecoveryResult() {
         recoveryTransient = false
-        recoveryClipboardStatus = recoveryCopiedID == recoveryResult?.id && recoveryClipboard.canUndo ? "In der Zwischenablage" : ""
+        recoveryClipboardState = recoveryCopiedID == recoveryResult?.id && recoveryClipboard.canUndo ? .copied : .empty
         recoveryCanUndo = recoveryCopiedID == recoveryResult?.id && recoveryClipboard.canUndo
         sizeRecovery()
         startRecoveryTimer()
@@ -1208,7 +1302,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 guard let self, self.recoveryWindow?.isVisible == true else { return }
                 if self.recoveryCanUndo && !self.recoveryClipboard.canUndo {
                     self.recoveryCanUndo = false; self.recoveryClipboard.discardUndo()
-                    self.recoveryClipboardStatus = "Zwischenablage geändert"
+                    self.recoveryClipboardState = .changed
                 }
                 #if DEBUG
                 if self.previewMode && CommandLine.arguments.contains("--preview-pin") { return }
@@ -1243,16 +1337,16 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     }
     private func copyRecoveryText(_ result: DictationResult, explicit: Bool = false) {
         switch recoveryClipboard.copy(result.text, transient: !explicit) {
-        case .copied: recoveryClipboardStatus = "In der Zwischenablage"; recoveryCopiedID = result.id; recoveryCanUndo = true
-        case .unavailable: recoveryClipboardStatus = "Zwischenablage unverändert"; recoveryCanUndo = false; recoveryTransient = false
-        case .failed: recoveryClipboardStatus = "Kopieren nicht möglich"; recoveryCanUndo = false; recoveryTransient = false
+        case .copied: recoveryClipboardState = .copied; recoveryCopiedID = result.id; recoveryCanUndo = true
+        case .unavailable: recoveryClipboardState = .unavailable; recoveryCanUndo = false; recoveryTransient = false
+        case .failed: recoveryClipboardState = .failed; recoveryCanUndo = false; recoveryTransient = false
         }
     }
     func undoRecoveryCopy() {
         switch recoveryClipboard.undo() {
-        case .restored: recoveryClipboardStatus = "Vorherige Zwischenablage wiederhergestellt"
-        case .changed: recoveryClipboardStatus = "Neue Zwischenablage bleibt erhalten"
-        case .failed: recoveryClipboardStatus = "Wiederherstellen nicht möglich"
+        case .restored: recoveryClipboardState = .restored
+        case .changed: recoveryClipboardState = .preserved
+        case .failed: recoveryClipboardState = .restoreFailed
         }
         recoveryCanUndo = false
         #if DEBUG
@@ -1317,30 +1411,30 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         if panel.runModal() == .OK, let url = panel.url { Task { do { try await store.export(to: url) } catch { errorMessage = error.localizedDescription } } }
     }
     func importDictionaryCSV() {
-        let panel = NSOpenPanel(); panel.title = "Wörterbuch als CSV auswählen"; panel.allowsMultipleSelection = false
+        let panel = NSOpenPanel(); panel.title = L10n.text("dialog.dictionaryCSV"); panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             let handle = try FileHandle(forReadingFrom: url); defer { try? handle.close() }
             let data = try handle.read(upToCount: 10 * 1024 * 1024 + 1) ?? Data()
             let preview = try DictionaryCSV.preview(data: data)
             let merged = preview.merged(with: document.dictionary)
-            let alert = NSAlert(); alert.messageText = "CSV-Import prüfen"
-            alert.informativeText = "\(merged.added) neue Einträge, \(preview.entries.count - merged.added) vorhandene Ausdrücke unverändert, \(preview.skipped) ausgelassen. Deine bestehenden Einträge haben Vorrang. Die CSV-Datei wird nicht verändert."
-            alert.addButton(withTitle: "Importieren"); alert.addButton(withTitle: "Abbrechen")
+            let alert = NSAlert(); alert.messageText = L10n.text("dialog.csvReview")
+            alert.informativeText = L10n.text("dialog.csvSummary", merged.added.formatted(), (preview.entries.count - merged.added).formatted(), preview.skipped.formatted())
+            alert.addButton(withTitle: L10n.text("dialog.import")); alert.addButton(withTitle: L10n.text("common.cancel"))
             if alert.runModal() == .alertFirstButtonReturn { document.dictionary = merged.entries; importFailed = false; importReceipt = "\(merged.added) CSV-Einträge importiert, vorhandene Änderungen erhalten." }
         } catch { errorMessage = error.localizedDescription }
     }
     func importSettings() {
         let panel = NSOpenPanel(); panel.allowsMultipleSelection = false; panel.allowedContentTypes = [.json]
-        panel.title = "Einstellungen und Wörterbuch importieren"
+        panel.title = L10n.text("dialog.settingsImport")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         Task {
             do {
                 let imported = try await store.importDocument(from: url)
                 // A settings import replaces everything. Confirm with counts and keep the previous state.
-                let alert = NSAlert(); alert.messageText = "Einstellungen und Wörterbuch ersetzen?"
-                alert.informativeText = "Die Datei enthält \(imported.dictionary.count) Wörterbucheinträge. Sie ersetzt deine aktuellen Einstellungen und alle \(document.dictionary.count) Einträge. Dein bisheriger Stand wird vorher als Sicherung im Datenordner gespeichert."
-                alert.addButton(withTitle: "Ersetzen"); alert.addButton(withTitle: "Abbrechen")
+                let alert = NSAlert(); alert.messageText = L10n.text("dialog.replaceSettings")
+                alert.informativeText = L10n.text("dialog.settingsSummary", imported.dictionary.count.formatted(), document.dictionary.count.formatted())
+                alert.addButton(withTitle: L10n.text("dialog.replace")); alert.addButton(withTitle: L10n.text("common.cancel"))
                 guard alert.runModal() == .alertFirstButtonReturn else { return }
                 let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
                 let backup = ModelPaths.support.appendingPathComponent("settings-before-import-\(stamp).json")

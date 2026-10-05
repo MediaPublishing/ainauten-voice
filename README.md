@@ -30,6 +30,7 @@ https://github.com/user-attachments/assets/bf5a39be-fa37-4d6b-8ff7-f2203b581335
 - **Wispr Flow importieren:** Unterstützte Wörter, Ersetzungen, Sprachen und Kürzel übernehmen.
 - **Diktate wiederfinden:** Im lokalen Verlauf suchen, kopieren und als Favorit speichern.
 - **Nutzung sehen:** Gesprochene Wörter, Aufnahmezeit und Sprechgeschwindigkeit.
+- **Deutsch oder Englisch verwenden:** Die Oberfläche folgt deiner Systemsprache; unter **Einstellungen → Diktieren → Oberflächensprache** kannst du sie direkt wechseln. Deine Diktatsprachen bleiben erhalten.
 - **Automatisch aktualisieren:** Signierte Updates im Hintergrund laden, beim Beenden installieren.
 
 ![AInauten Voice: Übersicht mit Verlauf und Nutzungsstatistik](site/assets/screenshots/overview.png)
@@ -57,7 +58,7 @@ Audio bleibt auf deinem Mac und wird nicht dauerhaft gespeichert. Den lokalen Te
 
 Die native App verwendet SwiftUI/AppKit, FluidAudio mit Parakeet v3 und eingebettetes llama.cpp mit Qwen3-4B. [Entwicklungsanleitung](native/README.md) · [Prüfbericht](native/docs/verification-report.md) · [Website entwickeln](site/README.md).
 
-Der öffentliche Download ist Beta **0.1.6, Build 10**, mit signierten automatischen Updates. Die Automatik ist standardmäßig aktiv und lässt sich unter **Einstellungen → Updates** ausschalten. Ältere Apps ohne Updater müssen einmalig durch den aktuellen Download ersetzt werden. Manuelle Fehlerberichte sind unter **Hilfe** verfügbar und gehen nach deiner Bestätigung an den privaten Eingang. Forschungsmodelle und automatische Fehlerübermittlung bleiben standardmäßig aus. Ein Git-Push allein verteilt kein App-Update. [Installations- und Updatehinweise](docs/agent-installation.md#updates-und-entwicklungsbuilds).
+Der öffentliche Download ist Beta **0.1.7, Build 11**, mit signierten automatischen Updates. Die Automatik ist standardmäßig aktiv und lässt sich unter **Einstellungen → Updates** ausschalten. Ältere Apps ohne Updater müssen einmalig durch den aktuellen Download ersetzt werden. Manuelle Fehlerberichte sind unter **Hilfe** verfügbar und gehen nach deiner Bestätigung an den privaten Eingang. Forschungsmodelle und automatische Fehlerübermittlung bleiben standardmäßig aus. Ein Git-Push allein verteilt kein App-Update. [Installations- und Updatehinweise](docs/agent-installation.md#updates-und-entwicklungsbuilds).
 
 Der Quellcode ist öffentlich einsehbar. Für den eigenen App-Code wurde bislang keine Open-Source-Lizenz erteilt; alle Rechte bleiben vorbehalten. Abhängigkeiten und Modelle haben eigene Lizenzen. [Lizenznachweise](native/Resources/Licenses/NOTICE.md) · [Forschungsmodell-Lizenzen](native/lipreading_runtime/licenses/NOTICE-Research-Models.txt).
 

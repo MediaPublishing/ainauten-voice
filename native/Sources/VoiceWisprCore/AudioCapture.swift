@@ -42,7 +42,7 @@ public final class AudioCapture: @unchecked Sendable {
     private var configurationObserver: NSObjectProtocol?
     public init() {}
     public var isRunning: Bool { lock.lock(); defer { lock.unlock() }; return running }
-    public func start(onSamples: @escaping SamplesHandler, onLevel: @escaping LevelHandler, onError: @escaping ErrorHandler) throws {
+    public func start(onSamples: @escaping SamplesHandler, onLevel: @escaping LevelHandler, onError: @escaping ErrorHandler, onCompletion: (@Sendable () -> Void)? = nil) throws {
         lock.lock(); defer { lock.unlock() }
         guard !running else { throw VoiceError.message("Audioaufnahme läuft bereits") }
         guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { throw VoiceError.message("Mikrofonzugriff fehlt") }
@@ -69,23 +69,25 @@ public final class AudioCapture: @unchecked Sendable {
             guard !chunk.samples.isEmpty else { return }
             let rms = sqrt(chunk.samples.reduce(Float(0)) { $0 + $1 * $1 } / Float(chunk.samples.count))
             onLevel(min(1, rms * 8)); onSamples(chunk.samples)
-            if chunk.samples.count < samples.count || sessionBuffer.isFinished { onError(VoiceError.message("Das maximale Diktat von 20 Minuten wurde erreicht")) }
+            if chunk.samples.count < samples.count || sessionBuffer.isFinished {
+                if let onCompletion { onCompletion() } else { onError(VoiceError.message("Das maximale Diktat von 20 Minuten wurde erreicht")) }
+            }
         }
         engine.prepare()
         do {
             try engine.start(); running = true
             configurationObserver = NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { _ in
                 guard !sessionBuffer.isFinished else { return }
-                onError(VoiceError.message("Mikrofon wurde geändert. Das bisherige Diktat wird abgeschlossen."))
+                if let onCompletion { onCompletion() } else { onError(VoiceError.message("Mikrofon wurde geändert. Das bisherige Diktat wird abgeschlossen.")) }
             }
         }
         catch { input.removeTap(onBus: 0); activeBuffer = nil; throw error }
     }
-    public func start(onSamples: @escaping @Sendable ([Float], Float) -> Void, onError: @escaping @Sendable (String) -> Void) throws {
+    public func start(onSamples: @escaping @Sendable ([Float], Float) -> Void, onError: @escaping @Sendable (String) -> Void, onCompletion: (@Sendable () -> Void)? = nil) throws {
         try start(onSamples: { samples in
             let rms = sqrt(samples.reduce(Float(0)) { $0 + $1 * $1 } / Float(max(1, samples.count)))
             onSamples(samples, min(1, rms * 8))
-        }, onLevel: { _ in }, onError: { onError($0.localizedDescription) })
+        }, onLevel: { _ in }, onError: { onError($0.localizedDescription) }, onCompletion: onCompletion)
     }
     @discardableResult public func stop() -> [Float] {
         lock.lock(); defer { lock.unlock() }

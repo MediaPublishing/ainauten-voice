@@ -6,10 +6,16 @@ import VoiceWisprCore
 enum HistoryCollection: String, CaseIterable, Identifiable {
     case all = "Alle", favorites = "Favoriten", trash = "Papierkorb"
     var id: String { rawValue }
+    var title: String {
+        switch self { case .all: L10n.text("history.collection.all"); case .favorites: L10n.text("history.collection.favorites"); case .trash: L10n.text("history.collection.trash") }
+    }
 }
 enum HistoryPeriod: String, CaseIterable, Identifiable {
     case all = "Gesamt", week = "7 Tage", month = "30 Tage"
     var id: String { rawValue }
+    var title: String {
+        switch self { case .all: L10n.text("history.period.all"); case .week: L10n.text("history.period.week"); case .month: L10n.text("history.period.month") }
+    }
     var since: Date? {
         guard self != .all else { return nil }
         return Calendar.current.date(byAdding: .day, value: self == .week ? -6 : -29, to: Calendar.current.startOfDay(for: Date()))
@@ -41,7 +47,7 @@ extension AppModel {
         historyWriteTask = Task {
             await previous?.value
             do { try await historyStore.insert(entry); refreshHistory() }
-            catch { historySaveError = "Dieses Diktat konnte nicht dauerhaft gespeichert werden. Es bleibt unter „Letzte Ergebnisse“ bis zum Beenden erreichbar." }
+            catch { historySaveError = L10n.text("history.saveFailed") }
         }
     }
     func refreshHistory(loadMore: Bool = false, debounce: Bool = false) {
@@ -88,28 +94,28 @@ extension AppModel {
             // Explicit deliberate copy, same as Copy in any native text viewer.
             let text = original && !entry.original.isEmpty ? entry.original : entry.text
             NSPasteboard.general.clearContents()
-            guard NSPasteboard.general.setString(text, forType: .string) else { historyError = "Der Text konnte nicht kopiert werden."; return }
+            guard NSPasteboard.general.setString(text, forType: .string) else { historyError = L10n.text("history.copyFailed"); return }
         }
         historyCopyID = entry.id
         Task { try? await Task.sleep(for: .seconds(1.5)); if historyCopyID == entry.id { historyCopyID = nil } }
     }
     func exportHistory() {
         guard !isUIPreview else { return }
-        let panel = NSSavePanel(); panel.title = "Lokalen Diktatverlauf exportieren"; panel.nameFieldStringValue = "AInauten-Voice-Verlauf.json"; panel.allowedContentTypes = [.json]
+        let panel = NSSavePanel(); panel.title = L10n.text("history.export.title"); panel.nameFieldStringValue = "AInauten-Voice-Verlauf.json"; panel.allowedContentTypes = [.json]
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        Task { do { try await historyStore.export(to: url); historyNotice = "Verlauf exportiert. Der Papierkorb ist nicht enthalten." } catch { historyError = error.localizedDescription } }
+        Task { do { try await historyStore.export(to: url); historyNotice = L10n.text("history.exported") } catch { historyError = L10n.diagnostic(error.localizedDescription) } }
     }
     func resetHistory() {
         guard !isUIPreview, state != .recording, state != .processing else { return }
-        let alert = NSAlert(); alert.messageText = "Den lokalen Verlauf zurücksetzen?"
-        alert.informativeText = "Alle gespeicherten Diktate und Statistiken beginnen neu. Die bisherige Datenbank wird in den macOS-Papierkorb verschoben. Wörterbuch, Kürzel und Modelle bleiben erhalten."
-        alert.addButton(withTitle: "In den Papierkorb verschieben"); alert.addButton(withTitle: "Abbrechen")
+        let alert = NSAlert(); alert.messageText = L10n.text("history.reset.title")
+        alert.informativeText = L10n.text("history.reset.message")
+        alert.addButton(withTitle: L10n.text("common.moveToTrash")); alert.addButton(withTitle: L10n.text("common.cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         guard state != .recording, state != .processing else { return }
         let pending = historyWriteTask
         historyWriteTask = Task {
             await pending?.value
-            do { _ = try await historyStore.moveToTrash(); results = []; closeRecovery(); historySaveError = nil; historyNotice = "Der bisherige Verlauf liegt im macOS-Papierkorb."; refreshHistory() }
+            do { _ = try await historyStore.moveToTrash(); results = []; closeRecovery(); historySaveError = nil; historyNotice = L10n.text("history.reset.done"); refreshHistory() }
             catch { historyError = error.localizedDescription }
         }
     }

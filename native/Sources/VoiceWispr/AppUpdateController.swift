@@ -11,7 +11,8 @@ import VoiceWisprCore
     @Published private(set) var canCheck = false
     @Published private(set) var lastCheck: Date?
     private(set) var installingUpdate = false
-    @Published private(set) var message = "Der Updatekanal wird eingerichtet."
+    @Published private var messageValue: LocalizedMessage = .key("updates.initializing", [])
+    var message: String { get { messageValue.text } set { messageValue = L10n.message(newValue) } }
     private var controller: SPUStandardUpdaterController?
     private var observations: [NSKeyValueObservation] = []
     private var postponedRelaunch: (() -> Void)?
@@ -27,7 +28,7 @@ import VoiceWisprCore
         let instance = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: self, userDriverDelegate: nil)
         controller = instance
         do { try instance.updater.start() } catch {
-            message = "Updates sind noch nicht verfügbar."; controller = nil; return
+            message = L10n.text("updates.unavailable"); controller = nil; return
         }
         available = true
         for key in [\SPUUpdater.automaticallyChecksForUpdates, \SPUUpdater.automaticallyDownloadsUpdates] {
@@ -44,7 +45,7 @@ import VoiceWisprCore
         automaticUpdates = updater.automaticallyChecksForUpdates && updater.automaticallyDownloadsUpdates
         canCheck = updater.canCheckForUpdates
         lastCheck = updater.lastUpdateCheckDate
-        message = automaticUpdates ? "Updates werden geladen und beim nächsten App-Neustart installiert." : "Du entscheidest, wann du nach Updates suchst."
+        message = automaticUpdates ? L10n.text("updates.automatic.on") : L10n.text("updates.automatic.off")
     }
     func setAutomaticUpdates(_ enabled: Bool) {
         guard available, let updater = controller?.updater else { return }
@@ -54,12 +55,12 @@ import VoiceWisprCore
     }
     func check() {
         guard available, canCheck else { return }
-        guard !busy() else { message = "Beende zuerst dein Diktat oder die laufende Einrichtung."; return }
+        guard !busy() else { message = L10n.text("updates.busy"); return }
         controller?.checkForUpdates(nil)
     }
     func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
         guard !busy() else {
-            throw NSError(domain: "AInautenVoice.Update", code: 1, userInfo: [NSLocalizedDescriptionKey: "Beende zuerst dein Diktat oder die laufende Einrichtung."])
+            throw NSError(domain: "AInautenVoice.Update", code: 1, userInfo: [NSLocalizedDescriptionKey: L10n.text("updates.busy")])
         }
     }
     func updater(_ updater: SPUUpdater, willInstallUpdate item: SUAppcastItem) { installingUpdate = true }
@@ -70,7 +71,7 @@ import VoiceWisprCore
     func updater(_ updater: SPUUpdater, shouldPostponeRelaunchForUpdate item: SUAppcastItem, untilInvokingBlock installHandler: @escaping () -> Void) -> Bool {
         guard busy() else { return false }
         postponedRelaunch = installHandler
-        message = "Update bereit. Dein laufendes Diktat wird zuerst abgeschlossen."
+        message = L10n.text("updates.readyAfterDictation")
         relaunchTimer?.invalidate()
         relaunchTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.resumeRelaunchIfIdle() }

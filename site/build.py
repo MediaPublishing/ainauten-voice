@@ -5,6 +5,7 @@ import datetime
 import hashlib
 import json
 import plistlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -74,6 +75,12 @@ if dist.exists():
 dist.mkdir()
 for name in ['index.html', 'styles.css', 'app.js', '_headers', 'robots.txt', 'sitemap.xml', 'help.html', 'help.css', 'help.mjs', 'report-schema.mjs', '_routes.json', '404.html']:
     shutil.copy2(root / name, dist / name)
+help_page = dist / 'help.html'
+help_text = help_page.read_text()
+help_text, version_count = re.subn(r'(id="version" value=")[^"]*(")', rf'\g<1>{version}\2', help_text)
+help_text, build_count = re.subn(r'(id="build" value=")[^"]*(")', rf'\g<1>{info["CFBundleVersion"]}\2', help_text)
+require(version_count == 1 and build_count == 1, 'Help report version fields missing')
+help_page.write_text(help_text)
 shutil.copy2(root/'pages-worker.mjs', dist/'_worker.js')
 # A changed stylesheet must also reach visitors with a cached previous version.
 style_version = hashlib.sha256((dist / 'styles.css').read_bytes()).hexdigest()[:12]

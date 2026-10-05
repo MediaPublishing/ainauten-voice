@@ -54,16 +54,16 @@ final class MigrationRejectedRowsTests: XCTestCase {
 
     func testReplacementByteLimitSkipsOnlyOversizedRows() throws {
         let (_, service, db) = try fixture(); defer { sqlite3_close(db) }
-        try insert(db, id: "boundary", phrase: "Allowed", replacement: String(repeating: "é", count: 500_000))
-        try insert(db, id: "too-large", phrase: "Excluded", replacement: String(repeating: "é", count: 500_001))
+        try insert(db, id: "boundary", phrase: "Allowed", replacement: String(repeating: "é", count: 8_192))
+        try insert(db, id: "too-large", phrase: "Excluded", replacement: String(repeating: "é", count: 8_193))
         let result = service.apply(to: ExportDocument())
         XCTAssertFalse(result.result.preview.isPartial)
         XCTAssertEqual(result.result.preview.replacements, 1)
         XCTAssertEqual(result.result.preview.unsupportedCounts["oversizedReplacements"], 1)
         XCTAssertEqual(result.result.imported, 1)
         XCTAssertEqual(result.result.skipped, 1)
-        XCTAssertEqual(result.document.dictionary.first?.replacement?.utf8.count, 1_000_000)
-        XCTAssertTrue(result.result.summary(savedCount: 1).contains("1 Ersetzung über 1 MB ausgelassen"))
+        XCTAssertEqual(result.document.dictionary.first?.replacement?.utf8.count, DictionaryEntry.maximumReplacementBytes)
+        XCTAssertTrue(result.result.summary(savedCount: 1).contains("1 Ersetzung über 16 KB ausgelassen"))
         try SettingsStore.validate(result.document)
     }
 

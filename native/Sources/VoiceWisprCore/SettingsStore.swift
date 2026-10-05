@@ -114,7 +114,7 @@ public actor SettingsStore {
               document.settings.appStyles.keys.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 255 }),
               document.settings.cloudEndpoint.utf8.count <= 2048, document.settings.cloudModel.utf8.count <= 255,
               document.dictionary.reduce(0, { $0 + $1.phrase.utf8.count + ($1.replacement?.utf8.count ?? 0) + $1.id.utf8.count + ($1.sourceID?.utf8.count ?? 0) + ($1.sourceFingerprint?.utf8.count ?? 0) }) <= 2 * 1024 * 1024, Set(document.dictionary.map(\.id)).count == document.dictionary.count,
-              document.dictionary.allSatisfy({ !$0.id.isEmpty && $0.id.utf8.count <= 128 && ($0.sourceID?.utf8.count ?? 0) <= 128 && ($0.sourceFingerprint?.utf8.count ?? 0) <= 256 && !$0.phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.phrase.count <= 255 && ($0.replacement?.utf8.count ?? 0) <= 16_384 }) else { throw VoiceError.message("Ungültige Einstellungen oder Wörterbucheinträge") }
+              document.dictionary.allSatisfy({ !$0.id.isEmpty && $0.id.utf8.count <= 128 && ($0.sourceID?.utf8.count ?? 0) <= 128 && ($0.sourceFingerprint?.utf8.count ?? 0) <= 256 && !$0.phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.phrase.count <= 255 && ($0.replacement?.utf8.count ?? 0) <= DictionaryEntry.maximumReplacementBytes }) else { throw VoiceError.message("Ungültige Einstellungen oder Wörterbucheinträge") }
         // An unused endpoint may be empty or half-typed; enabling cloud re-validates it.
         if document.settings.cloudEnabled {
             guard (try? CloudRecipient.normalized(document.settings.cloudEndpoint)) != nil else { throw VoiceError.message("Cloud-Endpunkt muss HTTPS oder eine lokale Adresse sein") }

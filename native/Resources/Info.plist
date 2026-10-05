@@ -4,6 +4,8 @@
 <dict>
 	<key>AInautenReportDeliveryEnabled</key>
 	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>AInauten Voice</string>
 	<key>CFBundleExecutable</key>
@@ -12,14 +14,19 @@
 	<string>VoiceWispr</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.mediapublishing.VoiceWispr</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>de</string>
+		<string>en</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>AInauten Voice</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.6</string>
+	<string>0.1.7</string>
 	<key>CFBundleVersion</key>
-	<string>10</string>
+	<string>11</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>

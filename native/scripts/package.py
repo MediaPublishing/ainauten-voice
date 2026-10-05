@@ -46,12 +46,19 @@ out = root / 'artifacts' / stamp; out.mkdir(parents=True)
 app = out / 'AInauten Voice.app'; contents = app / 'Contents'
 for name in ['MacOS', 'Frameworks', 'Resources']: (contents/name).mkdir(parents=True)
 shutil.copy2(root/'Resources/Info.plist', contents/'Info.plist')
+for language in ['de', 'en']:
+    source = root/'Resources'/f'{language}.lproj'
+    shutil.copytree(source, contents/'Resources'/source.name)
 if public_key:
     info = plistlib.loads((contents/'Info.plist').read_bytes())
     info['SUPublicEDKey'] = public_key
     (contents/'Info.plist').write_bytes(plistlib.dumps(info))
 shutil.copy2(build/'VoiceWispr', contents/'MacOS/VoiceWispr')
 for bundle in build.glob('*.bundle'): shutil.copytree(bundle, contents/'Resources'/bundle.name)
+localized_bundles = list((contents/'Resources').glob('*.bundle'))
+for language in ['de', 'en']:
+    if not any((bundle/f'{language}.lproj/Localizable.strings').is_file() for bundle in localized_bundles):
+        raise SystemExit(f'Missing packaged interface language: {language}')
 framework = root/'Vendor/build-apple/llama.xcframework/macos-arm64_x86_64/llama.framework'
 shutil.copytree(framework, contents/'Frameworks/llama.framework', symlinks=True)
 sparkle_distribution = root/'.build/artifacts/sparkle/Sparkle'

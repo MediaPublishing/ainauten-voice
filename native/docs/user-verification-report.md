@@ -8,6 +8,7 @@ Diese Fassung wird mit der App ausgeliefert. Sie enthält keine Diktate, Namen o
 
 - Automatisierte Vertragsfälle für Spracherkennung, Textoptimierung, Wörterbuch, Wispr-Flow-Import, Zwischenablage, Kürzel und Verlauf.
 - Deutsch, Englisch und Sprachwechsel mit reproduzierbaren synthetischen Fällen und öffentlichen FLEURS-Sprachaufnahmen.
+- Deutsche und englische Oberfläche mit direktem Sprachwechsel, unveränderten Diktatsprachen und lokalisierten Menü- und Bedienelementen.
 - Native Oberfläche, lokale Modelle und einzelne Einfügeziele auf einem Apple-Silicon-Mac mit macOS 27.
 - App-Signatur, eingebettete App im DMG und Download.
 - Geschützte Cloud-Empfängerfreigabe, Grenzen für Einstellungsdateien und Fehlermeldungen, sichere Entwicklungs-Dateinamen.
