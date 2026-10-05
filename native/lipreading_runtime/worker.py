@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import argparse, base64, binascii, importlib, json, os, sys, time, uuid
 from dataclasses import dataclass, field
+from pathlib import Path
+from setup_runtime import MODEL_SHA, digest
+from setup_german import MODEL_SHA as GERMAN_MODEL_SHA, VOCAB_SHA
 
 MAX_SECONDS, MAX_FRAMES, MAX_JPEG, MAX_SESSION = 30_000, 750, 150_000, 64 * 1024 * 1024
 
@@ -32,6 +35,23 @@ class Capture:
     bytes: int = 0
     last_ts: int = -1
 
+def verify_models(root: str, language: str) -> None:
+    """Only fixed, previously reviewed checkpoints/configs may reach research loaders.
+
+    Older research dependencies must never load arbitrary pickle or Hydra inputs.
+    Re-check on every worker start, including an already installed environment.
+    """
+    base = Path(root) / language
+    expected = ({base / "vendor" / name: sha for name, sha in MODEL_SHA.items()}
+                if language == "en" else {
+                    base / "checkpoint_best.pt": GERMAN_MODEL_SHA,
+                    base / "tokenizer.model": VOCAB_SHA,
+                    base / "vendor/models/face_landmarker.task": MODEL_SHA["models/face_landmarker.task"],
+                })
+    for path, sha in expected.items():
+        if not path.is_file() or digest(path) != sha:
+            raise RuntimeError("model_integrity_failed")
+
 class Reader:
     def __init__(self, root: str, language: str):
         self.root, self.language = os.path.abspath(os.path.expanduser(root)), language
@@ -41,6 +61,7 @@ class Reader:
 
     def _load_reader(self):
         if self.reader is not None: return self.reader
+        verify_models(self.root, self.language)
         if self.language != "en":
             try: self.reader = importlib.import_module("german").GermanReader(root=self.root)
             except Exception as e: raise RuntimeError("de_runtime_unavailable") from e
@@ -106,7 +127,7 @@ class Reader:
             if not text: err(session, "no_face", "Kein verwertbares Gesicht erkannt."); return
             emit({"type": "result", "session": session, "text": text})
         except RuntimeError as e:
-            code = str(e) if str(e) in {"no_face", "face_pipeline_unavailable", "en_runtime_unavailable", "de_runtime_unavailable"} else "inference_failed"
+            code = str(e) if str(e) in {"no_face", "face_pipeline_unavailable", "en_runtime_unavailable", "de_runtime_unavailable", "model_integrity_failed"} else "inference_failed"
             err(session, code, "Kein verwertbares Gesicht erkannt. Schaue direkt in die Kamera." if code == "no_face" else "Lokale Lippenverarbeitung ist nicht verfügbar.")
         except Exception: err(session, "inference_failed", "Lokale Verarbeitung fehlgeschlagen.")
 

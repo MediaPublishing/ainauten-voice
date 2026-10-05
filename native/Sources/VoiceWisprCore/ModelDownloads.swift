@@ -35,7 +35,19 @@ public actor ModelDownloader {
     private let manifest: ModelManifest?
     private let sessionConfiguration: URLSessionConfiguration?
     private var current: FileTransfer?
-    public init(root: URL = ModelPaths.models, manifest: ModelManifest? = nil, sessionConfiguration: URLSessionConfiguration? = nil) { self.root = root; self.manifest = manifest; self.sessionConfiguration = sessionConfiguration }
+    private let discard: @Sendable (URL) -> Void
+    public init(root: URL = ModelPaths.models, manifest: ModelManifest? = nil, sessionConfiguration: URLSessionConfiguration? = nil, discard: @escaping @Sendable (URL) -> Void = { ModelDownloader.trash($0) }) { self.root = root; self.manifest = manifest; self.sessionConfiguration = sessionConfiguration; self.discard = discard }
+    /// A rejected model can be 2.5 GB. Keep one fixed quarantine per file and clear
+    /// it (plus `.invalid-<UUID>` copies from older builds) before the next attempt.
+    static func quarantine(for destination: URL) -> URL { destination.appendingPathExtension("invalid") }
+    public static func trash(_ url: URL) {
+        do { try FileManager.default.trashItem(at: url, resultingItemURL: nil) } catch { try? FileManager.default.removeItem(at: url) }
+    }
+    private func clearQuarantine(for destination: URL) {
+        let name = Self.quarantine(for: destination).lastPathComponent
+        let siblings = (try? FileManager.default.contentsOfDirectory(at: destination.deletingLastPathComponent(), includingPropertiesForKeys: nil)) ?? []
+        for url in siblings where url.lastPathComponent == name || url.lastPathComponent.hasPrefix(name + "-") { discard(url) }
+    }
     private func activeManifest() throws -> ModelManifest { try manifest ?? ModelManifest.bundled() }
     public func cancel() { current?.cancel() }
     public func installed(includeFormatter: Bool = true) async throws -> Bool {
@@ -52,6 +64,7 @@ public actor ModelDownloader {
     public func install(includeFormatter: Bool = true, progress: @escaping Progress) async throws {
         let files = try activeManifest().files.filter { includeFormatter || $0.group != "qwen" }
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        for file in files { clearQuarantine(for: root.appendingPathComponent(file.path)) }
         let total = files.reduce(Int64(0)) { $0 + $1.size }
         var completed: Int64 = 0
         let needed = files.reduce(Int64(0)) { sum, file in
@@ -75,8 +88,8 @@ public actor ModelDownloader {
             }
             let digest = try await Task.detached(priority: .utility) { try Self.digest(destination) }.value
             guard digest == file.sha256 else {
-                let bad = destination.appendingPathExtension("invalid-\(UUID().uuidString)")
-                try FileManager.default.moveItem(at: destination, to: bad)
+                clearQuarantine(for: destination)
+                try FileManager.default.moveItem(at: destination, to: Self.quarantine(for: destination))
                 throw VoiceError.message("Prüfsumme stimmt nicht. Die Datei wurde isoliert; bitte Download erneut starten.")
             }
             try Data(file.sha256.utf8).write(to: URL(fileURLWithPath: destination.path + ".verified"), options: .atomic)

@@ -17,6 +17,15 @@ private actor TestSpeech: SpeechTranscribing {
         return .init(sessionID: sessionID, index: index, text: text, words: [.init(text: text, start: offset + duration / 2, end: offset + duration / 2 + 0.01)])
     }
 }
+private actor FiniteCheckingSpeech: SpeechTranscribing {
+    var sawNonFinite = false
+    func prepare() async throws {}
+    func transcribe(samples: [Float], sessionID: UUID, index: Int, offset: Double) async throws -> TranscriptSegment {
+        if !samples.allSatisfy(\.isFinite) { sawNonFinite = true }
+        let middle = offset + Double(samples.count) / 32_000
+        return .init(sessionID: sessionID, index: index, text: "Abschnitt\(index)", words: [.init(text: "Abschnitt\(index)", start: middle, end: middle + 0.01)])
+    }
+}
 private actor TestFormatter: TextFormatting {
     let fails: Bool
     let delay: Duration
@@ -192,6 +201,20 @@ final class ProcessingTests: XCTestCase {
         XCTAssertFalse(result.usedFallback)
         XCTAssertEqual(result.duration, 16)
     }
+    func testNonFiniteChunkBecomesSilenceInsteadOfLosingTheDictation() async throws {
+        let speech = FiniteCheckingSpeech()
+        let pipeline = ProcessingPipeline(speech: speech, formatter: TestFormatter())
+        try await pipeline.start(sessionID: UUID(), style: .original)
+        try await pipeline.append(samples: Array(repeating: 0.1, count: 16_000))
+        var glitch = Array(repeating: Float(0.1), count: 16_000); glitch[0] = .nan; glitch[1] = .infinity; glitch[2] = -.infinity
+        try await pipeline.append(samples: glitch)
+        let replaced = await pipeline.replacedSamples; XCTAssertEqual(replaced, 3)
+        let result = try await pipeline.finish()
+        XCTAssertFalse(result.original.isEmpty); XCTAssertEqual(result.duration, 2)
+        let sawNonFinite = await speech.sawNonFinite; XCTAssertFalse(sawNonFinite)
+        try await pipeline.start(sessionID: UUID(), style: .original)
+        let reset = await pipeline.replacedSamples; XCTAssertEqual(reset, 0); await pipeline.cancel()
+    }
     func testFormatterFailureIsVisibleRawFallback() async throws {
         let pipeline = ProcessingPipeline(speech: TestSpeech(), formatter: TestFormatter(fails: true))
         let result = try await pipeline.process(samples: Array(repeating: 0.1, count: 16_000), sessionID: UUID(), style: .cleaned)
@@ -223,6 +246,18 @@ final class ProcessingTests: XCTestCase {
         await formatter.shutdown()
         await formatter.shutdown()
         do { try await formatter.prepare(); XCTFail("A terminated formatter cannot reload GPU resources") }
+        catch { XCTAssertEqual(error.localizedDescription, "Lokale Formatierung ist beendet") }
+    }
+    func testUnloadKeepsFormatterReloadableWhileShutdownStaysFinal() async throws {
+        let formatter = LocalFormatter(modelURL: URL(fileURLWithPath: "/nonexistent/\(UUID().uuidString)"))
+        await formatter.unload(); await formatter.unload()
+        // After unload, prepare() attempts a fresh load instead of reporting termination.
+        do { try await formatter.prepare(); XCTFail("Missing GGUF must fail") }
+        catch { XCTAssertEqual(error.localizedDescription, "Das lokale Formatierungsmodell fehlt") }
+        do { _ = try await formatter.format("hallo welt wie geht es", style: .email, context: "", vocabulary: []); XCTFail("Unloaded formatter must not format") }
+        catch { XCTAssertEqual(error.localizedDescription, "Lokale Formatierung ist nicht vorbereitet") }
+        await formatter.shutdown()
+        do { try await formatter.prepare(); XCTFail("A terminated formatter cannot reload") }
         catch { XCTAssertEqual(error.localizedDescription, "Lokale Formatierung ist beendet") }
     }
     func testCancelledLateRecognitionCannotEnterNewSession() async throws {

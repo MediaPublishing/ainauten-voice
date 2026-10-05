@@ -68,7 +68,7 @@ struct ErrorReportView: View {
                         HStack {
                             Image(systemName: entry.sent ? "checkmark.circle" : "doc.text")
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(entry.report.code.rawValue).font(.system(size: 12))
+                                Text(Self.codeTitle(entry.report.code)).font(.system(size: 12))
                                 Text("\(entry.report.reportID.prefix(8)) · \(entry.sent ? "Empfangen" : "Lokal, noch nicht gesendet")").font(.system(size: 12)).foregroundStyle(.secondary)
                             }
                             Spacer()
@@ -85,5 +85,17 @@ struct ErrorReportView: View {
                 .help("AInauten Voice freiwillig unterstützen · öffnet Buy Me a Coffee im Browser")
                 .accessibilityLabel("Kaffee spendieren, öffnet Buy Me a Coffee im Browser")
         }.frame(maxWidth: 620, alignment: .leading)
+    }
+    static func codeTitle(_ code: ErrorReport.Code) -> String {
+        switch code {
+        case .userReported: "Eigene Meldung"
+        case .processingFailed: "Verarbeitung fehlgeschlagen"
+        case .modelLoadFailed: "Modell konnte nicht geladen werden"
+        case .settingsLoadFailed: "Einstellungen konnten nicht geladen werden"
+        case .importFailed: "Import fehlgeschlagen"
+        case .updateFailed: "Update fehlgeschlagen"
+        case .crashSignal, .crashException: "Absturz"
+        case .launchLibraryMissing: "Programmbibliothek fehlt beim Start"
+        }
     }
 }

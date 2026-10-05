@@ -52,6 +52,7 @@ public struct WisprSwitchOutcome: Sendable {
             else { app = try await NSWorkspace.shared.openApplication(at: applicationURL, configuration: NSWorkspace.OpenConfiguration()) }
         } catch { return WisprSwitchOutcome(.pending, "Wispr Flow konnte nicht geöffnet werden; Wechsel manuell abschließen.") }
         let root = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(root, Self.messagingTimeout)
         // The adapter is restricted to the UI observed on installed Wispr 1.6.1034.
         if find(root, role: kAXCheckBoxRole, labels: ["Launch app at login"]) == nil {
             guard await pressAndFind(root, labels: ["Settings", "Settings…", "Settings...", "Preferences…"], nextRole: nil, nextLabels: ["System"]) else {
@@ -87,6 +88,7 @@ public struct WisprSwitchOutcome: Sendable {
         if AXIsProcessTrusted(), let app = NSRunningApplication.runningApplications(withBundleIdentifier: Self.bundleID).first,
            Bundle(url: applicationURL)?.infoDictionary?["CFBundleShortVersionString"] as? String == "1.6.1034" {
             let root = AXUIElementCreateApplication(app.processIdentifier)
+            AXUIElementSetMessagingTimeout(root, Self.messagingTimeout)
             if let settings = find(root, role: nil, labels: ["Settings", "Settings…", "Settings..."]), isPressable(settings) { _ = AXUIElementPerformAction(settings, kAXPressAction as CFString) }
         }
     }
@@ -112,11 +114,20 @@ public struct WisprSwitchOutcome: Sendable {
         }
         return false
     }
-    private func find(_ root: AXUIElement, role: String?, labels: Set<String>) -> AXUIElement? {
+    /// Electron answers AX on its busy UI thread; the default wait is 6 s per query
+    /// on our main actor. Setting the timeout is local, so every scanned node gets it.
+    static let messagingTimeout: Float = 0.25
+    func find(_ root: AXUIElement, role: String?, labels: Set<String>) -> AXUIElement? {
         var queue: [(AXUIElement, Int)] = [(root, 0)], cursor = 0
         while cursor < queue.count && cursor < 1500 {
             let (element, depth) = queue[cursor]; cursor += 1
-            let strings = [kAXTitleAttribute, kAXDescriptionAttribute, kAXIdentifierAttribute].compactMap { AXAccess.string(element, $0) }
+            AXUIElementSetMessagingTimeout(element, Self.messagingTimeout)
+            var title: CFTypeRef?; let started = ProcessInfo.processInfo.systemUptime
+            // A real timeout means the app is busy: end this scan (callers retry or
+            // report pending) instead of paying the timeout again for every node.
+            if AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title) == .cannotComplete,
+               ProcessInfo.processInfo.systemUptime - started >= Double(Self.messagingTimeout) * 0.8 { return nil }
+            let strings = [title as? String, AXAccess.string(element, kAXDescriptionAttribute), AXAccess.string(element, kAXIdentifierAttribute)].compactMap { $0 }
             if strings.contains(where: labels.contains), role == nil || AXAccess.string(element, kAXRoleAttribute) == role {
                 if role != nil || isPressable(element) { return element }
             }

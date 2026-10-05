@@ -77,3 +77,22 @@ if (video && play && videoStatus) {
     }
   });
 }
+
+// Copy buttons stay hidden without JS or clipboard access; the command remains selectable.
+for (const button of document.querySelectorAll('[data-copy]')) {
+  const source = document.getElementById(button.dataset.copy);
+  if (!source || !navigator.clipboard) continue;
+  const label = button.textContent;
+  let reset;
+  button.hidden = false;
+  button.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(source.textContent.trim());
+      button.textContent = 'Kopiert';
+    } catch {
+      button.textContent = 'Bitte markieren und kopieren';
+    }
+    clearTimeout(reset);
+    reset = setTimeout(() => { button.textContent = label; }, 2500);
+  });
+}

@@ -75,6 +75,7 @@ struct PillView: View {
                             .frame(width: 2, height: barHeight(i))
                     }
                 }.frame(width: 40, height: 20)
+                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Aufnahme läuft, " + model.durationLabel)
                 }
                 PillButton(symbol: "stop.fill", label: "Aufnahme stoppen", pointSize: 9) { model.stop() }.frame(width: 22, height: 24)
@@ -184,7 +185,7 @@ struct RecoveryView: View {
                     } label: {
                         Image(systemName: "clock.arrow.circlepath").font(.system(size: 13)).frame(width: 26, height: 26)
                     }.menuStyle(.borderlessButton).menuIndicator(.hidden)
-                        .accessibilityLabel("Letzte Ergebnisse").help("Die letzten fünf Diktate, nur bis zum Beenden gespeichert.")
+                        .accessibilityLabel("Letzte Ergebnisse").help("Die letzten fünf Ergebnisse dieser Sitzung. Den gespeicherten Verlauf findest du unter Diktatverlauf.")
                 }
                 if model.recoveryCanUndo {
                     Button { model.undoRecoveryCopy() } label: {

@@ -75,6 +75,72 @@ final class GestureTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(650))
         XCTAssertEqual(actions, [.start, .stop, .start])
     }
+    @MainActor func testExpiryTimerRunsOnlyWhileFirstTapIsPending() async throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true
+        hotkey.shortcut = Shortcut(keyCode: 49, modifiers: 1 << 20)
+        var actions: [DictationGesture] = []; hotkey.onGesture = { actions.append($0) }
+        let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: true)); down.flags = .maskCommand
+        let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: false)); up.flags = .maskCommand
+        _ = hotkey.handle(.keyDown, event: down); XCTAssertFalse(hotkey.expiryTimerRunning)
+        _ = hotkey.handle(.keyUp, event: up); XCTAssertTrue(hotkey.expiryTimerRunning)
+        try await Task.sleep(for: .milliseconds(650))
+        XCTAssertEqual(actions, [.start, .stop]); XCTAssertFalse(hotkey.expiryTimerRunning)
+        // A second tap resolves the pending tap; the poll then stops by itself.
+        _ = hotkey.handle(.keyDown, event: down); _ = hotkey.handle(.keyUp, event: up); _ = hotkey.handle(.keyDown, event: down)
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(actions, [.start, .stop, .start, .handsFree]); XCTAssertFalse(hotkey.expiryTimerRunning)
+        _ = hotkey.handle(.keyUp, event: up); XCTAssertFalse(hotkey.expiryTimerRunning)
+        hotkey.uninstall(); XCTAssertFalse(hotkey.expiryTimerRunning)
+    }
+    @MainActor func testKeyedHoldSwallowsItsAutorepeat() throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true // default ⌃⌥Space
+        var actions: [DictationGesture] = []; hotkey.onGesture = { actions.append($0) }
+        let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: true)); down.flags = [.maskControl, .maskAlternate]
+        let again = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: true)); again.flags = down.flags
+        again.setIntegerValueField(.keyboardEventAutorepeat, value: 1)
+        let other = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true)); other.flags = down.flags
+        let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: false))
+        XCTAssertNil(hotkey.handle(.keyDown, event: down)); XCTAssertEqual(actions, [.start])
+        XCTAssertNil(hotkey.handle(.keyDown, event: again))
+        again.flags = .maskControl // ⌥ released first; Space still repeats for the hold.
+        XCTAssertNil(hotkey.handle(.keyDown, event: again))
+        XCTAssertTrue(hotkey.handle(.keyDown, event: other)?.takeUnretainedValue() === other)
+        Thread.sleep(forTimeInterval: 0.2)
+        XCTAssertNil(hotkey.handle(.keyUp, event: up)); XCTAssertEqual(actions, [.start, .stop])
+        XCTAssertTrue(hotkey.handle(.keyDown, event: again)?.takeUnretainedValue() === again) // No hold: untouched.
+    }
+    @MainActor func testModifierOnlyHoldChordDiscardsEarlySessionAndPassesKey() throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true
+        let chordFlags: CGEventFlags = [.maskShift, .maskControl]
+        hotkey.shortcut = Shortcut(keyCode: nil, modifiers: (1 << 17) | (1 << 18))
+        hotkey.bindings.holdExtras = [Shortcut(keyCode: nil, modifiers: 1 << 23)]
+        hotkey.bindings.handsFree = [Shortcut(keyCode: 49, modifiers: (1 << 17) | (1 << 18))]
+        var actions: [DictationGesture] = []; hotkey.onGesture = { actions.append($0) }
+        func event(_ code: CGKeyCode, _ flags: CGEventFlags, down: Bool = true) throws -> CGEvent {
+            let event = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)); event.flags = flags; return event
+        }
+        let hold = try event(56, chordFlags), release = try event(56, [], down: false), tab = try event(48, chordFlags)
+        XCTAssertTrue(hotkey.handle(.flagsChanged, event: hold)?.takeUnretainedValue() === hold); XCTAssertEqual(actions, [.start])
+        XCTAssertTrue(hotkey.handle(.keyDown, event: tab)?.takeUnretainedValue() === tab); XCTAssertEqual(actions, [.start, .cancel])
+        XCTAssertTrue(hotkey.handle(.keyDown, event: tab) != nil); _ = hotkey.handle(.flagsChanged, event: release)
+        XCTAssertEqual(actions, [.start, .cancel]) // The rest of the chord starts nothing.
+        let fn = try event(63, .maskSecondaryFn), delete = try event(51, .maskSecondaryFn)
+        _ = hotkey.handle(.flagsChanged, event: fn)
+        XCTAssertTrue(hotkey.handle(.keyDown, event: delete)?.takeUnretainedValue() === delete)
+        _ = hotkey.handle(.flagsChanged, event: release)
+        XCTAssertEqual(actions, [.start, .cancel, .start, .cancel])
+        // A configured binding is no chord: Ctrl+Shift+Space switches to hands-free.
+        actions.removeAll(); _ = hotkey.handle(.flagsChanged, event: hold)
+        XCTAssertNil(hotkey.handle(.keyDown, event: try event(49, chordFlags))); XCTAssertEqual(actions, [.start, .handsFree])
+        // Pressing the hold to stop hands-free arms nothing; a chord then keeps the result.
+        _ = hotkey.handle(.flagsChanged, event: release); _ = hotkey.handle(.flagsChanged, event: hold)
+        _ = hotkey.handle(.keyDown, event: tab); XCTAssertEqual(actions, [.start, .handsFree, .stop])
+        _ = hotkey.handle(.flagsChanged, event: release); hotkey.reset(); actions.removeAll()
+        // After 0.5 s a stray key never discards a running dictation.
+        _ = hotkey.handle(.flagsChanged, event: hold); Thread.sleep(forTimeInterval: 0.55)
+        XCTAssertTrue(hotkey.handle(.keyDown, event: tab)?.takeUnretainedValue() === tab)
+        _ = hotkey.handle(.flagsChanged, event: release); XCTAssertEqual(actions, [.start, .stop])
+    }
     @MainActor func testImportedHandsFreeAndCopyPasteBindings() throws {
         let hotkey = GlobalHotkey(); hotkey.enabled = true
         hotkey.bindings.handsFree = [Shortcut(keyCode: 49, modifiers: 1 << 23)]

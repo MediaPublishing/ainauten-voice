@@ -14,4 +14,10 @@ Qwen3-4B-Instruct-2507, quantized by Unsloth to Q4_K_M: Apache 2.0. https://hugg
 
 Silero VAD v6.2.1, 256 ms CoreML conversion by FluidInference: MIT according to the pinned model card. https://huggingface.co/FluidInference/silero-vad-coreml/tree/b419383c55c110e2c9271fa6ee0ea83d03c70d96 . Credit Silero Team and FluidInference. Selected compiled model files are unmodified; their SHA256 digests are recorded in the model manifest. The upstream v6.2.1 MIT license is included as Silero-MIT.txt; source: https://github.com/snakers4/silero-vad/blob/v6.2.1/LICENSE .
 
+Sparkle 2.9.1 (`066e75a8b3e9`): MIT. Signed automatic updates. The license is bundled as Sparkle-MIT.txt during packaging.
+
+KSCrash 2.5.1 (`95a8895d75f3`): MIT. Local crash capture for the consent-based error report; no memory contents are recorded. License: KSCrash-MIT.txt.
+
+uv 0.12.5 (Astral): MIT or Apache 2.0. Bundled only as the installer for the optional, disabled research feature; its license files are bundled next to it during packaging.
+
 The executable package includes the original code licenses and pinned model cards. Models are downloaded separately after user initiation, with SHA256 verification. No model weights are committed to source control.

@@ -1,9 +1,18 @@
 import XCTest
 import Foundation
+import ApplicationServices
 import CSQLite
 @testable import VoiceWisprCore
 
 final class MigrationDeliveryTests: XCTestCase {
+    @MainActor func testWisprScanBoundsEveryAXQueryAndEndsQuicklyForUnavailableApp() {
+        // No live hung app in CI: this pins the bound and the scan exit, not Electron itself.
+        XCTAssertEqual(WisprSwitch.messagingTimeout, 0.25)
+        let switcher = WisprSwitch(applicationURL: URL(fileURLWithPath: "/nonexistent/Wispr Flow.app"), configURL: URL(fileURLWithPath: "/nonexistent/config.json"))
+        let started = ProcessInfo.processInfo.systemUptime
+        XCTAssertNil(switcher.find(AXUIElementCreateApplication(Int32.max), role: nil, labels: ["Settings"]))
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime - started, 1)
+    }
     func testTransientSourceReadRetriesWithFreshAttempt() throws {
         var attempts = 0, pauses: [TimeInterval] = []
         let value = try WisprSourceRead.withRetries(pause: { pauses.append($0) }) {
@@ -381,6 +390,62 @@ final class MigrationDeliveryTests: XCTestCase {
         XCTAssertEqual(imported.settings.languages, external.settings.languages)
         let unchanged = try JSONDecoder().decode(ExportDocument.self, from: Data(contentsOf: source))
         XCTAssertTrue(unchanged.settings.cloudEnabled)
+    }
+    func testSaveNeverBlocksOnCorruptOrNewerFileAndKeepsReadableProvenance() async throws {
+        let (root, config, db) = try fixture(); defer { sqlite3_close(db) }
+        let url = root.appendingPathComponent("target/settings.json"), store = SettingsStore(url: url)
+        _ = try await store.applyWisprImport(WisprMigrationService(configURL: config, databaseURL: root.appendingPathComponent("flow.sqlite")))
+        func json() throws -> [String: Any] { try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]) }
+        var newer = try json(); newer["version"] = 2
+        try JSONSerialization.data(withJSONObject: newer).write(to: url)
+        do { _ = try await store.load(); XCTFail("Newer file must not load as version 1") } catch {}
+        let document = ExportDocument(dictionary: [DictionaryEntry(phrase: "Neu")])
+        try await store.save(document)
+        let saved = try await store.load(); XCTAssertEqual(saved, document)
+        let provenance = try XCTUnwrap(try json()["wisprImport"] as? [String: Any])
+        XCTAssertFalse((provenance["sourceIDs"] as? [String] ?? []).isEmpty) // Readable provenance survives.
+        try Data("{ kaputt".utf8).write(to: url)
+        try await store.save(document)
+        let repaired = try await store.load(); XCTAssertEqual(repaired, document); XCTAssertNil(try json()["wisprImport"])
+    }
+    func testUnusedEmptyCloudEndpointNeverBlocksSaving() async throws {
+        var document = ExportDocument(); document.settings.cloudEndpoint = ""
+        try SettingsStore.validate(document)
+        document.settings.cloudEndpoint = "http://example.com/v1"; try SettingsStore.validate(document)
+        document.settings.cloudEnabled = true
+        XCTAssertThrowsError(try SettingsStore.validate(document))
+        document.settings.cloudEndpoint = ""; XCTAssertThrowsError(try SettingsStore.validate(document))
+        document.settings.cloudEndpoint = "https://api.example.com/v1"; try SettingsStore.validate(document)
+        let store = SettingsStore(url: FileManager.default.temporaryDirectory.appendingPathComponent("voice-endpoint-\(UUID().uuidString)/settings.json"))
+        var cleared = ExportDocument(); cleared.settings.cloudEndpoint = ""
+        try await store.save(cleared)
+        let loaded = try await store.load(); XCTAssertEqual(loaded, cleared)
+    }
+    func testUndoKeepsCurrentCloudAndCameraChoicesAndRunsOnce() async throws {
+        let (root, config, db) = try fixture(); defer { sqlite3_close(db) }
+        let url = root.appendingPathComponent("target/settings.json"), store = SettingsStore(url: url)
+        let undo = url.deletingLastPathComponent().appendingPathComponent("wispr-import-undo.json")
+        var before = ExportDocument(dictionary: [DictionaryEntry(phrase: "Vorher", manuallyModified: true)])
+        before.settings.cloudEnabled = true; before.settings.cloudEndpoint = "https://old.example/v1"
+        before.settings.lipReadingEnabled = true; before.settings.lipReadingLanguage = "en"
+        try await store.save(before)
+        _ = try await store.applyWisprImport(WisprMigrationService(configURL: config, databaseURL: root.appendingPathComponent("flow.sqlite")))
+        // After the import the user withdraws both consents and clears the endpoint.
+        var current = try await store.load()
+        XCTAssertTrue(current.settings.languages != before.settings.languages) // The import did change settings.
+        current.settings.cloudEnabled = false; current.settings.cloudEndpoint = ""; current.settings.cloudModel = "lokal"
+        current.settings.lipReadingEnabled = false; current.settings.lipReadingLanguage = "de"
+        try await store.save(current)
+        try await store.undoWisprImport()
+        let restored = try await store.load()
+        XCTAssertEqual(restored.dictionary, before.dictionary)
+        XCTAssertEqual(restored.settings.languages, before.settings.languages); XCTAssertEqual(restored.settings.shortcut, before.settings.shortcut)
+        XCTAssertFalse(restored.settings.cloudEnabled); XCTAssertEqual(restored.settings.cloudEndpoint, ""); XCTAssertEqual(restored.settings.cloudModel, "lokal")
+        XCTAssertEqual(restored.settings.lipReadingEnabled, false); XCTAssertEqual(restored.settings.lipReadingLanguage, "de")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: undo.path))
+        let after = try Data(contentsOf: url)
+        do { try await store.undoWisprImport(); XCTFail("A second undo must not roll back later edits") } catch {}
+        XCTAssertEqual(try Data(contentsOf: url), after)
     }
     func testProvenancePersistsAcrossStoreReloadAndUndo() async throws {
         let (root, config, db) = try fixture(); defer { sqlite3_close(db) }

@@ -93,12 +93,18 @@ final class DownloadTests: XCTestCase {
         Self.FixtureProtocol.oversizedResponse = false
     }
 
-    func testBadHashQuarantinesDownloadedFile() async throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("voice-wispr-hash-(UUID().uuidString)"); try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true); defer { try? FileManager.default.removeItem(at: root) }
+    func testBadHashKeepsOneQuarantinePerFileAndClearsOlderOnes() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("voice-wispr-hash-\(UUID().uuidString)"); try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true); defer { try? FileManager.default.removeItem(at: root) }
         let payload = Data("bad-payload".utf8); Self.FixtureProtocol.payload = payload; let expected = Data("expected".utf8); let hashURL = root.appendingPathComponent("hash"); try expected.write(to: hashURL)
-        let file = ModelFile(path: "tiny.bin", url: URL(string: "fixture://hash")!, sha256: try ModelDownloader.digest(hashURL), size: Int64(payload.count), group: "speech"); let cfg = URLSessionConfiguration.ephemeral; cfg.protocolClasses = [Self.FixtureProtocol.self]; let downloader = ModelDownloader(root: root, manifest: ModelManifest(version: 1, files: [file]), sessionConfiguration: cfg)
+        final class Discarded: @unchecked Sendable { let lock = NSLock(); var names: [String] = []; func add(_ url: URL) { lock.lock(); names.append(url.lastPathComponent); lock.unlock(); try? FileManager.default.removeItem(at: url) } }
+        let discarded = Discarded(), legacy = root.appendingPathComponent("tiny.bin.invalid-\(UUID().uuidString)"); try payload.write(to: legacy)
+        let file = ModelFile(path: "tiny.bin", url: URL(string: "fixture://hash")!, sha256: try ModelDownloader.digest(hashURL), size: Int64(payload.count), group: "speech"); let cfg = URLSessionConfiguration.ephemeral; cfg.protocolClasses = [Self.FixtureProtocol.self]; let downloader = ModelDownloader(root: root, manifest: ModelManifest(version: 1, files: [file]), sessionConfiguration: cfg, discard: { discarded.add($0) })
+        func quarantined() throws -> [String] { try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil).map(\.lastPathComponent).filter { $0.contains("invalid") } }
         do { try await downloader.install { _,_,_ in }; XCTFail("expected hash error") } catch { }
-        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("tiny.bin").path)); XCTAssertFalse(try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil).filter { $0.lastPathComponent.contains("invalid-") }.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("tiny.bin").path))
+        XCTAssertEqual(try quarantined(), ["tiny.bin.invalid"]); XCTAssertEqual(discarded.names, [legacy.lastPathComponent])
+        do { try await downloader.install { _,_,_ in }; XCTFail("expected hash error") } catch { }
+        XCTAssertEqual(try quarantined(), ["tiny.bin.invalid"]); XCTAssertEqual(discarded.names, [legacy.lastPathComponent, "tiny.bin.invalid"])
     }
     func testInjectedManifestAndDigestUseSmallFixture() throws {
         let bytes = Data("voice-wispr-fixture\n".utf8)

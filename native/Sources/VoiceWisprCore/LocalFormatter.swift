@@ -20,8 +20,11 @@ public actor LocalFormatter: TextFormatting {
     deinit { if let context { llama_free(context) }; if let model { llama_model_free(model) } }
     /// Explicitly release GPU residency before a process exits. ARC alone can
     /// be delayed by cancelled workers that still retain this shared actor.
-    public func shutdown() {
-        shutDown = true
+    public func shutdown() { shutDown = true; unload() }
+    /// Reversible release, e.g. under memory pressure: frees context and model
+    /// like shutdown(), but the next prepare() loads them again. Formatting in
+    /// between fails as unprepared, which the pipeline turns into raw fallback.
+    public func unload() {
         if let context { llama_synchronize(context); llama_free(context); self.context = nil }
         if let model { llama_model_free(model); self.model = nil }
     }
@@ -36,6 +39,8 @@ public actor LocalFormatter: TextFormatting {
         parameters.n_gpu_layers = 99
         guard let loaded = modelURL.path.withCString({ llama_model_load_from_file($0, parameters) }) else { throw VoiceError.message("Das Formatierungsmodell konnte nicht geladen werden") }
         var cp = llama_context_default_params()
+        // Not 2048: measured with this tokenizer, a fast 15 s Greek segment needs
+        // about 2010 tokens (prompt plus output budget), 90 words with full context 3070.
         cp.n_ctx = 4096; cp.n_batch = 512; cp.n_ubatch = 256
         cp.n_threads = Int32(min(8, max(1, ProcessInfo.processInfo.activeProcessorCount - 2)))
         cp.n_threads_batch = cp.n_threads

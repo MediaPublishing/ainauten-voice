@@ -67,13 +67,30 @@ for term in ['Beispieldaten', 'nicht Apple-notarisiert', 'Audio bleibt', 'Mikrof
 assert not re.search(r'<script[^>]+src="https?://', text), 'External script'
 assert not re.search(r'<link[^>]+rel="stylesheet"[^>]+href="https?://', text), 'External stylesheet'
 assert 'LocalWhisper.git' not in text
+for meta in ['<meta property="og:locale" content="de_DE">', '<meta property="og:site_name" content="AInauten Voice">', 'href="/assets/favicon-32.png" sizes="32x32"', 'rel="apple-touch-icon" href="/assets/apple-touch-icon.png"', 'href="/assets/icon-192.png" sizes="192x192"']:
+    assert meta in text, meta
+# Readable text: no font size below 12 px in the main stylesheet.
+assert not [size for size in re.findall(r'font(?:-size)?:[^;}]*?(\d+(?:\.\d+)?)px', (root / 'styles.css').read_text()) if float(size) < 12], 'Text below 12 px'
+# Honest requirements, the one-time model download and a checkable download.
+assert 'macOS 14 oder neuer (Build-Ziel), bisher getestet auf macOS 27 mit Apple Silicon M2' in text
+assert 'etwa 3 GB von Hugging Face' in text and 'GB RAM' not in text
+assert 'Voice Wispr' not in text and 'Voice-Wispr' not in text, 'Old working title'
+assert 'ohne Verbindung zu Wispr und wird von Wispr weder unterstützt noch geprüft' in text
+assert f'shasum -a 256 ~/Downloads/AInauten-Voice-{version}-arm64.dmg' in text
+shown = re.findall(r'id="dmg-sha256">([0-9a-f]{64})<', text)
+assert len(shown) == 1 if root != source else text.count('{{DOWNLOAD_SHA256}}') == 1, 'Visible SHA-256 missing'
+if root != source:
+    sums = (root / 'downloads/SHA256SUMS.txt').read_text().split()
+    assert sums == [shown[0], f'AInauten-Voice-{version}-arm64.dmg'], 'Visible SHA-256 does not match the packaged DMG'
 assert len(list((root / 'assets/screenshots').glob('*.png'))) == 4
 assert 'https://youtu.be/UBhxxBohiMU' in text
 assert '<iframe' not in text, 'Third-party player loads are not needed'
 vtt = (root / 'assets/video/promo-de.vtt').read_text()
 assert vtt.startswith('WEBVTT') and vtt.count('-->') == 9, 'Missing caption cues'
 assert 'AInauten Voice' in vtt and 'Wispr Flow' in vtt
-assert "media-src 'self'" in (root / '_headers').read_text()
+headers = (root / '_headers').read_text()
+assert "media-src 'self'" in headers
+assert '  Strict-Transport-Security: max-age=31536000\n' in headers and 'includeSubDomains' not in headers and 'preload' not in headers
 readme = (source.parent / 'README.md').read_text()
 assert '## In 36 Sekunden erklärt' in readme
 assert 'https://voice.ainauten.com/#video' in readme or re.search(r'https://github.com/user-attachments/assets/[a-f0-9-]+', readme), 'README video missing'

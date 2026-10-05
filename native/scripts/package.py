@@ -7,6 +7,7 @@ root = pathlib.Path(__file__).resolve().parents[1]
 p = argparse.ArgumentParser(); p.add_argument('--debug', action='store_true'); p.add_argument('--install', action='store_true')
 p.add_argument('--sdk', type=pathlib.Path, help='Explicit compatible macOS SDK; leaves the system default unchanged')
 p.add_argument('--build-system', choices=['native', 'swiftbuild'], help='Swift build engine override for compatible CLT packaging')
+p.add_argument('--adhoc', action='store_true', help='Local test build only: allow ad-hoc signing without the stable identity')
 p.add_argument('--sign-identity', help='SHA-1 of an existing code-signing identity in the macOS keychain')
 p.add_argument('--install-directory', type=pathlib.Path, help='Existing installation directory; defaults to the system installation when writable')
 args = p.parse_args()
@@ -21,6 +22,8 @@ if public_key is not None:
 # Only a public fingerprint is stored here. The signing key stays in Keychain.
 identity_file = root / '.local' / 'signing-identity'
 identity = args.sign_identity or (identity_file.read_text().strip() if identity_file.exists() else '-')
+# Ad-hoc bundles lose macOS permissions on every update; never produce them silently.
+if identity == '-' and not args.adhoc: p.error('stable signing identity missing (.local/signing-identity); pass --adhoc only for a local test build')
 if identity != '-':
     if not re.fullmatch(r'[0-9a-fA-F]{40}', identity): p.error('signing identity must be a 40-character certificate fingerprint')
     identities = subprocess.check_output(['security', 'find-identity', '-p', 'codesigning'], text=True)

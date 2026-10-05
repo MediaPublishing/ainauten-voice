@@ -87,8 +87,8 @@ private final class NoReportRedirects: NSObject, URLSessionTaskDelegate {
     func record(component: ErrorReport.Component, code: ErrorReport.Code) {
         guard !preview else { return }
         let report = Self.makeReport(component: component, code: code)
+        // Never overwrite a report the user is editing; beginReport() picks up latestTechnical.
         latestTechnical = report
-        draft = report
         guard automatic, let store else { return }
         Task {
             do { try await store.enqueue(report, automatic: true); await refresh(); scheduleAutomatic() }

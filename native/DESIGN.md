@@ -1,4 +1,4 @@
-# Voice Wispr: Produktgestaltung
+# AInauten Voice: Produktgestaltung
 
 Register: product. Referenz: Wispr Flow, kompakte dunkle Pill unten mittig über dem Dock. SF-Systemschrift, zurückhaltende monochrome Oberfläche. SwiftUI und AppKit als native Komponenten; SF Symbols als Icons.
 

@@ -37,6 +37,7 @@ public final class DictationGestureMachine {
         if controller.handle(event: .holdDeactivated, isTranscribing: false) == .stop { recording = false; return .stop }
         return nil
     }
+    var awaitingSecondTap: Bool { firstTap != nil }
     public func reset() { controller.reset(); recording = false; downAt = nil; firstTap = nil }
     public func beginHandsFree() { reset(); controller.forceToggleMode(); _ = controller.handle(event: .toggleDeactivated, isTranscribing: false); recording = true }
     public func toggleHandsFree() -> DictationGesture {
@@ -55,6 +56,7 @@ public final class DictationGestureMachine {
     public var enabled = false { didSet { if !enabled && oldValue { machine.reset(); matched = nil; previousFlags = 0 } } }
     private let machine = DictationGestureMachine()
     private var matched: Shortcut?
+    private var chordDeadline: TimeInterval?
     private var previousFlags: UInt64 = 0
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
@@ -84,18 +86,20 @@ public final class DictationGestureMachine {
         tap = newTap; source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, newTap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: newTap, enable: true)
-        startExpiryTimer()
         return true
     }
+    /// The 30 ms poll only resolves a pending first tap; it stops itself afterwards
+    /// so an idle app does not wake the CPU.
     func startExpiryTimer() {
         guard expiry == nil else { return }
         expiry = Timer.scheduledTimer(withTimeInterval: 0.03, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.expireGesture() }
         }
     }
+    var expiryTimerRunning: Bool { expiry != nil }
     private func expireGesture() {
-        guard enabled else { return }
-        if let action = machine.expire(at: ProcessInfo.processInfo.systemUptime) { onGesture?(action) }
+        if enabled, let action = machine.expire(at: ProcessInfo.processInfo.systemUptime) { onGesture?(action) }
+        if !machine.awaitingSecondTap { expiry?.invalidate(); expiry = nil }
     }
     public func uninstall() {
         expiry?.invalidate(); expiry = nil
@@ -133,10 +137,26 @@ public final class DictationGestureMachine {
         // Releasing its Fn/modifier must not turn it back into a hold-to-stop session.
         if let held = matched {
             let released = held.keyCode.map { type == .keyUp && code == $0 } ?? (type == .flagsChanged && flags != held.modifiers)
-            if released { matched = nil; if let a = machine.up(at: time) { onGesture?(a) }; return held.keyCode == nil ? Unmanaged.passUnretained(event) : nil }
+            if released {
+                matched = nil; if let a = machine.up(at: time) { onGesture?(a) }
+                if machine.awaitingSecondTap { startExpiryTimer() }
+                return held.keyCode == nil ? Unmanaged.passUnretained(event) : nil
+            }
+            // Autorepeat of the held key belongs to the shortcut, not to the target app.
+            if let key = held.keyCode, type == .keyDown, code == key { return nil }
+            // Ctrl+Shift+Tab, Fn+Delete: the held modifiers began another app's shortcut.
+            // Discard that fresh session and pass the key on unchanged. Later keys never
+            // discard, so a stray key cannot cost a long dictation.
+            if held.keyCode == nil, type == .keyDown, let deadline = chordDeadline, time <= deadline,
+               !([shortcut] + bindings.all).contains(where: activated) {
+                machine.reset(); matched = nil; chordDeadline = nil
+                onGesture?(.cancel); return Unmanaged.passUnretained(event)
+            }
         }
         if let held = ([shortcut] + bindings.holdExtras).first(where: activated) {
-            matched = held; if let a = machine.down(at: time) { onGesture?(a) }
+            matched = held; let action = machine.down(at: time)
+            chordDeadline = held.keyCode == nil && action == .start ? time + 0.5 : nil
+            if let action { onGesture?(action) }
             return held.keyCode == nil ? Unmanaged.passUnretained(event) : nil
         }
         return Unmanaged.passUnretained(event)

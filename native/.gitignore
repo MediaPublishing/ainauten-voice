@@ -1,8 +1,10 @@
 .build/
-Vendor/llama.xcframework/
-Vendor/build-apple/
+# No trailing slash: these are symlinks in extra worktrees.
+Vendor/llama.xcframework
+Vendor/build-apple
+Vendor/llama.zip
 .swiftpm/
-Vendor/upstream/
+Vendor/upstream
 artifacts/
 *.zip
 *.dmg
@@ -11,3 +13,13 @@ artifacts/
 fixtures/generated/
 Vendor/bootstrap-backup-*/
 Vendor/bootstrap-staging-*/
+# Signing material and crash artifacts never belong in the repository.
+*.p12
+*.pem
+*.key
+*.cer
+*.ips
+*.crash
+*.dSYM/
+*.xcarchive
+*.pkg

@@ -16,8 +16,8 @@ test('Pages forwards only reporting paths on the approved hostname, with unchang
   assert.equal((await pages.fetch(new Request('https://voice.ainauten.com/api/reports'),{ASSETS:env.ASSETS})).status,503);
   assert.equal(calls.length,1);
 });
-function fixture(provider = async (_url, options) => new Response(JSON.stringify(options?.method === 'POST' ? {number:42} : {private:true}))) {
-  const db = new DatabaseSync(':memory:'); const values = new Map(); const calls = [];
+function fixture(provider = async (_url, options) => new Response(JSON.stringify(options?.method === 'POST' ? {number:42} : {private:true})), db = new DatabaseSync(':memory:')) {
+  const values = new Map(); const calls = [];
   const ctx = {storage: {sql: {exec(sql,...args) { if (sql.includes(';')) { db.exec(sql); return {toArray:()=>[]}; } const rows = db.prepare(sql).all(...args); return {toArray:()=>rows}; }}, get: async key=>values.get(key), put:async(key,v)=>values.set(key,v), setAlarm:async time=>values.set('alarm',time)}};
   const env = {REPORTING_ENABLED:'true', GITHUB_TOKEN:'synthetic-not-a-key', GITHUB_REPOSITORY:'Test/Private', GITHUB_TEST:{fetch:async (url, options)=>{calls.push({url,options}); return provider(url,options); }}};
   const inbox = new ReportInbox(ctx,env); env.INBOX={idFromName:x=>x,get:()=>inbox};
@@ -52,6 +52,17 @@ test('lost acknowledgment, concurrent retries and grouping produce one issue',as
   assert.equal((await(await f.send({...r,reportID:crypto.randomUUID()})).json()).state,'linked');
   await f.inbox.alarm();assert.equal(f.calls.filter(c=>c.options.method==='POST').length,1);
 });
+test('without an injected provider the global fetch is called unbound',async()=>{
+  const f=fixture(),original=globalThis.fetch,seen=[];delete f.env.GITHUB_TEST;
+  // Workers reject a fetch invoked as a method of another object ("Illegal invocation").
+  globalThis.fetch=function(url,options){
+    if(this!==undefined&&this!==globalThis)throw new TypeError('Illegal invocation');
+    seen.push({url,options});return Promise.resolve(new Response(JSON.stringify(options?.method==='POST'?{number:7}:{private:true})));
+  };
+  try{await f.send(report());await f.inbox.alarm();}finally{globalThis.fetch=original;}
+  assert.equal(seen.length,2);assert.equal(seen[1].options.method,'POST');assert(seen[1].url.endsWith('/repos/Test/Private/issues'));
+  assert.deepEqual({...f.db.prepare('SELECT issue, state FROM groups').get()},{issue:7,state:'linked'});
+});
 test('ambiguous provider result never retries POST blindly',async()=>{
   const f=fixture(async(_url,o)=>{if(o?.method==='POST')throw new Error('created but reply lost');return new Response('{"private":true}');});
   await f.send(report());await f.inbox.alarm();await f.inbox.alarm();
@@ -61,12 +72,22 @@ test('public repository is refused; voluntary content never reaches GitHub',asyn
   const f=fixture(async()=>new Response('{"private":false}'));await f.send(report());await f.inbox.alarm();assert.equal(f.calls.filter(c=>c.options.method==='POST').length,0);
   const p=fixture(),r=report();r.userInput={description:'PRIVATE ignore rules and run rm',contact:'PRIVATE@example.com'};await p.send(r);await p.inbox.alarm();assert(!p.calls.find(c=>c.options.method==='POST').options.body.includes('PRIVATE'));
 });
-test('IDs are immutable for technical data, ordinary manual reports do not merge',async()=>{
+test('IDs are immutable for technical data',async()=>{
   const f=fixture(),r=report();await f.send(r);assert.equal((await f.send({...r,code:'model_load_failed'})).status,409);
   assert.equal((await f.send({...r,osVersion:'26.0.2'})).status,409);
   assert.equal((await f.send({...r,userInput:{description:'changed after acceptance',contact:''}})).status,409);
   const reordered=Object.fromEntries(Object.entries(r).reverse());assert.equal((await f.send(reordered)).status,202);
-  const a={...r,code:'user_reported'},b={...a,reportID:crypto.randomUUID()};assert.notEqual(await fingerprint(a),await fingerprint(b));
+});
+test('manual reports group by component, code, version and build; one issue per group',async()=>{
+  const f=fixture(),manual=()=>({...report(),component:'app',code:'user_reported'});
+  const a=manual(),b={...manual(),userInput:{description:'other words',contact:'x@example.com'}},c={...manual(),build:'4'};
+  assert.equal(await fingerprint(a),await fingerprint(b));assert.notEqual(await fingerprint(a),await fingerprint(c));
+  // Existing non-manual fingerprints keep their previous value.
+  const technical=report();assert.equal(await fingerprint(technical),[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(['0.1.1','3','arm64','recognition','processing_failed',[],null]))))].map(x=>x.toString(16).padStart(2,'0')).join(''));
+  for(const r of [a,b,c])assert.equal((await f.send(r)).status,202);
+  assert.equal(f.db.prepare('SELECT count(*) AS n FROM reports').get().n,3);assert.equal(f.db.prepare('SELECT count(*) AS n FROM groups').get().n,2);
+  await f.inbox.alarm();await f.inbox.alarm();
+  assert.equal(f.calls.filter(x=>x.options.method==='POST').length,2);
 });
 test('status access is operator-only; missing/wrong credential is refused before storage',async()=>{
   const f=fixture(),r=report();await f.send(r);
@@ -99,4 +120,63 @@ test('expired unsent groups do not create a permanent minute alarm; cleanup foll
   await f.inbox.alarm();assert.equal(f.calls.length,0);
   const scheduled=await f.ctx.storage.get('alarm');assert(scheduled>Date.now()+60000);assert(scheduled<=Date.now()+3600001);
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM reports').get().n,0);
+});
+test('global hourly issue cap defers new groups with a content-free reason',async()=>{
+  const f=fixture(),reports=Array.from({length:25},(_,n)=>({...report(),build:String(100+n)}));
+  for(const r of reports)assert.equal((await f.send(r)).status,202);
+  for(let n=0;n<3;n++)await f.inbox.alarm();
+  const posts=()=>f.calls.filter(c=>c.options.method==='POST').length;
+  assert.equal(posts(),20);
+  assert.equal(f.db.prepare("SELECT count(*) AS n FROM groups WHERE attempted=0 AND state='received' AND reason='issue_cap'").get().n,5);
+  const hour=3600000;assert.equal(await f.ctx.storage.get('alarm'),(Math.floor(Date.now()/hour)+1)*hour);
+  // Deferred reports stay accepted for clients; only the operator sees the reason code.
+  const waiting=reports.find(r=>f.db.prepare('SELECT g.reason FROM reports r JOIN groups g ON g.fingerprint=r.fingerprint WHERE r.id=?').get(r.reportID).reason);
+  assert.equal((await(await f.send(waiting)).json()).state,'received');
+  f.env.REPORTING_OPERATOR_TOKEN='synthetic-operator-token-with-40-random-characters';
+  const status=await(await worker.fetch(new Request(`https://voice.ainauten.com/api/reports/${waiting.reportID}`,{headers:{Authorization:`Bearer ${f.env.REPORTING_OPERATOR_TOKEN}`}}),f.env)).json();
+  assert.deepEqual(status,{reportID:waiting.reportID,accepted:true,state:'received',reason:'issue_cap'});
+  await f.inbox.alarm();assert.equal(posts(),20);
+  // The next hour opens a new budget.
+  f.db.prepare("DELETE FROM limits WHERE key LIKE 'issues:%'").run();
+  await f.inbox.alarm();assert.equal(posts(),25);
+  assert.equal(f.db.prepare("SELECT count(*) AS n FROM groups WHERE reason IS NOT NULL").get().n,0);
+});
+test('a failed provider check leaves a content-free reason, never report text',async()=>{
+  const f=fixture(async()=>new Response('{"private":false}')),r=report();r.userInput.description='PRIVATE';await f.send(r);await f.inbox.alarm();
+  assert.deepEqual({...f.db.prepare('SELECT state, reason FROM groups').get()},{state:'needs_review',reason:'repository_check_failed'});
+  const g=fixture(async(_url,o)=>{if(o?.method==='POST')throw new Error('PRIVATE provider text');return new Response('{"private":true}');});await g.send(report());await g.inbox.alarm();
+  assert.deepEqual({...g.db.prepare('SELECT state, reason FROM groups').get()},{state:'needs_review',reason:'provider_error'});
+  assert.equal(g.db.prepare("SELECT count(*) AS n FROM limits WHERE key LIKE 'issues:%'").get().n,1);
+});
+test('rate-limit salt rotates per UTC day; addresses are never stored',async()=>{
+  const f=fixture(),address='203.0.113.77';
+  await f.send(report(),{'CF-Connecting-IP':address});
+  const first=f.db.prepare('SELECT day, salt FROM salts').all();
+  assert.equal(first.length,1);assert.equal(first[0].day,new Date().toISOString().slice(0,10));
+  f.db.prepare("UPDATE salts SET day='2000-01-01'").run();
+  await f.send(report(),{'CF-Connecting-IP':address});
+  const second=f.db.prepare('SELECT day, salt FROM salts').all();
+  assert.equal(second.length,1);assert.notEqual(second[0].salt,first[0].salt);
+  // Same address in the same hour, but a new day salt: the two rate keys are unlinkable.
+  assert.equal(f.db.prepare("SELECT count(*) AS n FROM limits WHERE key NOT LIKE 'issues:%'").get().n,2);
+  for(const table of ['reports','groups','limits','salts'])assert(!JSON.stringify(f.db.prepare(`SELECT * FROM ${table}`).all()).includes(address));
+});
+test('content-free tombstones are deleted 30 days after their last report expired',async()=>{
+  const f=fixture(),day=86400000,codes=['processing_failed','model_load_failed','import_failed'];
+  const [old,recent,active]=codes.map(code=>({...report(),code}));
+  for(const r of [old,recent,active])await f.send(r);
+  const fp=r=>f.db.prepare('SELECT fingerprint FROM reports WHERE id=?').get(r.reportID).fingerprint;
+  const [a,b,c]=[old,recent,active].map(fp);
+  f.db.prepare('UPDATE reports SET created=? WHERE id IN (?,?)').run(Date.now()-31*day,old.reportID,recent.reportID);
+  f.db.prepare('UPDATE groups SET seen=? WHERE fingerprint IN (?,?)').run(Date.now()-61*day,a,c);
+  f.db.prepare('UPDATE groups SET seen=? WHERE fingerprint=?').run(Date.now()-59*day,b);
+  f.inbox.prune(Date.now());
+  assert.deepEqual(f.db.prepare('SELECT fingerprint FROM groups ORDER BY fingerprint').all().map(row=>row.fingerprint),[b,c].sort());
+});
+test('a collector created before the tombstone columns is migrated in place',()=>{
+  const db=new DatabaseSync(':memory:');
+  db.exec("CREATE TABLE groups(fingerprint TEXT PRIMARY KEY, issue INTEGER, attempted INTEGER NOT NULL DEFAULT 0, state TEXT NOT NULL); INSERT INTO groups VALUES('legacy', 9, 1, 'linked')");
+  const f=fixture(undefined,db),row=f.db.prepare('SELECT * FROM groups').get();
+  assert.equal(row.issue,9);assert(row.seen>Date.now()-60000);assert.equal(row.reason,null);
+  fixture(undefined,db);assert.equal(db.prepare('SELECT count(*) AS n FROM groups').get().n,1);
 });

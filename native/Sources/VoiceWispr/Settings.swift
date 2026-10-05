@@ -303,7 +303,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Zwei Freigaben für dein Diktat").font(.system(size: 19, weight: .semibold))
             HStack { VStack(alignment: .leading, spacing: 4) { Label("Mikrofon", systemImage: model.microphoneGranted ? "checkmark.circle" : "mic"); Text("Nur während einer Aufnahme aktiv.").font(.system(size: 12)).foregroundStyle(.secondary) }; Spacer(); Button(model.microphoneGranted ? "Erlaubt" : "Freigeben") { model.requestMicrophone() }.disabled(model.microphoneGranted) }
-            HStack { VStack(alignment: .leading, spacing: 4) { Label("Bedienungshilfen", systemImage: model.accessibilityGranted ? "checkmark.circle" : "keyboard"); Text("Für Hotkey und geprüftes Einfügen.").font(.system(size: 12)).foregroundStyle(.secondary) }; Spacer(); Button(model.accessibilityGranted ? "Erlaubt" : "Einstellungen öffnen") { model.requestAccessibility() }.disabled(model.accessibilityGranted) }
+            HStack { VStack(alignment: .leading, spacing: 4) { Label("Bedienungshilfen", systemImage: model.accessibilityGranted ? "checkmark.circle" : "keyboard"); Text("Für Tastenkürzel und geprüftes Einfügen.").font(.system(size: 12)).foregroundStyle(.secondary) }; Spacer(); Button(model.accessibilityGranted ? "Erlaubt" : "Einstellungen öffnen") { model.requestAccessibility() }.disabled(model.accessibilityGranted) }
             if !model.accessibilityGranted {
                 Text("1. Öffne „Bedienungshilfen“.\n2. Ziehe die App unten in die Liste oder füge sie über + hinzu.\n3. Schalte den Eintrag „AInauten Voice“ ein.").fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 12) {
@@ -316,7 +316,7 @@ struct SettingsView: View {
                     .accessibilityLabel("AInauten Voice App. In die macOS-Bedienungshilfen ziehen. Alternativ im Finder zeigen.")
                 Text(Bundle.main.bundlePath).font(.system(size: 11)).foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                 Button("Aktuelle App im Finder zeigen") { NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL]) }
-                Text("Wähle die aktuelle App, keinen Eintrag mit „backup“ im Namen. Die Freigabe von Wispr Flow lässt sich nicht übernehmen.").font(.system(size: 12)).foregroundStyle(.secondary)
+                Text("Die Freigabe von Wispr Flow lässt sich nicht übernehmen.").font(.system(size: 12)).foregroundStyle(.secondary)
             }
         }
     }
@@ -480,7 +480,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Von Wispr Flow zu AInauten Voice wechseln").font(.system(size: 19, weight: .semibold))
             if model.wisprInstalled || model.wisprRunning {
-                Text("Der Wechsel schaltet den Autostart von Wispr Flow aus und beendet die App regulär. Sie bleibt installiert. Bis zum Beenden reagieren die übernommenen Kürzel nur in Wispr Flow.").foregroundStyle(.secondary)
+                Text("Der Wechsel versucht, den Autostart von Wispr Flow auszuschalten, sonst öffnet sich die passende Einstellung. Danach wird Wispr Flow regulär beendet und bleibt installiert. Bis zum Beenden reagieren die übernommenen Kürzel nur in Wispr Flow.").foregroundStyle(.secondary)
                 Button(model.switchingWispr ? "Wispr Flow wird beendet …" : "Wispr-Flow-Autostart ausschalten und Wispr Flow beenden") { model.switchFromWispr() }.disabled(model.switchingWispr)
                 if !model.switchReceipt.isEmpty { Text(model.switchReceipt).textSelection(.enabled).foregroundStyle(.secondary) }
                 Label(model.wisprRunning ? "Wispr Flow läuft noch" : "Wispr Flow ist beendet", systemImage: model.wisprRunning ? "exclamationmark.circle" : "checkmark.circle")
@@ -545,7 +545,19 @@ struct SettingsView: View {
     private func shortcutRow(_ title: String, action: String, shortcuts: [Shortcut]) -> some View {
         HStack(spacing: 8) { Text(title).fixedSize(horizontal: false, vertical: true); Spacer(minLength: 4); Button(model.shortcutCapture && captureAction == action ? "Jetzt drücken …" : shortcuts.isEmpty ? "Festlegen …" : shortcuts.map(\.label).joined(separator: " / ")) { beginShortcutCapture(action) }.frame(minWidth: 100).accessibilityLabel(title + ": " + (shortcuts.isEmpty ? "Festlegen" : shortcuts.map(\.spokenLabel).joined(separator: " oder "))) }.frame(minHeight: 28)
     }
+    /// System shortcuts and lone ⌘/⇧ holds would break typing everywhere; one combination per action.
+    private func shortcutProblem(_ shortcut: Shortcut) -> String? {
+        let command: UInt64 = 1 << 20, shift: UInt64 = 1 << 17
+        let systemKeys: Set<UInt16> = [0, 6, 7, 8, 9, 12, 13, 48, 49] // A Z X C V Q W Tab Space
+        if let key = shortcut.keyCode, shortcut.modifiers == command, systemKeys.contains(key) { return "\(shortcut.label) ist ein Systemkürzel und bleibt frei. Wähle eine andere Kombination." }
+        if shortcut.keyCode == nil, shortcut.modifiers == command || shortcut.modifiers == shift { return "Nur \(shortcut.label) würde bei jedem normalen Tippen auslösen. Nimm eine Kombination mit zwei Tasten oder Fn." }
+        let settings = model.document.settings, bindings = settings.shortcutBindings ?? ShortcutBindings()
+        let used: [(String, [Shortcut])] = [("hold", [settings.shortcut] + bindings.holdExtras), ("handsFree", bindings.handsFree), ("cancel", bindings.cancel), ("copyLast", bindings.copyLast), ("pasteLast", bindings.pasteLast), ("lipReading", settings.lipReadingShortcut.map { [$0] } ?? [])]
+        if used.contains(where: { $0.0 != captureAction && $0.1.contains(shortcut) }) { return "\(shortcut.label) ist schon einer anderen Aktion zugeordnet." }
+        return nil
+    }
     private func storeShortcut(_ shortcut: Shortcut) {
+        if let problem = shortcutProblem(shortcut) { model.errorMessage = problem; return }
         if captureAction == "hold" { model.document.settings.shortcut = shortcut; model.document.settings.shortcutBindings?.holdExtras = []; model.document.settings.importedWisprShortcut = model.importPreview.shortcut == shortcut }
         else if captureAction == "lipReading" { model.document.settings.lipReadingShortcut = shortcut }
         else {
@@ -604,6 +616,8 @@ struct SettingsView: View {
         model.shortcutCapture = true
         var pendingModifiers: UInt64 = 0
         shortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+            // A closed settings window may skip onDisappear; never keep recording keys after that.
+            guard model.shortcutCapture else { endShortcutCapture(); return event }
             let mask: UInt64 = (1 << 17) | (1 << 18) | (1 << 19) | (1 << 20) | (1 << 23)
             let flags = UInt64(event.modifierFlags.rawValue) & mask
             if event.type == .keyDown {

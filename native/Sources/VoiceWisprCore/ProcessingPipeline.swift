@@ -83,6 +83,8 @@ public actor ProcessingPipeline {
     private var naturalPauseCount = 0
     private var forcedWindowUsed = false
     private var accepting = false
+    /// Non-finite input samples replaced by silence in the current session.
+    public private(set) var replacedSamples = 0
     private var progress: Progress?
     private let maxFormattingBacklog = 4
     public init(speech: SpeechTranscribing, formatter: TextFormatting, coreSamples: Int = 224_000, overlapSamples: Int = 8000, observeSegment: (@Sendable (Range<Int>, TranscriptSegment) -> Void)? = nil, checkpointMinimumSamples: Int = 720_000, checkpointIntervalSamples: Int = 240_000, observeCheckpoint: (@Sendable (Int, Bool) -> Void)? = nil) {
@@ -99,7 +101,7 @@ public actor ProcessingPipeline {
     public func start(sessionID: UUID = UUID(), style: TextStyle, dictionary entries: [DictionaryEntry] = []) async throws {
         cancel()
         let token = UUID(); generation = token; self.sessionID = sessionID; self.style = style
-        samples = []; jobs = []; formats = []; raw = []; rendered = []; fallback = false; failure = nil
+        samples = []; jobs = []; formats = []; raw = []; rendered = []; fallback = false; failure = nil; replacedSamples = 0
         formattingCache = []
         nextIndex = 0; committedSamples = 0; processedSamples = 0; scannedSamples = 0; quietSamples = 0; heardSpeech = false
         activityState = SpeechActivityState()
@@ -119,8 +121,10 @@ public actor ProcessingPipeline {
     public func append(samples incoming: [Float]) throws {
         guard accepting, sessionID != nil else { throw VoiceError.message("Kein aktives Diktat") }
         guard samples.count + incoming.count <= AudioCaptureBuffer.maximumSamples else { throw VoiceError.message("Das Diktat überschreitet 20 Minuten") }
-        guard incoming.allSatisfy(\.isFinite) else { throw VoiceError.message("Audio enthält ungültige Samples") }
-        samples.append(contentsOf: incoming)
+        // One glitched capture buffer must not cost the whole dictation: NaN/Inf
+        // become silence. Only a content-free count is kept.
+        if incoming.allSatisfy(\.isFinite) { samples.append(contentsOf: incoming) }
+        else { replacedSamples += incoming.reduce(0) { $0 + ($1.isFinite ? 0 : 1) }; samples.append(contentsOf: incoming.map { $0.isFinite ? $0 : 0 }) }
         if activity != nil { launchSegmenter() }
         else { segmentAvailable(final: false); launchASR() }
         launchCheckpoint()

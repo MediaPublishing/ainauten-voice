@@ -1,4 +1,4 @@
-# Voice Wispr
+# AInauten Voice
 
 Native lokale Diktier-App für Apple Silicon und macOS 14+. Halten, sprechen, loslassen: Text im aktiven Feld. Doppeltipp innerhalb von 500 ms startet freihändig, erneutes Drücken stoppt; Escape verwirft die Sitzung. Die ruhende Pill bleibt verborgen und aktive Rückmeldungen übernehmen keinen Fokus.
 

@@ -34,7 +34,8 @@ export function projectAppleDiagnostic(text) {
   return validateReport({ schema: 1, reportID: crypto.randomUUID(), version: o.bundleInfo.CFBundleShortVersionString, build: o.bundleInfo.CFBundleVersion, osVersion: /\d+\.\d+(?:\.\d+)?/.exec(o.osVersion?.train || '')?.[0] || '', architecture: o.cpuType === 'X86-64' ? 'x86_64' : 'arm64', component: 'launch', code: o.termination?.namespace === 'DYLD' ? 'launch_library_missing' : o.exception?.signal ? 'crash_signal' : 'crash_exception', frames, events: [], userInput: { description: '', contact: '' } });
 }
 export async function fingerprint(r) {
-  // User input and random IDs never affect technical grouping.
-  const data = JSON.stringify([r.version, r.build, r.architecture, r.component, r.code, r.frames.map(f => [f.binaryUUID, f.offset]), r.code === 'user_reported' ? r.reportID : null]);
+  // User input and random IDs never affect technical grouping, also not for manual reports.
+  // The trailing null keeps existing fingerprints (and their issue tombstones) stable.
+  const data = JSON.stringify([r.version, r.build, r.architecture, r.component, r.code, r.frames.map(f => [f.binaryUUID, f.offset]), null]);
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data)))].map(x => x.toString(16).padStart(2, '0')).join('');
 }

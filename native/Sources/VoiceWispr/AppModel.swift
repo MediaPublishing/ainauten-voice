@@ -3,6 +3,7 @@ import AppKit
 import AVFoundation
 import ApplicationServices
 import ServiceManagement
+import UniformTypeIdentifiers
 import VoiceWisprCore
 
 /// Preserve tap order even when main-actor callback tasks are scheduled out of order.
@@ -168,7 +169,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
 @MainActor final class AppModel: NSObject, ObservableObject, NSWindowDelegate, NSApplicationDelegate {
     let reports = ErrorReportController()
     @Published var document = ExportDocument() { didSet { scheduleSave(); updateHotkey() } }
-    @Published var state: PillState = .loading { didSet { updatePillVisibility() } }
+    @Published var state: PillState = .loading { didSet { updatePillVisibility(); if state != oldValue { announceState() } } }
     @Published var status = "Einrichtung abschließen"
     @Published var level: Float = 0
     @Published var captureReady = false
@@ -275,6 +276,10 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     private var settingsOpen = false
     private var recoveryWindow: NSPanel?
     private var statusItem: NSStatusItem?
+    private var pauseMenuItem: NSMenuItem?
+    private var wisprMenuItem: NSMenuItem?
+    private var statusSymbol = "waveform"
+    private var sleepInterrupted = false
     private var loading = true
     private var quitting = false
     private var shutdownComplete = false
@@ -365,7 +370,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         }
         if !previewMode { updates.start() }
         hotkey.onGesture = { [weak self] gesture in switch gesture { case .start: self?.start(); case .stop: self?.stop(); case .cancel: self?.cancel(); case .handsFree: break; case .copyLast: if self?.results.isEmpty == false { self?.copyResult(at: 0) }; case .pasteLast: self?.pasteLastResult() } }
-        hotkey.onFailure = { [weak self] message in self?.status = message; self?.state = .error }
+        hotkey.onFailure = { [weak self] message in guard let self else { return }; if self.sessionID != nil { self.cancel() }; self.status = message; self.state = .error; self.resetErrorSoon() }
         lipHotkey.onGesture = { [weak self] gesture in
             switch gesture { case .start: self?.startLipReading(); case .stop: self?.stop(); case .cancel: self?.cancel(); default: break }
         }
@@ -473,7 +478,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             updateHotkey()
         }
         refreshClock = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in Task { @MainActor in self?.refreshPermissions() } }
-        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.cancel(); self?.state = .paused; self?.status = "Mac im Ruhezustand" } }
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.prepareForSleep() } }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.updateHotkey() } }
         // Let Electron/Chromium apps build their text-field accessibility before the first dictation.
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { note in
@@ -502,10 +507,24 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem?.button?.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "AInauten Voice")
         let menu = NSMenu()
-        for (title, selector) in [("AInauten Voice öffnen", #selector(openOverview)), ("Diktatverlauf", #selector(openHistory)), ("Letzte Ergebnisse", #selector(openResults)), ("Tastenkürzel ein-/ausschalten", #selector(togglePause)), ("Zu Wispr Flow zurückwechseln", #selector(returnToWispr)), ("Beenden", #selector(quit))] {
+        for (title, selector) in [("AInauten Voice öffnen", #selector(openOverview)), ("Diktatverlauf", #selector(openHistory)), ("Letzte Ergebnisse", #selector(openResults)), ("Tastenkürzel aktiv", #selector(togglePause)), ("Zu Wispr Flow zurückwechseln", #selector(returnToWispr)), ("Beenden", #selector(quit))] {
             let item = NSMenuItem(title: title, action: selector, keyEquivalent: ""); item.target = self; menu.addItem(item)
+            if selector == #selector(togglePause) { pauseMenuItem = item }
+            if selector == #selector(returnToWispr) { wisprMenuItem = item }
         }
         statusItem?.menu = menu
+        updateStatusItem()
+    }
+    /// Paused shortcuts are otherwise invisible while the idle pill is hidden.
+    private func updateStatusItem() {
+        let paused = document.settings.paused
+        pauseMenuItem?.state = paused ? .off : .on
+        wisprMenuItem?.isHidden = !wisprInstalled
+        let symbol = paused ? "mic.slash" : "waveform"
+        if statusSymbol != symbol {
+            statusSymbol = symbol
+            statusItem?.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: paused ? "AInauten Voice, Tastenkürzel ausgeschaltet" : "AInauten Voice")
+        }
     }
     @objc private func openSettings() { navigate(to: .dictation) }
     @objc private func openReportHelp() { navigate(to: .help) }
@@ -560,6 +579,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         updateHotkey()
     }
     private func updateHotkey() {
+        updateStatusItem()
         guard !quitting else { hotkey.enabled = false; hotkey.cancellationEnabled = false; lipHotkey.enabled = false; lipHotkey.cancellationEnabled = false; return }
         #if DEBUG
         guard !previewMode || CommandLine.arguments.contains("--preview-ui=continuity") else { return }
@@ -698,12 +718,12 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             }
             return
         }
-        guard practice || !conflict else { status = "Wispr zuerst beenden"; return }
+        guard practice || !conflict else { status = "Wispr Flow zuerst beenden"; return }
         // Fence windowWillClose before closing: its idle-state update would
         // otherwise disable/reset the hold that has just started this session.
         let id = UUID(); sessionID = id
         closeRecovery()
-        quietDeliveryFeedback = false
+        quietDeliveryFeedback = false; sleepInterrupted = false
         practiceSession = practice; originalRequested = false; acceptedSamples = 0; pendingSamples = [:]; appendTask = nil
         practiceError = false
         errorMessage = nil
@@ -807,8 +827,9 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 if practice && result.isComplete { document.settings.practiceCompleted = true }
                 let outcome: DeliveryOutcome
                 if practice { outcome = DeliveryOutcome(.notAttempted) }
-                else if conflict { outcome = DeliveryOutcome(.notAttempted, reason: "Wispr ist wieder gestartet. Dein Diktat bleibt verfügbar; der Hotkey ist pausiert.") }
+                else if conflict { outcome = DeliveryOutcome(.notAttempted, reason: "Wispr Flow läuft wieder. Dein Diktat bleibt verfügbar, das Tastenkürzel ist pausiert.") }
                 else if !result.isComplete { outcome = DeliveryOutcome(.notAttempted, reason: "Dieses Ergebnis ist unvollständig und wird nicht automatisch eingefügt.") }
+                else if sleepInterrupted { outcome = DeliveryOutcome(.notAttempted, reason: "Der Mac ist in den Ruhezustand gegangen. Dein Diktat wurde deshalb nicht eingefügt.") }
                 else { outcome = await DeliveryCoordinator().deliver(text: result.text, to: focus) }
                 guard sessionID == id else { return }
                 if !practice, let context = historyContext { recordHistory(result, context: context, delivery: outcome.status) }
@@ -819,6 +840,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                     practiceError = !result.isComplete
                     state = result.isComplete ? .success : .error; status = result.isComplete ? "Probediktat erkannt" : "Probediktat unvollständig"
                     if result.isComplete && canCompleteSetup { markSetupComplete() }
+                    if !result.isComplete { resetErrorSoon() }
                 }
                 else { presentDelivery(outcome, result: result) }
                 if practice { Task { try? await Task.sleep(for: .seconds(1.5)); guard self.sessionID == nil, self.state == .success, self.results.first?.id == result.id else { return }; self.state = .paused; self.updateHotkey() } }
@@ -829,7 +851,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 if practice {
                     practiceFeedback.fail(id, message: "Die Erkennung wurde unterbrochen. Der folgende Teiltext ist unvollständig. " + partial.localizedDescription, partial: partial.result)
                     practiceError = true
-                    cancel(); state = .error; status = "Probediktat prüfen"; return
+                    cancel(); state = .error; status = "Probediktat prüfen"; resetErrorSoon(); return
                 }
                 if let context = historyContext { recordHistory(partial.result, context: context, delivery: .notAttempted) }
                 cancel(); state = .error; status = "Teiltext anzeigen"
@@ -845,6 +867,27 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 }
             }
         }
+    }
+    /// The setup page already shows probe errors; the pill must not keep floating on every Space.
+    private func resetErrorSoon() {
+        let shown = status
+        Task { try? await Task.sleep(for: .seconds(3)); guard self.sessionID == nil, self.state == .error, self.status == shown, self.recoveryWindow?.isVisible != true else { return }; self.state = .paused; self.updateHotkey() }
+    }
+    /// Sleep must not silently drop what was already said. Finish the recording,
+    /// keep processing, and show the text instead of pasting after wake.
+    private func prepareForSleep() {
+        if sessionID != nil && !practiceSession && !lipSession && (state == .recording || state == .processing) {
+            sleepInterrupted = true
+            if state == .recording { stop() }
+            return
+        }
+        cancel(); state = .paused; status = "Mac im Ruhezustand"
+    }
+    /// VoiceOver users otherwise get no feedback while focus stays in the target app.
+    private func announceState() {
+        let message: String? = switch state { case .recording: "Aufnahme läuft"; case .success: status; case .error: status; default: nil }
+        guard let message, !message.isEmpty, !previewMode else { return }
+        NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested, userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high.rawValue])
     }
     /// Silence is not a failure worth a window. The pill shows it briefly; the hotkey stays live.
     private func showNoSpeech() {
@@ -874,7 +917,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         if practiceSession, let id = sessionID {
             practiceFeedback.fail(id, message: message)
             practiceError = true
-            cancel(); state = .error; status = "Probediktat prüfen"
+            cancel(); state = .error; status = "Probediktat prüfen"; resetErrorSoon()
             return
         }
         cancel(); state = .error; status = "Aufnahme prüfen"; errorMessage = message
@@ -1260,8 +1303,24 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         } catch { errorMessage = error.localizedDescription }
     }
     func importSettings() {
-        let panel = NSOpenPanel(); panel.allowsMultipleSelection = false
-        if panel.runModal() == .OK, let url = panel.url { Task { do { document = try await store.importDocument(from: url); importFailed = false; importReceipt = "Einstellungen importiert. Cloud bleibt aus; aktiviere die gewünschte Adresse bei Bedarf unter Text & Stil." } catch { errorMessage = error.localizedDescription } } }
+        let panel = NSOpenPanel(); panel.allowsMultipleSelection = false; panel.allowedContentTypes = [.json]
+        panel.title = "Einstellungen und Wörterbuch importieren"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        Task {
+            do {
+                let imported = try await store.importDocument(from: url)
+                // A settings import replaces everything. Confirm with counts and keep the previous state.
+                let alert = NSAlert(); alert.messageText = "Einstellungen und Wörterbuch ersetzen?"
+                alert.informativeText = "Die Datei enthält \(imported.dictionary.count) Wörterbucheinträge. Sie ersetzt deine aktuellen Einstellungen und alle \(document.dictionary.count) Einträge. Dein bisheriger Stand wird vorher als Sicherung im Datenordner gespeichert."
+                alert.addButton(withTitle: "Ersetzen"); alert.addButton(withTitle: "Abbrechen")
+                guard alert.runModal() == .alertFirstButtonReturn else { return }
+                let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+                let backup = ModelPaths.support.appendingPathComponent("settings-before-import-\(stamp).json")
+                try await store.export(to: backup)
+                document = imported; importFailed = false
+                importReceipt = "Einstellungen importiert. Der vorherige Stand liegt als \(backup.lastPathComponent) im Datenordner. Cloud bleibt aus; aktiviere sie bei Bedarf unter Text & Stil."
+            } catch { errorMessage = error.localizedDescription }
+        }
     }
     private func scheduleSave() {
         guard !loading && !previewMode else { return }; saveTask?.cancel()

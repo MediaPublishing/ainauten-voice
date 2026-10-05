@@ -9,6 +9,8 @@ private struct StoredSettings: Codable {
     init(_ document: ExportDocument, provenance: MigrationProvenance?) { version = document.version; settings = document.settings; dictionary = document.dictionary; wisprImport = provenance }
     var document: ExportDocument { var result = ExportDocument(settings: settings, dictionary: dictionary); result.version = version; return result }
 }
+/// Only the re-import bookkeeping; a corrupt or newer file must never block saving.
+private struct StoredProvenance: Decodable { var wisprImport: MigrationProvenance? }
 
 public actor SettingsStore {
     public let url: URL
@@ -21,7 +23,8 @@ public actor SettingsStore {
         return stored
     }
     public func save(_ document: ExportDocument) throws {
-        try write(document, provenance: try stored().wisprImport)
+        let provenance = (try? Data(contentsOf: url)).flatMap { try? JSONDecoder().decode(StoredProvenance.self, from: $0) }?.wisprImport
+        try write(document, provenance: provenance)
     }
     private func write(_ document: ExportDocument, provenance: MigrationProvenance?) throws {
         try Self.validate(document)
@@ -46,8 +49,17 @@ public actor SettingsStore {
     }
     public func undoWisprImport() throws {
         let backup = url.deletingLastPathComponent().appendingPathComponent("wispr-import-undo.json")
+        guard FileManager.default.fileExists(atPath: backup.path) else { throw VoiceError.message("Es gibt keinen Wispr-Import, der rückgängig gemacht werden kann.") }
         let snapshot = try JSONDecoder().decode(StoredSettings.self, from: Data(contentsOf: backup))
-        try write(snapshot.document, provenance: snapshot.wisprImport)
+        // The import never touches cloud or camera choices. An old snapshot must not
+        // re-enable a recipient or the camera beta, so those stay as they are now.
+        let current = try stored().document.settings
+        var document = snapshot.document
+        document.settings.cloudEnabled = current.cloudEnabled; document.settings.cloudEndpoint = current.cloudEndpoint; document.settings.cloudModel = current.cloudModel
+        document.settings.lipReadingEnabled = current.lipReadingEnabled; document.settings.lipReadingLanguage = current.lipReadingLanguage; document.settings.lipReadingShortcut = current.lipReadingShortcut
+        try write(document, provenance: snapshot.wisprImport)
+        // One undo per import; repeating it would roll back later edits again.
+        try? FileManager.default.removeItem(at: backup)
     }
     public func export(to destination: URL) throws { try JSONEncoder.pretty.encode(try load()).write(to: destination, options: .atomic) }
     public func importDocument(from source: URL) throws -> ExportDocument {
@@ -64,8 +76,11 @@ public actor SettingsStore {
               document.settings.languages.allSatisfy({ $0.range(of: "^[a-z]{2,3}(-[A-Za-z]{2,8})?$", options: .regularExpression) != nil }),
               document.dictionary.count <= 100_000, Set(document.dictionary.map(\.id)).count == document.dictionary.count,
               document.dictionary.allSatisfy({ !$0.id.isEmpty && !$0.phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.phrase.count <= 255 && ($0.replacement?.utf8.count ?? 0) <= 1_000_000 }) else { throw VoiceError.message("Ungültige Einstellungen oder Wörterbucheinträge") }
-        guard let endpoint = URL(string: document.settings.cloudEndpoint), endpoint.host != nil,
-              endpoint.scheme == "https" || (endpoint.scheme == "http" && ["localhost", "127.0.0.1", "::1"].contains(endpoint.host ?? "")) else { throw VoiceError.message("Cloud-Endpunkt muss HTTPS oder eine lokale Adresse sein") }
+        // An unused endpoint may be empty or half-typed; enabling cloud re-validates it.
+        if document.settings.cloudEnabled {
+            guard let endpoint = URL(string: document.settings.cloudEndpoint), endpoint.host != nil,
+                  endpoint.scheme == "https" || (endpoint.scheme == "http" && ["localhost", "127.0.0.1", "::1"].contains(endpoint.host ?? "")) else { throw VoiceError.message("Cloud-Endpunkt muss HTTPS oder eine lokale Adresse sein") }
+        }
         let allowedFlags: UInt64 = (1 << 17) | (1 << 18) | (1 << 19) | (1 << 20) | (1 << 23)
         guard document.settings.lipReadingLanguage == nil || ["en", "de"].contains(document.settings.lipReadingLanguage!) else { throw VoiceError.message("Unbekannte Lippenlese-Sprache") }
         let shortcuts = [document.settings.shortcut] + (document.settings.shortcutBindings?.all ?? []) + (document.settings.lipReadingShortcut.map { [$0] } ?? [])
