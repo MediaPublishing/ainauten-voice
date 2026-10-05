@@ -11,6 +11,7 @@ Diese Fassung wird mit der App ausgeliefert. Sie enthält keine Diktate, Namen o
 - Deutsche und englische Oberfläche mit direktem Sprachwechsel, unveränderten Diktatsprachen und lokalisierten Menü- und Bedienelementen.
 - Native Oberfläche, lokale Modelle und einzelne Einfügeziele auf einem Apple-Silicon-Mac mit macOS 27.
 - App-Signatur, eingebettete App im DMG und Download.
+- Gebündelte deutsche und englische Sprachdateien ohne Zugriff auf einen Entwicklungsordner; kontrollierter Rückfall bei fehlenden Sprachdateien.
 - Geschützte Cloud-Empfängerfreigabe, Grenzen für Einstellungsdateien und Fehlermeldungen, sichere Entwicklungs-Dateinamen.
 
 ## Was lokal bleibt

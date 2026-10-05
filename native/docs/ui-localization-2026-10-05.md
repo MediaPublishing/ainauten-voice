@@ -23,3 +23,8 @@ Ein bestehender Grenzwertfehler bei Wörterbuch-Ersetzungen wurde im Zuge der Pr
 ## Grenzen
 
 Keine neue akustische Modellabnahme, kein echter Mikrofon-/Kamera-/Fehlerberichtversand in dieser Sprachprüfung. Apple-Notarisierung und die vollständige Gesamtabnahme bleiben offen; die lokale Signatur benötigt weiterhin eine Bibliotheksvalidierungs-Ausnahme. Lippenlesen bleibt im Release gesperrt. Website, Installeranleitung und technische Rohberichte wurden nicht als englische Oberfläche übersetzt.
+
+
+## Korrektur für Installationen ohne Entwicklungsordner
+
+Nach Veröffentlichung von 0.1.7 wurde ein Startabsturz beim Laden der Sprachdateien gemeldet. Die Dateien waren im App-Paket enthalten, die Sprachschicht verwendete jedoch den SwiftPM-Modulzugriff, der auf dem Entwicklungs-Mac aus dem lokalen Build-Ordner laden konnte. Diese frühere Ressourcenprüfung bewies die Erreichbarkeit auf einem anderen Mac nicht. Der Hotfix 0.1.8 lädt die Sprachdateien ausdrücklich aus `Contents/Resources` und prüft dies im tatsächlichen Paketprogramm. Der ursprüngliche Prüfstand oben bleibt als historische Teilprüfung erhalten.

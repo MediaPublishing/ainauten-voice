@@ -102,6 +102,9 @@ entitlements = root/'Resources'/('Release.entitlements' if has_team else 'LocalR
 if not has_team: print('SIGNING LIMITATION: local identity; library-validation exception remains, not Apple-notarized')
 run('codesign', '--force', '--options', 'runtime', '--entitlements', str(entitlements), '--sign', identity, str(app))
 run('codesign', '--verify', '--deep', '--strict', str(app))
+# A build-machine resource fallback can hide a broken .app layout. Execute the
+# signed release's app-only resolver before accepting an installer.
+run(str(contents/'MacOS/VoiceWispr'), '--check-bundled-resources')
 dmg = create_dmg(app, out)
 if not args.adhoc and not args.debug:
     import sys

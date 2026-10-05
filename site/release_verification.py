@@ -56,6 +56,11 @@ def verify_app(app):
     for item in nested:
         subprocess.run(['codesign', '--verify', '--strict', '-R',
                         '=certificate leaf = H"' + fingerprint + '"', str(item)], check=True)
+    # Includes loading the lazy diagnostics catalog that caused the 0.1.7
+    # clean-machine startup trap; reads only bundled resources, never a profile.
+    if int(info.get('CFBundleVersion', '0')) >= 12:
+        subprocess.run([str(app/'Contents/MacOS'/info['CFBundleExecutable']),
+                        '--check-bundled-resources'], check=True, timeout=30)
     return info, bundle_manifest(app)
 
 
