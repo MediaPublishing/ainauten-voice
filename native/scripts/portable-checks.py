@@ -3,12 +3,21 @@
 Assertion adaptation is temporary and lives in ignored artifacts; original XCTest
 sources remain usable by full Xcode. No tested production behavior is mocked here.
 """
-import os, pathlib, re, subprocess, sys
+import argparse, os, pathlib, re, subprocess, sys
 root = pathlib.Path(__file__).resolve().parents[1]
-out = root/'artifacts/portable-checks'; out.mkdir(parents=True, exist_ok=True)
+available = sorted((root/'Tests/VoiceWisprCoreTests').glob('*.swift'))
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--only', action='append', choices=[p.name for p in available],
+                    help='Run one test file; repeat to select several. Default: all contract cases.')
+args = parser.parse_args()
+sources = [p for p in available if args.only is None or p.name in args.only]
+out = root/'artifacts/portable-checks'
+if args.only:
+    out = out/('selected-' + '-'.join(p.stem for p in sources))
+out.mkdir(parents=True, exist_ok=True)
 mapping = {'XCTestCase':'ContractCase', 'XCTAssertEqual':'expectEqual', 'XCTAssertTrue':'expectTrue', 'XCTAssertFalse':'expectFalse', 'XCTAssertNil':'expectNil', 'XCTAssertGreaterThan':'expectGreater', 'XCTAssertLessThan':'expectLess', 'XCTAssertThrowsError':'expectThrows', 'XCTUnwrap':'unwrap', 'XCTFail':'fail'}
 calls = []
-for source in sorted((root/'Tests/VoiceWisprCoreTests').glob('*.swift')):
+for source in sources:
     text = source.read_text().replace('import XCTest', 'import Foundation')
     cls = re.search(r'final class (\w+): XCTestCase', text).group(1)
     for name, modifiers in re.findall(r'func (test\w+)\(\)\s*([^\{]*)\{', text):
@@ -18,6 +27,8 @@ for source in sorted((root/'Tests/VoiceWisprCoreTests').glob('*.swift')):
         calls.append(f'        await run("{cls}.{name}") {{ {inv} }}')
     for a,b in mapping.items(): text = re.sub(r'\b'+a+r'\b', b, text)
     (out/source.name).write_text(text)
+if not calls:
+    parser.error('No contract cases found in selected test files.')
 support = '''import Foundation
 class ContractCase {}
 enum CheckFailure: Error { case unwrapped }
@@ -48,7 +59,7 @@ for target in ['FastClusterWrapper', 'MachTaskSelfWrapper']:
 objects=[]
 for target in ['VoiceWisprCore.build','FluidAudio.build','FastClusterWrapper.build','MachTaskSelfWrapper.build']:
     objects += [str(p) for p in (build/target).glob('*.o')]
-cmd += objects + [str(p) for p in out.glob('*.swift')] + ['-o',str(out/'VoiceWisprChecks')]
+cmd += objects + [str(out/p.name) for p in sources] + [str(out/'Runner.swift')] + ['-o',str(out/'VoiceWisprChecks')]
 result = subprocess.run(cmd,cwd=root)
 if result.returncode: raise SystemExit(result.returncode)
 subprocess.run([str(out/'VoiceWisprChecks')],cwd=root,check=True,env={**os.environ, 'VOICE_TEST_PYTHON': sys.executable})

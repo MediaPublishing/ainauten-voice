@@ -2,7 +2,58 @@ import XCTest
 import AppKit
 @testable import VoiceWisprCore
 
+/// Real AppKit lazy materialization, always confined to a uniquely named board.
+private final class ClipboardLazyProvider: NSObject, NSPasteboardItemDataProvider {
+    var requests = 0
+    let provide: (NSPasteboard?, NSPasteboardItem, NSPasteboard.PasteboardType) -> Void
+    init(provide: @escaping (NSPasteboard?, NSPasteboardItem, NSPasteboard.PasteboardType) -> Void) {
+        self.provide = provide
+    }
+    func pasteboard(_ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType) {
+        requests += 1
+        provide(pasteboard, item, type)
+    }
+}
+
 @MainActor final class ClipboardTests: XCTestCase {
+    func testUnreadableLazyRepresentationPreventsCopyWithoutLosingOtherFormats() throws {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        let type = NSPasteboard.PasteboardType("com.mediapublishing.clipboard-test.unavailable")
+        let provider = ClipboardLazyProvider { _, _, _ in /* Intentionally supplies no promised data. */ }
+        let item = NSPasteboardItem()
+        XCTAssertTrue(item.setString("Original mit ungelesenem Zusatzformat", forType: .string))
+        XCTAssertTrue(item.setDataProvider(provider, forTypes: [type]))
+        XCTAssertTrue(board.writeObjects([item]))
+        let count = board.changeCount, recovery = ClipboardRecovery(board: board)
+        XCTAssertEqual(recovery.copy("Diktat"), .unavailable)
+        XCTAssertGreaterThan(provider.requests, 0)
+        XCTAssertEqual(board.changeCount, count)
+        XCTAssertEqual(board.string(forType: .string), "Original mit ungelesenem Zusatzformat")
+        XCTAssertTrue(try XCTUnwrap(board.pasteboardItems?.first).types.contains(type))
+        XCTAssertFalse(recovery.canUndo)
+    }
+    func testNewCopyDuringLazyMaterializationIsPreserved() {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        let type = NSPasteboard.PasteboardType("com.mediapublishing.clipboard-test.changing")
+        var changedAt: Int?
+        let provider = ClipboardLazyProvider { _, item, requestedType in
+            // Return valid bytes for the old item, but replace the board while
+            // capture is in progress. A complete yet stale snapshot is unsafe.
+            item.setData(Data([1, 2, 3]), forType: requestedType)
+            board.clearContents()
+            board.setString("Neuere Nutzerkopie", forType: .string)
+            changedAt = board.changeCount
+        }
+        let item = NSPasteboardItem()
+        XCTAssertTrue(item.setDataProvider(provider, forTypes: [type]))
+        XCTAssertTrue(board.writeObjects([item]))
+        let recovery = ClipboardRecovery(board: board)
+        XCTAssertEqual(recovery.copy("Diktat"), .unavailable)
+        XCTAssertGreaterThan(provider.requests, 0)
+        XCTAssertEqual(board.changeCount, changedAt)
+        XCTAssertEqual(board.string(forType: .string), "Neuere Nutzerkopie")
+        XCTAssertFalse(recovery.canUndo)
+    }
     func testRepeatedCopyOfOwnedTextKeepsOriginalUndoSnapshot() {
         let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
         board.setString("Vorheriger Inhalt", forType: .string)
