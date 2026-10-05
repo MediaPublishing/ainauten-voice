@@ -100,6 +100,16 @@ private final class CheckpointMeasurements: @unchecked Sendable {
                     "isolatedCopy": root.path])
                 return
             }
+            if arguments.dropFirst().first == "speech-config-check" {
+                let configuration = suiteSpeechConfiguration(arguments)
+                try emit(["event": "speech-config-check", "loadsModels": false,
+                          "encoderPrecision": configuration.encoderPrecision.rawValue,
+                          "dualDecodeArbitration": configuration.dualDecodeArbitration,
+                          "sdkWorkers": configuration.sdkWorkers,
+                          "vadSilenceSeconds": configuration.activitySilenceDuration,
+                          "trimTrailingSilence": configuration.trimTrailingSilence])
+                return
+            }
             if arguments.dropFirst().first == "suite", arguments.count >= 3 {
                 try await suite(arguments)
                 return
@@ -122,7 +132,7 @@ private final class CheckpointMeasurements: @unchecked Sendable {
                 return
             }
             guard arguments.count >= 3, arguments[1] == "transcribe" else {
-                print("Usage: VoiceWisprProbe download | migration-preview | migration-check <settings-file> | transcribe <audio-file> [original|cleaned|email|chat] [stream] | suite <manifest> [repeat=3] [--ids=id,id] [--styles=original,cleaned] [--stream] [--long] | inspect-seams <synthetic manifest> <fixture-id> | inspect-window <synthetic manifest> <fixture-id> <start-sec> <end-sec> [--repeat=3] [--sdk-workers=1|2] [--dual-decode] [--reconcile-block-seconds=30...120] [--reconcile-context-seconds=2...10]")
+                print("Usage: VoiceWisprProbe download | migration-preview | migration-check <settings-file> | speech-config-check [--encoder-v2] [--dual-decode] | transcribe <audio-file> [original|cleaned|email|chat] [stream] | suite <manifest> [repeat=3] [--ids=id,id] [--styles=original,cleaned] [--stream] [--long] [--encoder-v2] [--dual-decode] | inspect-seams <synthetic manifest> <fixture-id> | inspect-window <synthetic manifest> <fixture-id> <start-sec> <end-sec> [--repeat=3] [--sdk-workers=1|2] [--dual-decode] [--reconcile-block-seconds=30...120] [--reconcile-context-seconds=2...10]")
                 exit(2)
             }
             let style = arguments.count > 3 ? TextStyle(rawValue: arguments[3]) ?? .original : .original
@@ -264,7 +274,8 @@ private final class CheckpointMeasurements: @unchecked Sendable {
         }
         let dictionary = DictionaryMatcher(entries)
         let streaming = arguments.contains("--stream")
-        let speech = makeSpeech(encoderV2: arguments.contains("--encoder-v2"), silenceDuration: vadSilence(arguments), trimTrailingSilence: arguments.contains("--trim-tail"), sdkWorkers: sdkWorkers(arguments))
+        let speechConfiguration = suiteSpeechConfiguration(arguments)
+        let speech = SpeechRuntime(configuration: speechConfiguration)
         let local = LocalFormatter(modelURL: ModelPaths.formatter)
         do {
         let loadStarted = ProcessInfo.processInfo.systemUptime
@@ -276,7 +287,7 @@ private final class CheckpointMeasurements: @unchecked Sendable {
         // It remains in all three measured repetitions; no reference is a prompt.
         let warmPipeline = ProcessingPipeline(speech: speech, formatter: needsFormatting ? local : OriginalFormatter(), coreSamples: Int(coreSeconds(arguments) * 16000), overlapSamples: Int(overlapSeconds(arguments) * 16000))
         _ = try await warmPipeline.process(samples: warmAudio, sessionID: UUID(), style: needsFormatting ? .cleaned : .original)
-        try jsonLine(["event": "suite-start", "source": manifest.source, "coreSeconds": coreSeconds(arguments), "overlapSeconds": overlapSeconds(arguments), "vadSilenceSeconds": vadSilence(arguments), "trimTrailingSilence": arguments.contains("--trim-tail"), "encoderPrecision": arguments.contains("--encoder-v2") ? "int8-v2" : "int8", "sdkWorkers": sdkWorkers(arguments), "reconciliationContextSeconds": 8, "boundedReconciliationAboveSeconds": 600, "humanAcceptance": false, "fixtures": selected.count, "repeats": repeats, "streamedAtRealTime": streaming, "loadAndWarmSeconds": ProcessInfo.processInfo.systemUptime - loadStarted,
+        try jsonLine(["event": "suite-start", "source": manifest.source, "coreSeconds": coreSeconds(arguments), "overlapSeconds": overlapSeconds(arguments), "vadSilenceSeconds": vadSilence(arguments), "trimTrailingSilence": arguments.contains("--trim-tail"), "encoderPrecision": arguments.contains("--encoder-v2") ? "int8-v2" : "int8", "sdkWorkers": speechConfiguration.sdkWorkers, "dualDecodeArbitration": speechConfiguration.dualDecodeArbitration, "reconciliationContextSeconds": 8, "boundedReconciliationAboveSeconds": 600, "humanAcceptance": false, "fixtures": selected.count, "repeats": repeats, "streamedAtRealTime": streaming, "loadAndWarmSeconds": ProcessInfo.processInfo.systemUptime - loadStarted,
                       "normalizationNotes": manifest.normalizationNotes, "hardware": "Run host; see machine receipt. Other simultaneous processes may affect latency.", "feedPacing": "append-after-capture-deadline", "feedChunkSamples": 1600, "latencyClock": "logical-capture-end-including-feed-lag", "warmupScope": "complete-first-fixture-pipeline-ungraded-no-case-exclusion"])
         var successful: [SuiteMeasurement] = [], failures = 0
         for fixture in selected {
@@ -405,6 +416,13 @@ private final class CheckpointMeasurements: @unchecked Sendable {
         }
     }
     private static func makeSpeech(encoderV2: Bool, silenceDuration: Double = 0.5, trimTrailingSilence: Bool = false, sdkWorkers: Int = 2, dualDecode: Bool = false, blockSeconds: Int? = nil, blockContext: Int = 8) -> SpeechRuntime {
+        SpeechRuntime(configuration: makeSpeechConfiguration(encoderV2: encoderV2, silenceDuration: silenceDuration, trimTrailingSilence: trimTrailingSilence, sdkWorkers: sdkWorkers, dualDecode: dualDecode, blockSeconds: blockSeconds, blockContext: blockContext))
+    }
+    /// Both the real suite and the model-free diagnostic consume this same value.
+    private static func suiteSpeechConfiguration(_ arguments: [String]) -> SpeechRuntimeConfiguration {
+        makeSpeechConfiguration(encoderV2: arguments.contains("--encoder-v2"), silenceDuration: vadSilence(arguments), trimTrailingSilence: arguments.contains("--trim-tail"), sdkWorkers: sdkWorkers(arguments), dualDecode: arguments.contains("--dual-decode"))
+    }
+    private static func makeSpeechConfiguration(encoderV2: Bool, silenceDuration: Double = 0.5, trimTrailingSilence: Bool = false, sdkWorkers: Int = 2, dualDecode: Bool = false, blockSeconds: Int? = nil, blockContext: Int = 8) -> SpeechRuntimeConfiguration {
         var configuration = SpeechRuntimeConfiguration(modelDirectory: ModelPaths.speech)
         configuration.encoderPrecision = encoderV2 ? .int8V2 : .int8
         configuration.activitySilenceDuration = silenceDuration
@@ -413,7 +431,7 @@ private final class CheckpointMeasurements: @unchecked Sendable {
         configuration.dualDecodeArbitration = dualDecode
         configuration.reconciliationBlockSeconds = blockSeconds
         configuration.reconciliationContextSeconds = blockContext
-        return SpeechRuntime(configuration: configuration)
+        return configuration
     }
     private static func coreSeconds(_ arguments: [String]) -> Double {
         let value = option("--core-seconds=", in: arguments).flatMap(Double.init) ?? 14
