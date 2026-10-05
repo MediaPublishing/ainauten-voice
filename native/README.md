@@ -52,6 +52,8 @@ Bei `SwiftUIMacros.StateMacro`-Fehlern in neuen Command Line Tools ist die passe
 
 Die Prüfskripte `portable-checks.py`, `check-paragraph-quality.py` und `check-textedit-delivery.py` nehmen ebenfalls `--sdk /Pfad/zum/kompatiblen.sdk` an. Sie verwenden dieses SDK sowohl beim Paketbau als auch beim Kompilieren der jeweiligen Prüfung. Die Absatzprüfung liest das vorhandene lokale Wörterbuch, verändert keine Einstellungen und prüft ausschließlich deklarierte Textfälle; sie ersetzt keinen Spracherkennungstest.
 
+Die Absatzprüfung protokolliert auch fehlgeschlagene Formatierungsversuche mit ihrer gemessenen Dauer. Die Kontrolle unveränderter Einstellungen bleibt im optimierten Prüfprogramm aktiv; ein fehlgeschlagener Fall bleibt ein Fehler.
+
 ## Sicherheit und Zustellung
 
 Einfügung nur in unveränderte, lesbare AX-Ziele. Bestätigung verlangt kompletten Text-/Cursor-Readback, keine bloße Tastensimulation. Bei Zweifel vollständiges Ergebnisfenster; keine automatische Wiederholung. Zwischenablage wird byteweise gesichert, bei unlesbaren/über 64 MB großen Inhalten nicht verändert; ein neuer Benutzer-Copy gewinnt. macOS stellt keine atomare Fokus-und-Paste-Operation bereit. Verzögerte Einfügeziele können nach dem 1,5-Sekunden-Fenster unklar bleiben.
