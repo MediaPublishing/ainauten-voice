@@ -15,6 +15,7 @@ import uuid
 def main():
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--sdk', type=Path, help='Compatible installed SDK, used for both SwiftPM and native test compilation.')
     parser.add_argument('--include-fullscreen', action='store_true', help='Also test and exit fullscreen in an own fixture window.')
     parser.add_argument('--output', type=Path, default=root / 'artifacts/receipts/textedit-delivery-current.json')
     args = parser.parse_args()
@@ -24,7 +25,9 @@ def main():
     started = datetime.now(timezone.utc).isoformat()
     # Use the native debug object layout already used by portable-checks.py.
     # Do not rebuild or replace a possibly running release speech Probe.
-    build_run = subprocess.run(['swift', 'build', '--build-system', 'native', '--target', 'VoiceWisprCore', '--jobs', '4'],
+    build_run = subprocess.run(['swift', 'build', '--build-system', 'native'] +
+                               (['--sdk', str(args.sdk)] if args.sdk else []) +
+                               ['--target', 'VoiceWisprCore', '--jobs', '4'],
                                cwd=root, capture_output=True, text=True)
     (out / 'build.log').write_text(build_run.stdout + build_run.stderr)
     if build_run.returncode:
@@ -34,6 +37,8 @@ def main():
                '-I', str(build / 'Modules'), '-I', str(root / 'Sources/CSQLite'),
                '-I', str(build / 'FastClusterWrapper.build'), '-I', str(build / 'MachTaskSelfWrapper.build'),
                '-F', str(build), '-L', str(build)]
+    if args.sdk:
+        command += ['-sdk', str(args.sdk)]
     for framework in ['llama', 'Accelerate', 'CoreML', 'AppKit', 'AVFoundation', 'ApplicationServices', 'Security', 'Carbon']:
         command += ['-framework', framework]
     command += ['-lsqlite3', '-lc++', '-Xlinker', '-rpath', '-Xlinker', str(build)]
