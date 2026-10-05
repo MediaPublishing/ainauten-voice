@@ -41,3 +41,21 @@ h1,h2,h3{letter-spacing:0}
 @media(max-width:1100px){.hero{gap:38px;min-height:560px}.hero h1{font-size:52px}.hero h1 span{font-size:44px}}
 @media(max-width:900px){.hero{grid-template-columns:1fr;gap:40px;padding-block:48px;min-height:auto}.hero-copy{max-width:660px}.hero h1{font-size:58px}.hero h1 span{font-size:48px}.hero .lead{max-width:54ch}.hero-film{max-width:740px;width:100%}.hero-section .promise .wrap{gap:12px;flex-wrap:wrap}.film-footer{padding-top:14px}}
 @media(max-width:600px){.hero{padding-block:36px 30px;gap:30px}.hero h1{font-size:42px;margin-block:18px 22px}.hero h1 span{font-size:36px;line-height:1.14;margin-top:8px}.hero .lead{font-size:15px;line-height:1.65}.hero-copy .eyebrow{font-size:12px}.hero .button{font-size:13px;padding-inline:18px}.hero .download-meta{font-size:11px}.brand-tile{width:36px;height:36px;border-radius:10px}.film-heading{margin-bottom:13px}.film-mark img{width:40px;height:40px;border-radius:10px}.film-mark{font-size:12px;gap:10px}.film-mark strong{font-size:13px}.film-time{font-size:11px;padding:6px 9px}.video-stage{border-radius:10px}.video-play{left:12px;bottom:12px;padding:4px 14px 4px 4px;gap:8px;font-size:11px}.play-icon{width:30px;height:30px}.play-icon svg{width:17px;height:17px}.film-footer figcaption{font-size:11px}.film-footer figcaption span{font-size:10px}.youtube-link{font-size:11px}.hero-section .promise .wrap{padding-block:18px;font-size:11px;gap:10px}}
+
+/* Installation instructions sit beside both download actions. */
+.download-notice{max-width:44ch;margin-top:18px;padding:14px 16px;border:1px solid oklch(75% .05 294/.35);border-radius:9px;background:oklch(35% .085 294)}
+.download-notice>strong{display:block;font-size:13px;color:var(--paper);margin-bottom:7px}
+.hero .download-notice p{color:oklch(92% .025 294);font-size:12px;line-height:1.65;margin:0 0 7px;max-width:none}
+.hero .download-notice .text-link{font-size:12px;padding-block:4px}
+.download-section{align-items:flex-start;gap:64px}
+.download-copy{flex:1;min-width:0}
+.download-actions{flex:1;min-width:0;max-width:520px}
+.download-install{border-top:1px solid var(--line);margin-top:22px;padding-top:20px}
+.download-install h3{font-size:18px;margin-bottom:10px}
+.download-install p{font-size:13px;line-height:1.65;margin-bottom:12px}
+.download-install ol{padding-left:22px;margin:0 0 14px;font-size:13px;line-height:1.65;color:var(--text)}
+.download-install li{padding-left:5px;margin-bottom:10px}
+.download-install li::marker{font-weight:700;color:var(--ink)}
+.download-install .download-guide-meta{font-size:11px;color:var(--muted);margin-top:10px}
+.checksum-link{display:inline-block;margin-top:16px;color:var(--muted);font-size:12px}
+@media(max-width:760px){.download-section{gap:28px}.download-actions{width:100%;max-width:none}.download-notice{max-width:none}.download-install ol{font-size:14px}.download-install p{font-size:14px}}

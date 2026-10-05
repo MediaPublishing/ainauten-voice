@@ -5,6 +5,7 @@ from pathlib import Path
 import argparse
 import plistlib
 import re
+from urllib.parse import urlsplit
 
 source = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser()
@@ -42,14 +43,15 @@ assert len(page.ids) == len(set(page.ids)), 'Duplicate IDs'
 for ref in page.refs:
     if ref.startswith('#'): assert ref[1:] in page.ids, ref
     elif ref.startswith('/') and ref != '/':
+        path = urlsplit(ref).path
         # The source checkout excludes release binaries. A dist check requires
         # every asset, including the original video and the download package.
-        if root == source and (ref.startswith('/downloads/') or ref == '/assets/video/ainauten-voice-promo-de.mp4'):
+        if root == source and (path.startswith('/downloads/') or path == '/assets/video/ainauten-voice-promo-de.mp4'):
             continue
-        if root == source and ref == '/installation.html':
+        if root == source and path == '/installation.html':
             assert (source.parent / 'native/Resources/InstallerGuide/installation.html').is_file(), ref
             continue
-        assert (root / ref[1:]).is_file(), ref
+        assert (root / path[1:]).is_file(), ref
 assert f'AInauten-Voice-{version}-arm64.dmg' in text
 assert f'Beta {version}' in text
 for term in ['Beispieldaten', 'nicht Apple-notarisiert', 'Audio bleibt', 'Mikrofon', 'Bedienungshilfen', 'Apple Silicon', 'SHA256SUMS.txt', 'aria-selected', 'Impressum', 'Datenschutz']:

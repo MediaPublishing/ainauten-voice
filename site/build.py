@@ -53,6 +53,12 @@ if dist.exists():
 dist.mkdir()
 for name in ['index.html', 'styles.css', 'app.js', '_headers', 'robots.txt', 'sitemap.xml']:
     shutil.copy2(root / name, dist / name)
+# A changed stylesheet must also reach visitors with a cached previous version.
+style_version = hashlib.sha256((dist / 'styles.css').read_bytes()).hexdigest()[:12]
+index = dist / 'index.html'
+html = index.read_text()
+assert 'href="/styles.css"' in html, 'Main stylesheet reference missing'
+index.write_text(html.replace('href="/styles.css"', f'href="/styles.css?v={style_version}"'))
 guide = root.parent / 'native/Resources/InstallerGuide'
 for name in ['installation.html', 'installation.css']:
     shutil.copy2(guide / name, dist / name)
