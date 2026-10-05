@@ -33,7 +33,7 @@ import VoiceWisprCore
     @MainActor static func key(_ code: CGKeyCode, _ flags: CGEventFlags) {
         let down = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: true)!
         let up = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false)!
-        down.flags = flags; up.flags = flags; down.post(tap: .cghidEventTap); up.post(tap: .cghidEventTap)
+        down.flags = flags; up.flags = []; down.post(tap: .cghidEventTap); up.post(tap: .cghidEventTap)
     }
     @MainActor static func main() async throws {
         guard AXIsProcessTrusted() else { print("{\"passed\":false,\"reason\":\"existingAXUnavailable\"}"); return }
@@ -41,7 +41,9 @@ import VoiceWisprCore
         let file = URL(fileURLWithPath: CommandLine.arguments[1])
         guard file.lastPathComponent.hasPrefix("AInauten-Voice-Delivery-"), file.pathExtension == "txt" else { print("{\"passed\":false,\"reason\":\"ownedFixtureRequired\"}"); return }
         let mode = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "selection"
-        guard ["selection", "caret", "long", "focus"].contains(mode) else { return }
+        guard ["selection", "caret", "long", "focus", "fullscreen"].contains(mode) else { return }
+        let physicalModifiers: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift]
+        guard CGEventSource.flagsState(.hidSystemState).intersection(physicalModifiers).isEmpty else { print("{\"passed\":false,\"reason\":\"physicalModifiersHeldBeforeOpening\"}");return }
         let initial = "Anfang ERSETZEN Ende\n"
         let insertion = mode == "long" ? String(repeating: "Öffentlicher Absatz. 12,5 bleibt unverändert, nicht 20. 👋\n", count: 400) : "öffentlicher Testtext 👋"
         if FileManager.default.fileExists(atPath: file.path) {
@@ -74,6 +76,17 @@ import VoiceWisprCore
             try await Task.sleep(for: .milliseconds(50))
         }
         guard let target else { print("{\"passed\":false,\"reason\":\"ownedTargetUnavailable\"}"); return }
+        let usesFullscreen = mode == "fullscreen"
+        var entered = false
+        if usesFullscreen {
+            let enterRequest = AXUIElementSetAttributeValue(target.window, "AXFullScreen" as CFString, kCFBooleanTrue)
+            for _ in 0..<80 {
+                if ownDocument(target.window, file), attribute(target.window, "AXFullScreen") as? Bool == true { entered = true; break }
+                try await Task.sleep(for: .milliseconds(50))
+            }
+            guard enterRequest == .success, entered else { print("{\"passed\":false,\"reason\":\"fullscreenNotAvailable\"}"); return }
+            try await Task.sleep(for: .seconds(1))
+        }
         let selected = mode == "caret" ? NSRange(location: (initial as NSString).length, length: 0) : (initial as NSString).range(of: "ERSETZEN")
         var range = CFRange(location: selected.location, length: selected.length)
         let setRange = AXUIElementSetAttributeValue(target.element, kAXSelectedTextRangeAttribute as CFString, AXValueCreate(.cfRange, &range)!)
@@ -116,8 +129,17 @@ import VoiceWisprCore
         let currentApp = AXUIElementCreateApplication(app.processIdentifier)
         let currentWindow = attribute(currentApp, kAXFocusedWindowAttribute)
         let stillOwned = NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier && currentWindow.map { CFEqual($0, ready.window) } == true && ownDocument(ready.window, file)
-        var saved = false, closed = false, foregroundRestored = false
+        var saved = false, closed = false, foregroundRestored = false, exited = false
         if stillOwned && textMatches {
+            if usesFullscreen {
+                let exitRequest = AXUIElementSetAttributeValue(ready.window, "AXFullScreen" as CFString, kCFBooleanFalse)
+                for _ in 0..<80 {
+                    if ownDocument(ready.window, file), attribute(ready.window, "AXFullScreen") as? Bool == false { exited = exitRequest == .success; break }
+                    try await Task.sleep(for: .milliseconds(50))
+                }
+                try await Task.sleep(for: .seconds(1))
+                guard exited, ownDocument(ready.window, file), NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier else { print("{\"passed\":false,\"reason\":\"fullscreenExitNotVerified\"}");return }
+            }
             key(1, .maskCommand)
             for _ in 0..<100 {
                 if (try? String(contentsOf: file, encoding: .utf8)) == expected { saved = true; break }
@@ -138,13 +160,13 @@ import VoiceWisprCore
                 }
             }
         }
-        let report: [String: Any] = ["passed": (mode == "focus" ? outcome.status == .notAttempted && sameWindowFocusChanged : outcome.status == .confirmed) && textMatches && caretMatches && equal && saved && closed && foregroundRestored,
-            "mode": mode, "sameWindowFocusChanged": sameWindowFocusChanged, "insertionUTF16Length": (insertion as NSString).length,
+        let report: [String: Any] = ["passed": (mode == "focus" ? outcome.status == .notAttempted && sameWindowFocusChanged : outcome.status == .confirmed) && textMatches && caretMatches && equal && saved && closed && foregroundRestored && (!usesFullscreen || (entered && exited)),
+            "mode": mode, "fullscreenChecked": usesFullscreen, "fullscreenEntered": usesFullscreen ? entered as Any : NSNull(), "fullscreenExited": usesFullscreen ? exited as Any : NSNull(), "modifiersAfterCleanup": CGEventSource.flagsState(.hidSystemState).rawValue, "sameWindowFocusChanged": sameWindowFocusChanged, "insertionUTF16Length": (insertion as NSString).length,
             "status": outcome.status.rawValue, "textMatches": textMatches, "caretMatches": caretMatches,
             "clipboardMaterialized": before != nil, "clipboardByteEqual": equal, "clipboardContentsLogged": false,
             "savedOwnFixture": saved, "closedOwnWindow": closed, "foregroundAppRestored": foregroundRestored,
             "deliverySeconds": Double(duration.seconds) + Double(duration.attoseconds)/1e18,
-            "scope": "One real guarded TextEdit delivery case, no microphone/hotkey/ASR/full OS matrix"]
+            "scope": "One real guarded TextEdit Core insertion; optional fullscreen only. No microphone, physical hotkey, ASR, installed Pill/recovery UI, multi-display or full OS/p95 acceptance"]
         print(String(decoding: try JSONSerialization.data(withJSONObject: report, options: [.sortedKeys]), as: UTF8.self))
     }
 }
