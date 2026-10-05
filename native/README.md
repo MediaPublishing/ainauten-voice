@@ -22,6 +22,9 @@ swift package resolve
 swift build
 swift test                  # mit vollständigem Xcode/XCTest
 python3 scripts/portable-checks.py  # dieselben Contract-Cases auf CLT-only Macs
+python3 scripts/check-download-transport.py  # echte Downloads kleiner Loopback-Fixtures
+python3 scripts/check-cloud-transport.py  # optionale Text-Cloud gegen lokalen Mockserver
+python3 scripts/check-textedit-delivery.py --include-fullscreen  # eigene TextEdit-Dokumente, bestehende AX-Freigabe
 python3 scripts/package.py --install
 swift run -c release VoiceWisprProbe format-cases docs/fixtures/formatting-contracts.json
 python3 scripts/human-fixtures.py  # öffentliche CC-BY-4.0-Sprachaufnahmen
