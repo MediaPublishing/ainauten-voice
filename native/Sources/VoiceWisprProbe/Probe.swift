@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 import CryptoKit
 import FluidAudio
 import VoiceWisprCore
@@ -24,6 +25,27 @@ private final class CheckpointMeasurements: @unchecked Sendable {
     static func main() async {
         do {
             let arguments = CommandLine.arguments
+            if arguments.dropFirst().first == "camera-check" {
+                // Explicit local hardware check. No requestAccess, file/video
+                // export, model, transcript, history or target-app insertion.
+                guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { throw VoiceError.message("Camera permission is not already authorized") }
+                let camera = CameraCapture(), earlyID = UUID()
+                let early = Task { try await camera.start(sessionID: earlyID) { _ in } }
+                try await Task.sleep(for: .milliseconds(1))
+                let earlyFrames = await camera.stop(sessionID: earlyID)
+                var cancelled = false
+                do { try await early.value } catch is CancellationError { cancelled = true }
+                let id = UUID(), start = ProcessInfo.processInfo.systemUptime
+                try await camera.start(sessionID: id) { _ in }
+                let ready = ProcessInfo.processInfo.systemUptime
+                try await Task.sleep(for: .seconds(2))
+                let frames = await camera.stop(sessionID: id)
+                guard frames.count >= 8, !camera.isRunning else { throw VoiceError.message("Camera did not return enough frames or did not stop") }
+                try emit(["authorized": true, "earlyCancelled": cancelled, "earlyFrames": earlyFrames.count,
+                    "frames": frames.count, "startupSeconds": ready - start, "stopped": !camera.isRunning,
+                    "audio": false, "savedImages": false, "transcription": false])
+                return
+            }
             if arguments.dropFirst().first == "lip-video", arguments.count == 5 {
                 guard let language = LipReadingLanguage(rawValue: arguments[2]) else { throw VoiceError.message("Use en or de") }
                 let data = try Data(contentsOf: URL(fileURLWithPath: arguments[3]))

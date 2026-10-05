@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>AInautenReportDeliveryEnabled</key>
+	<false/>
 	<key>CFBundleDisplayName</key>
 	<string>AInauten Voice</string>
 	<key>CFBundleExecutable</key>
@@ -15,40 +17,38 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.2</string>
+	<string>0.1.3</string>
 	<key>CFBundleVersion</key>
-	<string>6</string>
+	<string>7</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Die optionale Lippenlesen-Beta nutzt deine Kamera nur während einer bewusst gestarteten Aufnahme. Bilder werden lokal verarbeitet und nicht dauerhaft gespeichert.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>AInauten Voice nimmt deine Stimme nur während eines gestarteten Diktats auf. Audio wird lokal verarbeitet und nicht dauerhaft gespeichert.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Die optionale Lippenlesen-Beta nutzt deine Kamera nur während einer bewusst gestarteten Aufnahme. Bilder werden lokal verarbeitet und nicht dauerhaft gespeichert.</string>
-	<key>SUFeedURL</key>
-	<string>https://voice.ainauten.com/updates/appcast.xml</string>
-	<key>SUEnableAutomaticChecks</key>
+	<key>SUAllowsAutomaticUpdates</key>
 	<true/>
 	<key>SUAutomaticallyUpdate</key>
 	<true/>
-	<key>SUAllowsAutomaticUpdates</key>
+	<key>SUEnableAutomaticChecks</key>
 	<true/>
-	<key>SUVerifyUpdateBeforeExtraction</key>
-	<true/>
-	<key>SURequireSignedFeed</key>
-	<true/>
-	<key>SUSignedFeedFailureExpirationInterval</key>
-	<integer>0</integer>
 	<key>SUEnableSystemProfiling</key>
 	<false/>
+	<key>SUFeedURL</key>
+	<string>https://voice.ainauten.com/updates/appcast.xml</string>
+	<key>SURequireSignedFeed</key>
+	<true/>
 	<key>SUScheduledCheckInterval</key>
 	<integer>86400</integer>
-	<key>AInautenReportDeliveryEnabled</key>
-	<false/>
+	<key>SUSignedFeedFailureExpirationInterval</key>
+	<integer>0</integer>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 </dict>
 </plist>

@@ -105,7 +105,8 @@ extension AppModel {
                     }
                 }
                 guard sessionID == id, state == .recording else { return }
-                captureReady = true; status = "Lautlos sprechen · höchstens 30 Sekunden"
+                captureReady = true; startedAt = ProcessInfo.processInfo.systemUptime
+                status = "Lautlos sprechen · höchstens 30 Sekunden"
                 clock = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
                     Task { @MainActor in
                         guard let self, self.sessionID == id, self.state == .recording else { return }
@@ -113,7 +114,12 @@ extension AppModel {
                         if self.elapsed >= 30 { self.stop() }
                     }
                 }
-            } catch { if sessionID == id { fail(error.localizedDescription, title: "Kamera prüfen") } }
+            } catch is CancellationError {
+                // A normal release can invalidate a camera start still queued by
+                // AVFoundation. Stop owns that session; it is not a camera fault.
+            } catch {
+                if sessionID == id, state == .recording { fail(error.localizedDescription, title: "Kamera prüfen") }
+            }
         }
     }
     private func stopLipReading(_ id: UUID) {
@@ -126,6 +132,15 @@ extension AppModel {
             let frames = await camera.stop(sessionID: id)
             await initialization?.value
             guard sessionID == id, !Task.isCancelled else { return }
+            guard frames.count >= 8 else {
+                // Keep the warm model for the next attempt. A tap/release during
+                // startup has no video to recognize and must not open an error.
+                sessionID = nil; focus = nil; historyContext = nil; lipSession = false
+                lipHotkey.reset(); lipHotkey.cancellationEnabled = false
+                operation = nil; state = .paused; level = 0
+                lipStatus = "Aufnahme zu kurz. Halte das Lippenlesen-Kürzel beim lautlosen Sprechen gedrückt."
+                updateHotkey(); return
+            }
             do {
                 let original = try await lipRuntime.transcribe(frames, session: id)
                 guard sessionID == id, !Task.isCancelled else { return }
