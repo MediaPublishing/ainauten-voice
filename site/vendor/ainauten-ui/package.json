@@ -1,0 +1,17 @@
+{
+  "name": "@ainauten/ui",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "exports": {
+    "./Header": "./src/Header.tsx",
+    "./Footer": "./src/Footer.tsx",
+    "./shell.css": "./src/shell.css"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "dependencies": {
+    "lucide-react": "0.469.0"
+  }
+}

@@ -1,13 +1,23 @@
 # AInauten Voice Downloadseite
 
-Statische, eigenständige Seite ohne Tracking, externe Fonts oder Runtime-Abhängigkeiten. Brand-Herkunft und Rechtslinks aus dem bestehenden AInauten-Websystem. Screenshots stammen aus der nativen DEBUG-Vorschau, ausschließlich Beispieldaten. Der neue violette Einstieg zeigt das eigene Promo-Video mit lokaler Wiedergabe, deutschen Untertiteln. YouTube bleibt ein Link; es wird kein fremder Player automatisch geladen.
+Statische Downloadseite ohne Tracking, externe Fonts oder fremde Scripts. Header, Footer, ThemeToggle und Tool-Registry stammen aus `@ainauten/ui`; Farben und Maße aus `@ainauten/tokens`. Die unveränderten gemeinsamen Komponenten liegen als festgehaltener Quellstand unter `vendor/`, damit auch das öffentliche Repository unabhängig vom internen Package-Repository gebaut werden kann. Herkunft, Revision und Prüfsummen stehen in `vendor/upstream.json`. Anpassungen gehören in `shell/`; Updates der gemeinsamen Komponenten immer aus einem geprüften, committed Package-Stand übernehmen.
 
-Lokal: npm run dev:local → http://127.0.0.1:8916
+React, Lucide und die gemeinsamen Komponenten werden lokal gebündelt. Header und Footer werden beim Build außerdem als HTML gerendert, sodass ihre Links ohne JavaScript sichtbar bleiben. Das kleine lokale Theme-Script setzt die gespeicherte Auswahl bzw. den Systemmodus vor der ersten Darstellung. Inter wird mit eigener Lizenzdatei lokal ausgeliefert.
+
+Screenshots stammen aus der nativen DEBUG-Vorschau, ausschließlich Beispieldaten. Der violette Einstieg zeigt das eigene Promo-Video mit lokaler Wiedergabe und deutschen Untertiteln. YouTube bleibt ein Link; es wird kein fremder Player automatisch geladen.
+
+Abhängigkeiten: npm ci --ignore-scripts
+Shell bauen: npm run build:shell
+Quellvorschau: npm run dev:local → http://127.0.0.1:8916 (ohne Downloadpaket)
+Vollständige Vorschau nach dem Paket-Build: npm run dev:preview → http://127.0.0.1:8916
 Prüfen: npm run check
 Gebautes Paket prüfen: python3 check.py --root dist
 Paket vorbereiten: python3 build.py --package ../native/artifacts/ZEITSTEMPEL --promo-video /absoluter/pfad/AInauten-Voice_Promo_DE_16x9.mp4
+Nur Website aktualisieren: python3 build.py --existing-site /absoluter/pfad/zum/bisherigen/dist
 Deploy: wrangler pages deploy dist --project-name ainauten-voice --branch main
 Ziel: https://voice.ainauten.com/
+
+`build.py` baut und prüft die gemeinsame Shell vor dem Kopieren. Ein bestehender signierter Updatekanal muss mit `--updates` erhalten bleiben. Den Download bei einer reinen Website-Änderung aus dem bereits veröffentlichten Paket übernehmen; dadurch wird keine neue App-Version veröffentlicht.
 
 DMG und Prüfsummen werden beim Build in dist/downloads eingefügt und nicht ins Quell-Repository committed. Das ausdrücklich bereitgestellte MP4 wird unverändert nach dist/assets/video/ kopiert, SHA256/Größe in media.json erfasst. Keine Videodatei in Git. Für die lokale Vorschau das MP4 nach assets/video/ainauten-voice-promo-de.mp4 kopieren (ignoriert); Originalquelle hier: ../../voicedock-promo-video/out/AInauten-Voice_Promo_DE_16x9.mp4. Poster aus Frame 9,4 s, Sprecher-Untertitel nach der überprüften lokalen vo-times.js; beides getrackt. Herkunft/Rechte im Medienprojekt research/assets-and-rights.md, eigene Marke/Film/Illustrationen/Musik. Der Film und die App-Ansichten zeigen ausdrücklich Beispieldaten.
 

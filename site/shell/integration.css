@@ -1,0 +1,32 @@
+/* Reset only the shared islands; the product page keeps its own layout. */
+:is(#ainauten-header, #ainauten-footer) { display: contents; }
+:is(#ainauten-header, #ainauten-footer) * { border-style: solid; border-width: 0; }
+:is(#ainauten-header, #ainauten-footer) :is(h3, h4, p, ul) { margin: 0; }
+:is(#ainauten-header, #ainauten-footer) ul { list-style: none; padding: 0; }
+:is(#ainauten-header, #ainauten-footer) p { max-width: none; line-height: 1.55; }
+:is(#ainauten-header, #ainauten-footer) nav { display: block; }
+:is(#ainauten-header, #ainauten-footer) a { text-decoration: none; }
+:is(#ainauten-header, #ainauten-footer) button { font-family: inherit; background: transparent; cursor: pointer; }
+:is(#ainauten-header, #ainauten-footer) img { display: block; }
+:is(#ainauten-header, #ainauten-footer) :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+#ainauten-header .ainauten-shell-header { backdrop-filter: blur(10px); }
+#ainauten-header nav[aria-label="AInauten Apps"] { max-height: calc(100dvh - 56px); overflow-y: auto; overscroll-behavior: contain; }
+.voice-shell-download { display: inline-flex; align-items: center; justify-content: center; height: var(--h-control); padding-inline: 12px; border-radius: var(--radius-lg); background: var(--accent-active-bg); color: var(--accent-active-fg); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.voice-shell-download:hover { background: var(--accent-active-hover-bg); }
+/* Keep the product support link reachable alongside the canonical footer. */
+.voice-project-links { padding-block: 20px; border-top: .5px solid var(--border); background: var(--bg-muted); font-size: 12px; color: var(--text-muted); }
+.voice-project-links .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; }
+.voice-project-links p { font-size: inherit; margin: 0; }
+.voice-project-links nav { gap: 20px; }
+.voice-project-links nav a { font-size: inherit; }
+
+/* Shared theme tokens also govern the product content, not just the shell. */
+.wrap { width: min(1056px, calc(100% - 48px)); }
+.button { background: var(--accent-active-bg); color: var(--accent-active-fg); }
+.button:hover { background: var(--accent-active-hover-bg); }
+.tabs button[aria-selected="true"] { background: var(--accent-active-bg); color: var(--accent-active-fg); }
+.hero-section { --ink: var(--ain-cosmic-purple); --paper: var(--ain-white); }
+.hero .button { background: var(--ain-white); color: var(--ain-cosmic-purple); }
+.hero .button:hover { background: var(--ain-star-white); }
+@media (max-width: 639px) { .wrap { width: calc(100% - 32px); } }
+@media (max-width: 420px) { .voice-shell-download { font-size: 12px; padding-inline: 9px; } }

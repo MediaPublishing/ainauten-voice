@@ -1,0 +1,221 @@
+/**
+ * AInauten Design Tokens - CSS Custom Properties
+ *
+ *
+ * CRITICAL: NO ORANGE (#f59e0b) - EVER!
+ * Use purple accent colors only.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* ========================================
+     BRAND COLORS
+     ======================================== */
+
+  /* Primary - Core brand identity */
+  --ain-primary-purple: #7B2FF7;
+  --ain-white: #FFFFFF;
+
+  /* Accent - Supporting colors */
+  --ain-deep-space: #1A1A2E;
+  --ain-cosmic-purple: #4A1D96;
+  --ain-star-white: #F0F0FF;
+
+  /* Character Outlines (Nauti) */
+  --ain-outline: #2B1A5C;
+  --ain-visor: #33205C;
+  --ain-suit: #FDFCFD;
+  --ain-shadow-light: #B7B0C5;
+  --ain-shadow-dark: #9D96B1;
+
+  /* ========================================
+     LIGHT THEME (Default)
+     ======================================== */
+
+  /* Background */
+  --bg-primary: #f7f7f4;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f0ec;
+  --bg-muted: #f1f0ec;
+  --bg-sidebar: #f1f0ec;
+
+  /* Text */
+  --text-primary: #15131a;
+  --text-secondary: #45414e;
+  --text-muted: #6b6770;
+
+  /* Accent */
+  --accent: #35215c;
+  --accent-light: #efeaf6;
+  --accent-hover: #2a1a4a;
+  --accent-bright: #7B2FF7;
+  --accent-active-bg: #35215c;
+  --accent-active-fg: #ffffff;
+
+  /* Border */
+  --border: #e7e5e0;
+  --border-strong: #dcd9d2;
+  --border-hover: #dcd9d2;
+
+  /* Controls */
+  --h-control: 36px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+  /* ========================================
+     SEMANTIC COLORS
+     ======================================== */
+
+  /* Success */
+  --success: #10b981;
+  --success-light: #d1fae5;
+
+  /* Warning - Use sparingly, NOT for accents */
+  --warning: #eab308;
+  --warning-light: #fef9c3;
+
+  /* Error */
+  --error: #ef4444;
+  --error-light: #fee2e2;
+
+  /* Info */
+  --info: #3b82f6;
+  --info-light: #dbeafe;
+
+  /* ========================================
+     AI SERVICE COLORS
+     ======================================== */
+
+  --ai-chatgpt: #10a37f;
+  --ai-claude: #d97706;
+  --ai-gemini: #4285f4;
+  --ai-grok: #111111;
+  --ai-perplexity: #20808d;
+
+  /* ========================================
+     CATEGORY COLORS (News)
+     ======================================== */
+
+  --cat-releases: #10b981;
+  --cat-research: #3b82f6;
+  --cat-business: #8b5cf6;  /* Purple, NOT orange! */
+  --cat-tools: #8b5cf6;
+  --cat-german: #ef4444;
+}
+
+/* ========================================
+   DARK THEME
+   ======================================== */
+
+.dark {
+  /* Background */
+  --bg-primary: #14121b;
+  --bg-secondary: #1a1722;
+  --bg-card: #201c2b;
+  --bg-card-hover: #241f33;
+  --bg-muted: #17141f;
+  --bg-sidebar: #17141f;
+
+  /* Text - Higher contrast for readability */
+  --text-primary: #f3f1f8;
+  --text-secondary: #b6b1c4;
+  --text-muted: #8a8597;
+
+  /* Accent - Muted purple, still on-brand but not neon */
+  --accent: #a892e0;
+  --accent-light: #241f33;
+  --accent-hover: #c9b8f0;
+  --accent-bright: #a892e0;
+  --accent-active-bg: #3f2d6b;
+  --accent-active-fg: #ffffff;
+
+  /* Border - More visible */
+  --border: #2b2837;
+  --border-strong: #332e42;
+  --border-hover: #332e42;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+
+  /* Semantic - Adjusted for dark mode */
+  --success: #34d399;
+  --success-light: rgba(16, 185, 129, 0.15);
+  --warning-light: rgba(234, 179, 8, 0.15);
+  --error-light: rgba(239, 68, 68, 0.15);
+  --info-light: rgba(59, 130, 246, 0.15);
+}
+
+/* ========================================
+   TYPOGRAPHY
+   ======================================== */
+
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Fira Code', monospace;
+  --font-display: var(--font-sans);
+
+  /* Font sizes */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
+
+  /* Line heights */
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+}
+
+/* ========================================
+   SPACING
+   ======================================== */
+
+:root {
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+}
+
+/* ========================================
+   BORDER RADIUS
+   ======================================== */
+
+:root {
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+}
+
+/* ========================================
+   TRANSITIONS
+   ======================================== */
+
+:root {
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+}

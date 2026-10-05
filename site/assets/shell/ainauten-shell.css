@@ -1,0 +1,289 @@
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url("/assets/fonts/inter-latin-variable.woff2") format("woff2")}
+/**
+ * AInauten Design Tokens - CSS Custom Properties
+ *
+ *
+ * CRITICAL: NO ORANGE (#f59e0b) - EVER!
+ * Use purple accent colors only.
+ */
+
+
+:root {
+  /* ========================================
+     BRAND COLORS
+     ======================================== */
+
+  /* Primary - Core brand identity */
+  --ain-primary-purple: #7B2FF7;
+  --ain-white: #FFFFFF;
+
+  /* Accent - Supporting colors */
+  --ain-deep-space: #1A1A2E;
+  --ain-cosmic-purple: #4A1D96;
+  --ain-star-white: #F0F0FF;
+
+  /* Character Outlines (Nauti) */
+  --ain-outline: #2B1A5C;
+  --ain-visor: #33205C;
+  --ain-suit: #FDFCFD;
+  --ain-shadow-light: #B7B0C5;
+  --ain-shadow-dark: #9D96B1;
+
+  /* ========================================
+     LIGHT THEME (Default)
+     ======================================== */
+
+  /* Background */
+  --bg-primary: #f7f7f4;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f0ec;
+  --bg-muted: #f1f0ec;
+  --bg-sidebar: #f1f0ec;
+
+  /* Text */
+  --text-primary: #15131a;
+  --text-secondary: #45414e;
+  --text-muted: #6b6770;
+
+  /* Accent */
+  --accent: #35215c;
+  --accent-light: #efeaf6;
+  --accent-hover: #2a1a4a;
+  --accent-bright: #7B2FF7;
+  --accent-active-bg: #35215c;
+  --accent-active-fg: #ffffff;
+
+  /* Border */
+  --border: #e7e5e0;
+  --border-strong: #dcd9d2;
+  --border-hover: #dcd9d2;
+
+  /* Controls */
+  --h-control: 36px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+  /* ========================================
+     SEMANTIC COLORS
+     ======================================== */
+
+  /* Success */
+  --success: #10b981;
+  --success-light: #d1fae5;
+
+  /* Warning - Use sparingly, NOT for accents */
+  --warning: #eab308;
+  --warning-light: #fef9c3;
+
+  /* Error */
+  --error: #ef4444;
+  --error-light: #fee2e2;
+
+  /* Info */
+  --info: #3b82f6;
+  --info-light: #dbeafe;
+
+  /* ========================================
+     AI SERVICE COLORS
+     ======================================== */
+
+  --ai-chatgpt: #10a37f;
+  --ai-claude: #d97706;
+  --ai-gemini: #4285f4;
+  --ai-grok: #111111;
+  --ai-perplexity: #20808d;
+
+  /* ========================================
+     CATEGORY COLORS (News)
+     ======================================== */
+
+  --cat-releases: #10b981;
+  --cat-research: #3b82f6;
+  --cat-business: #8b5cf6;  /* Purple, NOT orange! */
+  --cat-tools: #8b5cf6;
+  --cat-german: #ef4444;
+}
+
+/* ========================================
+   DARK THEME
+   ======================================== */
+
+.dark {
+  /* Background */
+  --bg-primary: #14121b;
+  --bg-secondary: #1a1722;
+  --bg-card: #201c2b;
+  --bg-card-hover: #241f33;
+  --bg-muted: #17141f;
+  --bg-sidebar: #17141f;
+
+  /* Text - Higher contrast for readability */
+  --text-primary: #f3f1f8;
+  --text-secondary: #b6b1c4;
+  --text-muted: #8a8597;
+
+  /* Accent - Muted purple, still on-brand but not neon */
+  --accent: #a892e0;
+  --accent-light: #241f33;
+  --accent-hover: #c9b8f0;
+  --accent-bright: #a892e0;
+  --accent-active-bg: #3f2d6b;
+  --accent-active-fg: #ffffff;
+
+  /* Border - More visible */
+  --border: #2b2837;
+  --border-strong: #332e42;
+  --border-hover: #332e42;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+
+  /* Semantic - Adjusted for dark mode */
+  --success: #34d399;
+  --success-light: rgba(16, 185, 129, 0.15);
+  --warning-light: rgba(234, 179, 8, 0.15);
+  --error-light: rgba(239, 68, 68, 0.15);
+  --info-light: rgba(59, 130, 246, 0.15);
+}
+
+/* ========================================
+   TYPOGRAPHY
+   ======================================== */
+
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Fira Code', monospace;
+  --font-display: var(--font-sans);
+
+  /* Font sizes */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
+
+  /* Line heights */
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+}
+
+/* ========================================
+   SPACING
+   ======================================== */
+
+:root {
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+}
+
+/* ========================================
+   BORDER RADIUS
+   ======================================== */
+
+:root {
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+}
+
+/* ========================================
+   TRANSITIONS
+   ======================================== */
+
+:root {
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+}
+.ainauten-shell-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.ainauten-shell-container {
+  width: 100%;
+  max-width: 1104px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+
+@media (min-width: 640px) {
+  .ainauten-shell-container {
+    padding-inline: 24px;
+  }
+}
+
+.ainauten-shell-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.ainauten-footer-link {
+  white-space: normal;
+}
+
+@media (min-width: 640px) {
+  .ainauten-footer-link {
+    white-space: nowrap;
+  }
+}
+/* Reset only the shared islands; the product page keeps its own layout. */
+:is(#ainauten-header, #ainauten-footer) { display: contents; }
+:is(#ainauten-header, #ainauten-footer) * { border-style: solid; border-width: 0; }
+:is(#ainauten-header, #ainauten-footer) :is(h3, h4, p, ul) { margin: 0; }
+:is(#ainauten-header, #ainauten-footer) ul { list-style: none; padding: 0; }
+:is(#ainauten-header, #ainauten-footer) p { max-width: none; line-height: 1.55; }
+:is(#ainauten-header, #ainauten-footer) nav { display: block; }
+:is(#ainauten-header, #ainauten-footer) a { text-decoration: none; }
+:is(#ainauten-header, #ainauten-footer) button { font-family: inherit; background: transparent; cursor: pointer; }
+:is(#ainauten-header, #ainauten-footer) img { display: block; }
+:is(#ainauten-header, #ainauten-footer) :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+#ainauten-header .ainauten-shell-header { backdrop-filter: blur(10px); }
+#ainauten-header nav[aria-label="AInauten Apps"] { max-height: calc(100dvh - 56px); overflow-y: auto; overscroll-behavior: contain; }
+.voice-shell-download { display: inline-flex; align-items: center; justify-content: center; height: var(--h-control); padding-inline: 12px; border-radius: var(--radius-lg); background: var(--accent-active-bg); color: var(--accent-active-fg); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.voice-shell-download:hover { background: var(--accent-active-hover-bg); }
+/* Keep the product support link reachable alongside the canonical footer. */
+.voice-project-links { padding-block: 20px; border-top: .5px solid var(--border); background: var(--bg-muted); font-size: 12px; color: var(--text-muted); }
+.voice-project-links .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; }
+.voice-project-links p { font-size: inherit; margin: 0; }
+.voice-project-links nav { gap: 20px; }
+.voice-project-links nav a { font-size: inherit; }
+
+/* Shared theme tokens also govern the product content, not just the shell. */
+.wrap { width: min(1056px, calc(100% - 48px)); }
+.button { background: var(--accent-active-bg); color: var(--accent-active-fg); }
+.button:hover { background: var(--accent-active-hover-bg); }
+.tabs button[aria-selected="true"] { background: var(--accent-active-bg); color: var(--accent-active-fg); }
+.hero-section { --ink: var(--ain-cosmic-purple); --paper: var(--ain-white); }
+.hero .button { background: var(--ain-white); color: var(--ain-cosmic-purple); }
+.hero .button:hover { background: var(--ain-star-white); }
+@media (max-width: 639px) { .wrap { width: calc(100% - 32px); } }
+@media (max-width: 420px) { .voice-shell-download { font-size: 12px; padding-inline: 9px; } }
+:is(#ainauten-header,#ainauten-footer) .absolute{position:absolute}:is(#ainauten-header,#ainauten-footer) .relative{position:relative}:is(#ainauten-header,#ainauten-footer) .sticky{position:sticky}:is(#ainauten-header,#ainauten-footer) .right-0{right:0}:is(#ainauten-header,#ainauten-footer) .top-0{top:0}:is(#ainauten-header,#ainauten-footer) .top-\[calc\(100\%\+8px\)\]{top:calc(100% + 8px)}:is(#ainauten-header,#ainauten-footer) .z-50{z-index:50}:is(#ainauten-header,#ainauten-footer) .col-span-2{grid-column:span 2/span 2}:is(#ainauten-header,#ainauten-footer) .mx-auto{margin-left:auto;margin-right:auto}:is(#ainauten-header,#ainauten-footer) .mb-2{margin-bottom:.5rem}:is(#ainauten-header,#ainauten-footer) .mb-3{margin-bottom:.75rem}:is(#ainauten-header,#ainauten-footer) .mb-8{margin-bottom:2rem}:is(#ainauten-header,#ainauten-footer) .mt-8{margin-top:2rem}:is(#ainauten-header,#ainauten-footer) .box-border{box-sizing:border-box}:is(#ainauten-header,#ainauten-footer) .flex{display:flex}:is(#ainauten-header,#ainauten-footer) .inline-flex{display:inline-flex}:is(#ainauten-header,#ainauten-footer) .grid{display:grid}:is(#ainauten-header,#ainauten-footer) .hidden{display:none}:is(#ainauten-header,#ainauten-footer) .h-14{height:3.5rem}:is(#ainauten-header,#ainauten-footer) .h-3{height:.75rem}:is(#ainauten-header,#ainauten-footer) .h-4{height:1rem}:is(#ainauten-header,#ainauten-footer) .h-5{height:1.25rem}:is(#ainauten-header,#ainauten-footer) .h-7{height:1.75rem}:is(#ainauten-header,#ainauten-footer) .h-8{height:2rem}:is(#ainauten-header,#ainauten-footer) .h-\[var\(--h-control\)\]{height:var(--h-control)}:is(#ainauten-header,#ainauten-footer) .w-3{width:.75rem}:is(#ainauten-header,#ainauten-footer) .w-4{width:1rem}:is(#ainauten-header,#ainauten-footer) .w-5{width:1.25rem}:is(#ainauten-header,#ainauten-footer) .w-7{width:1.75rem}:is(#ainauten-header,#ainauten-footer) .w-8{width:2rem}:is(#ainauten-header,#ainauten-footer) .w-\[min\(760px\2c calc\(100vw-32px\)\)\]{width:min(760px,calc(100vw - 32px))}:is(#ainauten-header,#ainauten-footer) .w-\[var\(--h-control\)\]{width:var(--h-control)}:is(#ainauten-header,#ainauten-footer) .w-full{width:100%}:is(#ainauten-header,#ainauten-footer) .min-w-0{min-width:0}:is(#ainauten-header,#ainauten-footer) .min-w-\[var\(--h-control\)\]{min-width:var(--h-control)}:is(#ainauten-header,#ainauten-footer) .max-w-\[1104px\]{max-width:1104px}:is(#ainauten-header,#ainauten-footer) .flex-1{flex:1 1 0%}:is(#ainauten-header,#ainauten-footer) .shrink-0{flex-shrink:0}:is(#ainauten-header,#ainauten-footer) .grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}:is(#ainauten-header,#ainauten-footer) .flex-col{flex-direction:column}:is(#ainauten-header,#ainauten-footer) .place-items-center{place-items:center}:is(#ainauten-header,#ainauten-footer) .items-center{align-items:center}:is(#ainauten-header,#ainauten-footer) .justify-center{justify-content:center}:is(#ainauten-header,#ainauten-footer) .justify-between{justify-content:space-between}:is(#ainauten-header,#ainauten-footer) .gap-1{gap:.25rem}:is(#ainauten-header,#ainauten-footer) .gap-1\.5{gap:.375rem}:is(#ainauten-header,#ainauten-footer) .gap-2{gap:.5rem}:is(#ainauten-header,#ainauten-footer) .gap-3{gap:.75rem}:is(#ainauten-header,#ainauten-footer) .gap-4{gap:1rem}:is(#ainauten-header,#ainauten-footer) .gap-8{gap:2rem}:is(#ainauten-header,#ainauten-footer) :is(.space-y-2>:not([hidden])~:not([hidden])){--tw-space-y-reverse:0;margin-top:calc(.5rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.5rem*var(--tw-space-y-reverse))}:is(#ainauten-header,#ainauten-footer) .overflow-hidden{overflow:hidden}:is(#ainauten-header,#ainauten-footer) .whitespace-normal{white-space:normal}:is(#ainauten-header,#ainauten-footer) .rounded-full{border-radius:9999px}:is(#ainauten-header,#ainauten-footer) .rounded-lg{border-radius:.5rem}:is(#ainauten-header,#ainauten-footer) .rounded-xl{border-radius:.75rem}:is(#ainauten-header,#ainauten-footer) .border{border-width:1px}:is(#ainauten-header,#ainauten-footer) .border-b{border-bottom-width:1px}:is(#ainauten-header,#ainauten-footer) .border-t{border-top-width:1px}:is(#ainauten-header,#ainauten-footer) .border-\[var\(--border\)\]{border-color:var(--border)}:is(#ainauten-header,#ainauten-footer) .border-\[var\(--border-strong\)\]{border-color:var(--border-strong)}:is(#ainauten-header,#ainauten-footer) .bg-\[var\(--accent-active-bg\)\]{background-color:var(--accent-active-bg)}:is(#ainauten-header,#ainauten-footer) .bg-\[var\(--bg-card\)\]{background-color:var(--bg-card)}:is(#ainauten-header,#ainauten-footer) .bg-\[var\(--bg-muted\)\]{background-color:var(--bg-muted)}:is(#ainauten-header,#ainauten-footer) .bg-\[var\(--bg-secondary\)\]{background-color:var(--bg-secondary)}:is(#ainauten-header,#ainauten-footer) .object-contain{-o-object-fit:contain;object-fit:contain}:is(#ainauten-header,#ainauten-footer) .p-4{padding:1rem}:is(#ainauten-header,#ainauten-footer) .p-6{padding:1.5rem}:is(#ainauten-header,#ainauten-footer) .px-2{padding-left:.5rem;padding-right:.5rem}:is(#ainauten-header,#ainauten-footer) .px-3{padding-left:.75rem;padding-right:.75rem}:is(#ainauten-header,#ainauten-footer) .px-4{padding-left:1rem;padding-right:1rem}:is(#ainauten-header,#ainauten-footer) .px-5{padding-left:1.25rem;padding-right:1.25rem}:is(#ainauten-header,#ainauten-footer) .py-2{padding-top:.5rem;padding-bottom:.5rem}:is(#ainauten-header,#ainauten-footer) .py-2\.5{padding-top:.625rem;padding-bottom:.625rem}:is(#ainauten-header,#ainauten-footer) .py-4{padding-top:1rem;padding-bottom:1rem}:is(#ainauten-header,#ainauten-footer) .py-8{padding-top:2rem;padding-bottom:2rem}:is(#ainauten-header,#ainauten-footer) .pb-1{padding-bottom:.25rem}:is(#ainauten-header,#ainauten-footer) .pt-6{padding-top:1.5rem}:is(#ainauten-header,#ainauten-footer) .text-center{text-align:center}:is(#ainauten-header,#ainauten-footer) .font-sans{font-family:Inter,system-ui,sans-serif}:is(#ainauten-header,#ainauten-footer) .text-\[11px\]{font-size:11px}:is(#ainauten-header,#ainauten-footer) .text-lg{font-size:1.125rem;line-height:1.75rem}:is(#ainauten-header,#ainauten-footer) .text-sm{font-size:.875rem;line-height:1.25rem}:is(#ainauten-header,#ainauten-footer) .text-xs{font-size:.75rem;line-height:1rem}:is(#ainauten-header,#ainauten-footer) .font-bold{font-weight:700}:is(#ainauten-header,#ainauten-footer) .font-medium{font-weight:500}:is(#ainauten-header,#ainauten-footer) .font-semibold{font-weight:600}:is(#ainauten-header,#ainauten-footer) .uppercase{text-transform:uppercase}:is(#ainauten-header,#ainauten-footer) .leading-\[1\.15\]{line-height:1.15}:is(#ainauten-header,#ainauten-footer) .tracking-\[0\.07em\]{letter-spacing:.07em}:is(#ainauten-header,#ainauten-footer) .tracking-\[0\.13em\]{letter-spacing:.13em}:is(#ainauten-header,#ainauten-footer) .tracking-wider{letter-spacing:.05em}:is(#ainauten-header,#ainauten-footer) .text-\[var\(--accent\)\]{color:var(--accent)}:is(#ainauten-header,#ainauten-footer) .text-\[var\(--accent-active-fg\)\]{color:var(--accent-active-fg)}:is(#ainauten-header,#ainauten-footer) .text-\[var\(--text-muted\)\]{color:var(--text-muted)}:is(#ainauten-header,#ainauten-footer) .text-\[var\(--text-primary\)\]{color:var(--text-primary)}:is(#ainauten-header,#ainauten-footer) .text-\[var\(--text-secondary\)\]{color:var(--text-secondary)}:is(#ainauten-header,#ainauten-footer) .shadow-lg{--tw-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color),0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}:is(#ainauten-header,#ainauten-footer) .outline{outline-style:solid}:is(#ainauten-header,#ainauten-footer) .filter{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}:is(#ainauten-header,#ainauten-footer) .transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}:is(#ainauten-header,#ainauten-footer) .transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}:is(#ainauten-header,#ainauten-footer) .transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}:is(#ainauten-header,#ainauten-footer) .hover\:bg-\[var\(--accent-light\)\]:hover{background-color:var(--accent-light)}:is(#ainauten-header,#ainauten-footer) .hover\:text-\[var\(--accent\)\]:hover{color:var(--accent)}:is(#ainauten-header,#ainauten-footer) .hover\:text-\[var\(--text-primary\)\]:hover{color:var(--text-primary)}:is(#ainauten-header,#ainauten-footer) .hover\:opacity-90:hover{opacity:.9}@media (min-width:640px){:is(#ainauten-header,#ainauten-footer) .sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}:is(#ainauten-header,#ainauten-footer) .sm\:truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}:is(#ainauten-header,#ainauten-footer) .sm\:px-6{padding-left:1.5rem;padding-right:1.5rem}:is(#ainauten-header,#ainauten-footer) .sm\:text-sm{font-size:.875rem;line-height:1.25rem}:is(#ainauten-header,#ainauten-footer) .sm\:leading-normal{line-height:1.5}}@media (min-width:768px){:is(#ainauten-header,#ainauten-footer) .md\:col-span-2{grid-column:span 2/span 2}}@media (min-width:1024px){:is(#ainauten-header,#ainauten-footer) .lg\:block{display:block}:is(#ainauten-header,#ainauten-footer) .lg\:flex{display:flex}:is(#ainauten-header,#ainauten-footer) .lg\:hidden{display:none}:is(#ainauten-header,#ainauten-footer) .lg\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}:is(#ainauten-header,#ainauten-footer) .lg\:grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}}

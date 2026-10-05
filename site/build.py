@@ -11,10 +11,36 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser()
-parser.add_argument('--package', type=Path, required=True)
+input_group = parser.add_mutually_exclusive_group(required=True)
+input_group.add_argument('--package', type=Path)
+input_group.add_argument('--existing-site', type=Path, help='Refresh only frontend assets in an existing public site; preserve release, video, installation guide and update feed')
 parser.add_argument('--promo-video', type=Path, help='User-provided original MP4; never copied into Git')
 parser.add_argument('--updates', type=Path, help='Signed update directory prepared by native/scripts/package-update.py')
 args = parser.parse_args()
+subprocess.run(['node', str(root / 'scripts/build-shell.mjs')], cwd=root, check=True)
+subprocess.run(['node', str(root / 'scripts/check-shell.mjs')], cwd=root, check=True)
+if args.existing_site:
+    existing = args.existing_site.resolve()
+    dist = root / 'dist'
+    assert existing != dist, 'Existing site must be separate from the output'
+    release = json.loads((existing / 'downloads/release.json').read_text())
+    filename = release['filename']
+    assert Path(filename).name == filename, 'Invalid release filename'
+    assert hashlib.sha256((existing / 'downloads' / filename).read_bytes()).hexdigest() == release['sha256'], 'Existing release hash mismatch'
+    if dist.exists():
+        archived = root.parent / 'native/artifacts' / ('site-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
+        dist.rename(archived)
+    shutil.copytree(existing, dist)
+    for name in ['index.html', 'styles.css', 'app.js', '_headers', 'robots.txt', 'sitemap.xml']:
+        shutil.copy2(root / name, dist / name)
+    shutil.copytree(root / 'assets', dist / 'assets', dirs_exist_ok=True, ignore=shutil.ignore_patterns('*.mp4'))
+    style_version = hashlib.sha256((dist / 'styles.css').read_bytes()).hexdigest()[:12]
+    index = dist / 'index.html'
+    html = index.read_text()
+    assert 'href="/styles.css"' in html, 'Main stylesheet reference missing'
+    index.write_text(html.replace('href="/styles.css"', f'href="/styles.css?v={style_version}"'))
+    print(f'FRONTEND REFRESH PASS: release {release["version"]}, video, installation guide and update channel preserved')
+    raise SystemExit(0)
 package = args.package.resolve()
 promo = (args.promo_video or root / 'assets/video/ainauten-voice-promo-de.mp4').resolve()
 assert promo.is_file(), 'Provide the promo video with --promo-video'

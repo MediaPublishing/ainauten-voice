@@ -1,0 +1,15 @@
+{
+  "repository": "https://github.com/MediaPublishing/ainauten-packages",
+  "revision": "e6bfcd4aa1ad6f7ed35197574006002da62a5b42",
+  "source_sha256": {
+    "packages/ui/src/Header.tsx": "229d02cbd8f8e0c0c59fb9d4d1d07fe7b313a5ad93e6c45beedcd385c5360341",
+    "packages/ui/src/Footer.tsx": "0bfe0f90c4e18bea69c54b7a073bf42a49e46a67b3cbb002948f3f6244708351",
+    "packages/ui/src/ThemeToggle.tsx": "7191391191c7620fd40b475373719d17282af4adfc494552bc12629e7af33340",
+    "packages/ui/src/appRegistry.ts": "35a23517a85a9957988694a5b106fb1a8a6914594a0f33fe44f787c2b1623607",
+    "packages/ui/src/shellConstants.ts": "387b51bcce0575eebd00a1decd350b73f553036fce10d03db26ee2110a840a82",
+    "packages/ui/src/types.ts": "6db636747a587f4ffd68c0e829489a46ed7399ac14dc0c6d521a340e13d1f7b2",
+    "packages/ui/src/shell.css": "683ddfbb17367c3a2bd8e6b8563ee05c32bb9b118d889f73d6c767e9a4eb9747",
+    "packages/tokens/src/colors.css": "82d432a3816b9ebcdfc3f09eabf771ac5b39ae177813fb467ceae0538aba27a8"
+  },
+  "notes": "Pinned shared Header/Footer/ThemeToggle/registry and tokens. Token comments with local operator paths omitted. External font import replaced by a local font in the site build."
+}

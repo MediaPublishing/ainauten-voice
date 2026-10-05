@@ -13,6 +13,7 @@ models/
 native/.local/
 site/assets/video/*.mp4
 node_modules/
+site/.shell-build/
 __pycache__/
 .venv/
 venv/

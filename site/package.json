@@ -1,1 +1,24 @@
-{"name":"ainauten-voice-site","version":"0.1.1","private":true,"scripts":{"dev:local":"python3 -m http.server 8916 --bind 127.0.0.1","check":"python3 check.py"}}
+{
+  "name": "ainauten-voice-site",
+  "version": "0.1.1",
+  "private": true,
+  "scripts": {
+    "dev:local": "python3 -m http.server 8916 --bind 127.0.0.1",
+    "dev:preview": "python3 -m http.server 8916 --bind 127.0.0.1 --directory dist",
+    "check": "node scripts/check-shell.mjs && python3 check.py",
+    "build:shell": "node scripts/build-shell.mjs",
+    "check:shell": "node scripts/check-shell.mjs"
+  },
+  "type": "module",
+  "dependencies": {
+    "@ainauten/ui": "file:vendor/ainauten-ui",
+    "@ainauten/tokens": "file:vendor/ainauten-tokens",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "lucide-react": "0.469.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.27.3",
+    "tailwindcss": "3.4.19"
+  }
+}

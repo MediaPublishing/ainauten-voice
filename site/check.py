@@ -67,6 +67,7 @@ assert vtt.startswith('WEBVTT') and vtt.count('-->') == 9, 'Missing caption cues
 assert 'AInauten Voice' in vtt and 'Wispr Flow' in vtt
 assert "media-src 'self'" in (root / '_headers').read_text()
 readme = (source.parent / 'README.md').read_text()
-assert '[![AInauten Voice: Videovorschau' in readme and 'https://youtu.be/UBhxxBohiMU' in readme
-assert 'https://voice.ainauten.com/#video' in readme
+assert ('https://github.com/user-attachments/assets/' in readme or
+        ('[![AInauten Voice: Videovorschau' in readme and 'https://youtu.be/UBhxxBohiMU' in readme)), 'README video missing'
+assert 'https://voice.ainauten.com/' in readme, 'README homepage missing'
 print(f'SITE PASS: {len(page.refs)} links/assets, four screenshots, release {version}, local player/no autoplay, nine German captions, privacy/install information')

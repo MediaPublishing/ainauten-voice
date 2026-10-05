@@ -1,0 +1,35 @@
+.ainauten-shell-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.ainauten-shell-container {
+  width: 100%;
+  max-width: 1104px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+
+@media (min-width: 640px) {
+  .ainauten-shell-container {
+    padding-inline: 24px;
+  }
+}
+
+.ainauten-shell-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.ainauten-footer-link {
+  white-space: normal;
+}
+
+@media (min-width: 640px) {
+  .ainauten-footer-link {
+    white-space: nowrap;
+  }
+}
