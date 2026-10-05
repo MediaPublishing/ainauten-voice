@@ -14,7 +14,7 @@ Vor dem DMG-Bau werden die Bibliothekspfade des arm64-Laufzeitprogramms und sein
 
 ## Entwickeln
 
-Command Line Tools mit Swift 6.2+, Python 3 nur für den Paketbau. Endnutzer benötigen keine Entwicklungswerkzeuge und keinen separaten Server.
+Command Line Tools mit Swift 6.2+ oder passendes Xcode, Python 3 nur für den Paketbau. Für die normale Agent-Installation nutze die geprüfte Download-Beta gemäß [Installationsanleitung](../docs/agent-installation.md). Der Paketbau des optionalen Forschungs-Installers setzt derzeit zusätzlich uv 0.12.5 aus Homebrew voraus; `scripts/package.py` prüft den festen Paketpfad. Endnutzer benötigen keine Entwicklungswerkzeuge und keinen separaten Server.
 
 ```sh
 python3 scripts/bootstrap.py
@@ -41,19 +41,21 @@ python3 scripts/check-human-suite.py --manifest artifacts/fixtures/fleurs/balanc
 
 `bootstrap.py` prüft die festgelegte llama-XCFramework-Prüfsumme. `Package.resolved` bindet FluidAudio an den geprüften Commit. Modelle sind über ein mitgeliefertes Datei-/SHA256-Verzeichnis gebunden. Die lokale SwiftPM-Mirrorkonfiguration in `.swiftpm` ist nicht Teil des Quellcodes; sie vermeidet auf dem Referenzgerät einen unnötig großen vollständigen Upstream-Clone.
 
-Die lokalen Optimierungsfälle sind ausdrücklich synthetische Texte. Die öffentliche FLEURS-Auswahl verwendet einen festen Datenstand; Quell-/PCM-Prüfsummen und CC-BY-4.0-Provenance liegen bei den ignorierten Fixtures. Zehn gemischte Fälle sind zusammengesetzte Lesetexte verschiedener Sprecher, keine spontanen Sprachwechsel. `--settings-dictionary` liest das lokale Wörterbuch ohne Schlüsselbundzugriff und unterdrückt alle Inhaltsfelder im Probe-Receipt. `format-cases` protokolliert nur solche deklarierten Fixtures; der aktivierte Verlauf speichert Diktattexte ausschließlich lokal. Die lokale Optimierung ist auf die Wortfolge des aktuellen Abschnitts beschränkt. Bei Diktaten über zehn Minuten prüft der abschließende Abgleich 60-Sekunden-Blöcke mit acht Sekunden akustischem Kontext. Details und weiterhin offene praktische Abnahme stehen im Prüfbericht.
+Die lokalen Optimierungsfälle sind ausdrücklich synthetische Texte. Die öffentliche FLEURS-Auswahl verwendet einen festen Datenstand; Quell-/PCM-Prüfsummen und CC-BY-4.0-Provenance liegen bei den ignorierten Fixtures. Zehn gemischte Fälle sind zusammengesetzte Lesetexte verschiedener Sprecher, keine spontanen Sprachwechsel. `--settings-dictionary` liest das lokale Wörterbuch ohne Schlüsselbundzugriff und unterdrückt alle Inhaltsfelder im Probe-Receipt. `format-cases` protokolliert nur solche deklarierten Fixtures; die App speichert keine Inhalte in Diagnoseprotokollen. Der optionale lokale Textverlauf ist davon getrennt. Die lokale Glättung ist auf die Wortfolge des aktuellen Abschnitts beschränkt. Bei Diktaten über zehn Minuten prüft der abschließende Abgleich 60-Sekunden-Blöcke mit acht Sekunden akustischem Kontext. Details und weiterhin offene praktische Abnahme stehen im Prüfbericht.
+
+Bei `SwiftUIMacros.StateMacro`-Fehlern in neuen Command Line Tools ist die passende SwiftUI-Macro-Laufzeit erforderlich. Auf dem Referenzsystem wurde der Release-Build mit `swift build --build-system native --sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -c release --jobs 4` geprüft. Nutze nur ein bereits vorhandenes, kompatibles SDK oder vollständiges passendes Xcode; ändere keine globale Toolchain-Konfiguration für eine Nutzerinstallation. Dieser Build-Befehl allein erstellt noch kein installierbares App-Bundle.
 
 ## Sicherheit und Zustellung
 
 Einfügung nur in unveränderte, lesbare AX-Ziele. Bestätigung verlangt kompletten Text-/Cursor-Readback, keine bloße Tastensimulation. Bei Zweifel vollständiges Ergebnisfenster; keine automatische Wiederholung. Zwischenablage wird byteweise gesichert, bei unlesbaren/über 64 MB großen Inhalten nicht verändert; ein neuer Benutzer-Copy gewinnt. macOS stellt keine atomare Fokus-und-Paste-Operation bereit. Verzögerte Einfügeziele können nach dem 1,5-Sekunden-Fenster unklar bleiben.
 
-Einstellungen und Wörterbuch: `~/Library/Application Support/Voice Wispr/settings.json` (Ordnername aus der Testphase, bleibt aus Kompatibilitätsgründen), atomar, versioniertes Exportformat. API-Schlüssel ausschließlich Keychain. Audio bleibt im Speicher. Bei aktiviertem Verlauf werden Original- und Ergebnistext lokal gespeichert; der Verlauf ist in den Einstellungen abschaltbar. SDK-Transkript-Diagnosen und llama-Logs sind deaktiviert. Die App liest den fokussierten Text ausschließlich für lokale Zustellungsprüfung; er wird weder an ein Sprachmodell noch an Cloud gesendet.
+Einstellungen und Wörterbuch: `~/Library/Application Support/Voice Wispr/settings.json`, atomar, versioniertes Exportformat. API-Schlüssel ausschließlich Keychain. Audio und die fünf letzten Resultate für den Schnellzugriff bleiben im Speicher. Bei eingeschaltetem Verlauf werden Diktattexte zusätzlich lokal in history.sqlite gespeichert; das lässt sich in der App abschalten. SDK-Transkript-Diagnosen und llama-Logs sind deaktiviert. Die App liest den fokussierten Text ausschließlich für lokale Zustellungsprüfung; er wird weder an ein Sprachmodell noch an Cloud gesendet.
 
 ## Stand und Nachweise
 
 Siehe `docs/implementation-status.md` und `docs/verification-report.md`. Build-, Contract- und UI-Prüfungen sind getrennt von realem Mikrofon-/Modell-/App-Einfügenachweis. Keine behaupteten Leistungswerte ohne Messung.
 
-Newsletter-Aufhänger: `docs/newsletter-prompt.md`. Drittlizenzen und Modellkarten: `Resources/Licenses/`.
+Drittlizenzen und Modellkarten: `Resources/Licenses/`.
 
 Die Echtzeit-Probe liefert 100ms-Blöcke erst nach ihrem Aufnahmeende; die letzte Teilsekunde wird nicht aufgerundet. Die Stop-Uhr beginnt am logischen Ende der Aufnahmedauer und enthält verspätete Audiozustellung. `feed-pacing-check` prüft genau diese Fristen und einen absichtlich verzögerten letzten Block ohne Modelle. Frühere Sekundenblock-Feeds lieferten Audio zu früh: Ihre Zeiten sind keine Latenzabnahme. Der Checker weist sie standardmäßig ab; `--legacy-quality-only` erlaubt ausschließlich ihre Inhaltsdiagnose. Die Pipeline wird vor den Messungen mit der vollständigen ersten Fixture gewärmt, ohne diese aus den drei Wiederholungen auszuschließen.
 
