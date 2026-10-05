@@ -7,8 +7,8 @@ h1,h2,h3{letter-spacing:0}
 .hero-section{background:var(--ink);color:var(--paper)}
 .hero{grid-template-columns:.88fr 1.12fr;gap:64px;padding-block:64px 56px;min-height:600px}
 .hero-copy .eyebrow{font-size:13px;color:oklch(85% .035 294);font-weight:600}
-.hero h1{color:var(--paper);font-size:60px;line-height:1.06;margin-block:22px 26px;font-weight:760}
-.hero h1 span{display:block;color:oklch(86% .065 294);font-size:50px;line-height:1.12;margin-top:12px}
+.hero h1{color:var(--paper);font-size:48px;line-height:1.06;margin-block:22px 26px;font-weight:760}
+.hero h1 span{display:block;color:oklch(86% .065 294);font-size:40px;line-height:1.12;margin-top:12px}
 .hero .lead{color:oklch(90% .025 294);font-size:16px;line-height:1.65;max-width:43ch;margin-bottom:28px}
 .hero .button{background:var(--paper);color:var(--ink);font-size:14px;padding-inline:22px;min-height:52px}
 .hero .button:hover{background:oklch(92% .045 294);transform:translateY(-1px)}
@@ -38,9 +38,9 @@ h1,h2,h3{letter-spacing:0}
 .video-status{color:oklch(92% .025 294);font-size:13px;margin-top:14px}
 .hero-section :focus-visible{outline-color:oklch(90% .06 294)}
 .video-stage :focus-visible{outline-color:oklch(74% .14 294)}
-@media(max-width:1100px){.hero{gap:38px;min-height:560px}.hero h1{font-size:52px}.hero h1 span{font-size:44px}}
-@media(max-width:900px){.hero{grid-template-columns:1fr;gap:40px;padding-block:48px;min-height:auto}.hero-copy{max-width:660px}.hero h1{font-size:58px}.hero h1 span{font-size:48px}.hero .lead{max-width:54ch}.hero-film{max-width:740px;width:100%}.hero-section .promise .wrap{gap:12px;flex-wrap:wrap}.film-footer{padding-top:14px}}
-@media(max-width:600px){.hero{padding-block:36px 30px;gap:30px}.hero h1{font-size:42px;margin-block:18px 22px}.hero h1 span{font-size:36px;line-height:1.14;margin-top:8px}.hero .lead{font-size:15px;line-height:1.65}.hero-copy .eyebrow{font-size:12px}.hero .button{font-size:13px;padding-inline:18px}.hero .download-meta{font-size:12px}.brand-tile{width:36px;height:36px;border-radius:10px}.film-heading{margin-bottom:13px}.film-mark img{width:40px;height:40px;border-radius:10px}.film-mark{font-size:12px;gap:10px}.film-mark strong{font-size:13px}.film-time{font-size:12px;padding:6px 9px}.video-stage{border-radius:10px}.video-play{left:12px;bottom:12px;padding:4px 14px 4px 4px;gap:8px;font-size:12px}.play-icon{width:30px;height:30px}.play-icon svg{width:17px;height:17px}.film-footer figcaption{font-size:12px}.film-footer figcaption span{font-size:12px}.youtube-link{font-size:12px}.hero-section .promise .wrap{padding-block:18px;font-size:12px;gap:10px}}
+@media(max-width:1100px){.hero{gap:38px;min-height:560px}.hero h1{font-size:44px}.hero h1 span{font-size:38px}}
+@media(max-width:900px){.hero{grid-template-columns:1fr;gap:40px;padding-block:48px;min-height:auto}.hero-copy{max-width:660px}.hero h1{font-size:48px}.hero h1 span{font-size:40px}.hero .lead{max-width:54ch}.hero-film{max-width:740px;width:100%}.hero-section .promise .wrap{gap:12px;flex-wrap:wrap}.film-footer{padding-top:14px}}
+@media(max-width:600px){.hero{padding-block:36px 30px;gap:30px}.hero h1{font-size:clamp(28px,8vw,38px);margin-block:18px 22px}.hero h1 span{font-size:clamp(26px,7vw,32px);line-height:1.14;margin-top:8px}.hero .lead{font-size:15px;line-height:1.65}.hero-copy .eyebrow{font-size:12px}.hero .button{font-size:13px;padding-inline:18px}.hero .download-meta{font-size:12px}.brand-tile{width:36px;height:36px;border-radius:10px}.film-heading{margin-bottom:13px}.film-mark img{width:40px;height:40px;border-radius:10px}.film-mark{font-size:12px;gap:10px}.film-mark strong{font-size:13px}.film-time{font-size:12px;padding:6px 9px}.video-stage{border-radius:10px}.video-play{left:12px;bottom:12px;padding:4px 14px 4px 4px;gap:8px;font-size:12px}.play-icon{width:30px;height:30px}.play-icon svg{width:17px;height:17px}.film-footer figcaption{font-size:12px}.film-footer figcaption span{font-size:12px}.youtube-link{font-size:12px}.hero-section .promise .wrap{padding-block:18px;font-size:12px;gap:10px}}
 
 /* Installation instructions sit beside both download actions. */
 .download-notice{max-width:44ch;margin-top:18px;padding:14px 16px;border:1px solid oklch(75% .05 294/.35);border-radius:9px;background:oklch(35% .085 294)}
