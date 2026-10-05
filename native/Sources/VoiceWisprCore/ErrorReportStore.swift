@@ -17,7 +17,7 @@ public actor ErrorReportStore {
     private func load(now: Date) throws {
         if !loaded {
             if FileManager.default.fileExists(atPath: url.path) {
-                let data = try Data(contentsOf: url)
+                let data = try SettingsStore.boundedData(from: url, maximumBytes: 400_000)
                 guard data.count < 400_000 else { throw ErrorReport.ReportError.invalid }
                 document = try JSONDecoder().decode(Document.self, from: data)
                 for entry in document.entries { _ = try entry.report.validatedData() }

@@ -9,6 +9,7 @@ available = sorted((root/'Tests/VoiceWisprCoreTests').glob('*.swift'))
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--only', action='append', choices=[p.name for p in available],
                     help='Run one test file; repeat to select several. Default: all contract cases.')
+parser.add_argument('--sdk', type=pathlib.Path, help='Compatible installed SDK for CLT-only checks')
 args = parser.parse_args()
 sources = [p for p in available if args.only is None or p.name in args.only]
 out = root/'artifacts/portable-checks'
@@ -49,10 +50,11 @@ func unwrap<T>(_ x: T?, file: StaticString = #filePath, line: UInt = #line) thro
 (out/'Runner.swift').write_text(support+'\n'.join(calls)+f'\n        print("Executed {len(calls)} contract cases; failures: \\(failures)")\n        exit(failures == 0 ? 0 : 1)\n    }}\n}}\n')
 # This adapter links the native SwiftPM object layout below. Swift 6.4 defaults
 # to swiftbuild, whose product layout differs; select the matching engine.
-subprocess.run(['swift','build','--build-system','native','--target','VoiceWisprCore','--jobs','4'], cwd=root, check=True)
+subprocess.run(['swift','build'] + (['--sdk', str(args.sdk)] if args.sdk else []) + ['--build-system','native','--target','VoiceWisprCore','--jobs','4'], cwd=root, check=True)
 build = root/'.build/arm64-apple-macosx/debug'
 module = build/'Modules'
 cmd = ['xcrun','swiftc','-parse-as-library','-target','arm64-apple-macosx14.0','-I',str(module),'-I',str(root/'Sources/CSQLite'),'-I',str(build/'FastClusterWrapper.build'),'-I',str(build/'MachTaskSelfWrapper.build'),'-F',str(build),'-L',str(build),'-framework','llama','-framework','Accelerate','-framework','CoreML','-framework','AppKit','-framework','AVFoundation','-framework','ApplicationServices','-framework','Security','-framework','Carbon','-lsqlite3','-lc++','-Xlinker','-rpath','-Xlinker',str(build)]
+if args.sdk: cmd += ['-sdk', str(args.sdk)]
 for target in ['FastClusterWrapper', 'MachTaskSelfWrapper']:
     cmd += ['-Xcc', '-fmodule-map-file=' + str(root/'.build/checkouts/FluidAudio/Sources'/target/'include/module.modulemap')]
     cmd += ['-Xcc', '-I'+str(root/'.build/checkouts/FluidAudio/Sources'/target/'include')]

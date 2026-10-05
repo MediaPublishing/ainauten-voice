@@ -77,6 +77,14 @@ private final class LipWorkerProcess: @unchecked Sendable {
 }
 
 public actor LipReadingRuntime {
+    public static let securityNotice = "Lippenlesen ist vorübergehend deaktiviert, bis eine signierte, isolierte Laufzeit verfügbar ist. Diktieren mit Mikrofon funktioniert weiter."
+    public static var releaseAvailable: Bool {
+        #if DEBUG
+        return true
+        #else
+        return false
+        #endif
+    }
     public let root: URL
     public let resources: URL
     private var child: LipWorkerProcess?
@@ -88,6 +96,7 @@ public actor LipReadingRuntime {
         FileManager.default.isExecutableFile(atPath: root.appendingPathComponent(language.rawValue + "/.venv/bin/python").path)
     }
     public func prepare(_ requested: LipReadingLanguage) async throws {
+        guard Self.releaseAvailable else { throw VoiceError.message(Self.securityNotice) }
         if ready && language == requested { return }
         cancel()
         let python = root.appendingPathComponent(requested.rawValue + "/.venv/bin/python")
@@ -101,6 +110,7 @@ public actor LipReadingRuntime {
         } catch { if child === worker { cancel() }; throw error }
     }
     public func transcribe(_ frames: [LipReadingFrame], session: UUID) async throws -> String {
+        guard Self.releaseAvailable else { throw VoiceError.message(Self.securityNotice) }
         guard ready, let worker = child else { throw VoiceError.message("Das Lippenlese-Modell ist noch nicht bereit.") }
         guard activeSession == nil else { throw VoiceError.message("Eine Lippenaufnahme wird bereits verarbeitet.") }
         guard frames.count >= 8, frames.count <= CameraCapture.maximumFrames,
@@ -110,10 +120,17 @@ public actor LipReadingRuntime {
         let id = session.uuidString.lowercased()
         activeSession = session
         defer { if activeSession == session { activeSession = nil } }
-        let objects: [[String: Any]] = [["op": "begin", "session": id, "ts_ms": 0]] + frames.map { ["op": "frame", "session": id, "ts_ms": $0.milliseconds, "jpeg": $0.jpeg.base64EncodedString()] } + [["op": "finish", "session": id]]
         do {
             return try await withTaskCancellationHandler {
-                try await worker.send(objects)
+                try await worker.send([["op": "begin", "session": id, "ts_ms": 0]])
+                // Keep encoded IPC bounded rather than duplicating all 64 MiB of frames.
+                for start in stride(from: 0, to: frames.count, by: 6) {
+                    try Task.checkCancellation()
+                    let end = min(start + 6, frames.count)
+                    let chunk: [[String: Any]] = frames[start..<end].map { ["op": "frame", "session": id, "ts_ms": $0.milliseconds, "jpeg": $0.jpeg.base64EncodedString()] }
+                    try await worker.send(chunk)
+                }
+                try await worker.send([["op": "finish", "session": id]])
                 let message = try await response(worker, timeout: 120, session: id)
                 guard child === worker, !Task.isCancelled, message["type"] == "result", let text = message["text"], !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.utf8.count <= 16_384 else { throw VoiceError.message("Keine Worte erkannt. Bitte schaue direkt in die Kamera und forme einen kurzen Satz.") }
                 return text

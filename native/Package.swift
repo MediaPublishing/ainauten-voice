@@ -5,7 +5,7 @@ let package = Package(
     name: "VoiceWispr",
     platforms: [.macOS(.v14)],
     products: [.executable(name: "VoiceWispr", targets: ["VoiceWispr"]), .executable(name: "VoiceWisprProbe", targets: ["VoiceWisprProbe"]), .library(name: "VoiceWisprCore", targets: ["VoiceWisprCore"])],
-    dependencies: [.package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.5", traits: []), .package(url: "https://github.com/sparkle-project/Sparkle.git", exact: "2.9.1"), .package(url: "https://github.com/kstenerud/KSCrash.git", exact: "2.5.1")],
+    dependencies: [.package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.5", traits: []), .package(url: "https://github.com/sparkle-project/Sparkle.git", exact: "2.9.6"), .package(url: "https://github.com/kstenerud/KSCrash.git", exact: "2.5.1")],
     targets: [
         .systemLibrary(name: "CSQLite"),
         .binaryTarget(name: "llama", path: "Vendor/build-apple/llama.xcframework"),

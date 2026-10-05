@@ -9,7 +9,7 @@ import VoiceWisprCore
         return Double(value.seconds) + Double(value.attoseconds) / 1e18
     }
     static func formatter(_ base: URL, _ name: String) -> CloudFormatter {
-        CloudFormatter(endpoint: base.appendingPathComponent(name), model: "synthetic-model", key: "synthetic-test")
+        CloudFormatter(endpoint: base.appendingPathComponent(name), model: "synthetic-model", key: "synthetic-test", recipientApproval: { _ in true })
     }
     static func main() async throws {
         let base = URL(string: CommandLine.arguments[1])!

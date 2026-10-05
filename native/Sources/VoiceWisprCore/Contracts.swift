@@ -64,6 +64,7 @@ public struct Settings: Codable, Equatable, Sendable {
     public var defaultStyle: TextStyle = .cleaned
     public var manualStyle: TextStyle?
     public var appStyles: [String: TextStyle] = [:]
+    public var clipboardCompatibility: Bool?
     public var cloudEnabled = false
     public var cloudEndpoint = "https://api.openai.com/v1"
     public var cloudModel = "gpt-4.1-mini"

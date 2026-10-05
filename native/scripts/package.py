@@ -25,6 +25,8 @@ identity = args.sign_identity or (identity_file.read_text().strip() if identity_
 # Ad-hoc bundles lose macOS permissions on every update; never produce them silently.
 if identity == '-' and not args.adhoc: p.error('stable signing identity missing (.local/signing-identity); pass --adhoc only for a local test build')
 if identity != '-':
+    pinned = (root/'Resources/release-signing-fingerprint.txt').read_text().strip()
+    if identity.upper() != pinned: p.error('signing identity differs from the reviewed publisher pin')
     if not re.fullmatch(r'[0-9a-fA-F]{40}', identity): p.error('signing identity must be a 40-character certificate fingerprint')
     identities = subprocess.check_output(['security', 'find-identity', '-p', 'codesigning'], text=True)
     if identity.upper() not in identities.upper(): p.error('configured signing identity is unavailable; refusing ad-hoc fallback')
@@ -85,11 +87,20 @@ for helper in sorted(sparkle_version.glob('XPCServices/*.xpc')):
 run('codesign', '--force', '--options', 'runtime', '--preserve-metadata=entitlements', '--sign', identity, str(sparkle_version/'Autoupdate'))
 run('codesign', '--force', '--options', 'runtime', '--preserve-metadata=entitlements', '--sign', identity, str(sparkle_version/'Updater.app'))
 run('codesign', '--force', '--sign', identity, str(sparkle))
-# Local certificates have no Team ID: bundled llama/Sparkle require the
-# library-validation exception. No JIT, DYLD injection or debug exception.
-run('codesign', '--force', '--options', 'runtime', '--entitlements', str(root/'Resources/Release.entitlements'), '--sign', identity, str(app))
+# Developer ID bundles use library validation. The existing local identity has
+# no Team ID and still requires the explicit exception: never claim notarization.
+signer = subprocess.run(['codesign', '-dv', '--verbose=4', str(lip/'uv')], capture_output=True, text=True, check=True).stderr
+has_team = re.search(r'^TeamIdentifier=(?!not set)(.+)$', signer, re.MULTILINE) is not None
+entitlements = root/'Resources'/('Release.entitlements' if has_team else 'LocalRelease.entitlements')
+if not has_team: print('SIGNING LIMITATION: local identity; library-validation exception remains, not Apple-notarized')
+run('codesign', '--force', '--options', 'runtime', '--entitlements', str(entitlements), '--sign', identity, str(app))
 run('codesign', '--verify', '--deep', '--strict', str(app))
 dmg = create_dmg(app, out)
+if not args.adhoc and not args.debug:
+    import sys
+    sys.path.insert(0, str(root.parent/'site'))
+    from release_verification import verify_release
+    print('VERIFIED INSTALLER', verify_release(app, dmg))
 if args.install:
     system_apps = pathlib.Path('/Applications')
     apps = args.install_directory or (system_apps if (system_apps/app.name).exists() and os.access(system_apps, os.W_OK) else pathlib.Path.home()/'Applications')

@@ -19,7 +19,7 @@ private final class CaptureSampleOffsets: @unchecked Sendable {
 // The experimental visual path shares delivery and dictionary behaviour, but
 // never starts AudioCapture, SpeechRuntime or a cloud formatter.
 extension AppModel {
-    var lipEnabled: Bool { document.settings.lipReadingEnabled ?? false }
+    var lipEnabled: Bool { LipReadingRuntime.releaseAvailable && (document.settings.lipReadingEnabled ?? false) }
     var lipLanguage: LipReadingLanguage { LipReadingLanguage(rawValue: document.settings.lipReadingLanguage ?? "en") ?? .english }
     var lipShortcut: Shortcut { document.settings.lipReadingShortcut ?? LipReadingLanguage.defaultShortcut }
     private var lipResources: URL { (Bundle.main.resourceURL ?? Bundle.main.bundleURL).appendingPathComponent("LipReading") }
@@ -36,6 +36,7 @@ extension AppModel {
         if lipEnabled && lipShortcutConflict { lipStatus = "Dieses Kürzel wird schon fürs Diktieren verwendet. Bitte wähle ein anderes." }
     }
     func setLipEnabled(_ enabled: Bool) {
+        guard !enabled || LipReadingRuntime.releaseAvailable else { lipStatus = LipReadingRuntime.securityNotice; return }
         guard !previewMode else { document.settings.lipReadingEnabled = enabled; return }
         document.settings.lipReadingEnabled = enabled
         if enabled { prepareLipReading() }
@@ -58,6 +59,7 @@ extension AppModel {
         } else { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera")!) }
     }
     func prepareLipReading(install: Bool = false) {
+        guard LipReadingRuntime.releaseAvailable else { lipStatus = LipReadingRuntime.securityNotice; return }
         guard lipEnabled, !quitting, !previewMode, !lipInstalling else { return }
         let id = UUID(), language = lipLanguage
         lipPreparationID = id; lipPreparation?.cancel(); lipReady = false; lipPreparing = true
@@ -165,7 +167,7 @@ extension AppModel {
                 } else if conflict {
                     outcome = DeliveryOutcome(.notAttempted, reason: "Wispr Flow ist wieder gestartet. Der Text bleibt verfügbar.")
                 } else {
-                    outcome = await DeliveryCoordinator().deliver(text: text, to: focus)
+                    outcome = await DeliveryCoordinator().deliver(text: text, to: focus, allowClipboard: document.settings.clipboardCompatibility != false)
                 }
                 guard sessionID == id, !Task.isCancelled else { return }
                 if let context = historyContext { recordHistory(result, context: context, delivery: outcome.status) }
@@ -480,7 +482,12 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             return
         }
         Task {
-            do { document = try await store.load() } catch { errorMessage = "Einstellungen konnten nicht geladen werden: \(error.localizedDescription)"; reports.record(component: .settings, code: .settingsLoadFailed) }
+            do {
+                document = try await store.load()
+                if document.settings.cloudEnabled {
+                    if let endpoint = URL(string: document.settings.cloudEndpoint), (try? CloudRecipient.isApproved(endpoint)) == true {} else { document.settings.cloudEnabled = false }
+                }
+            } catch { errorMessage = "Einstellungen konnten nicht geladen werden: \(error.localizedDescription)"; reports.record(component: .settings, code: .settingsLoadFailed) }
             loading = false
             wisprInstalled = WisprSwitch.installedURL != nil
             refreshImportPreview()
@@ -767,7 +774,8 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             do {
                 let selectedFormatter: any TextFormatting
                 if document.settings.cloudEnabled && style != .original {
-                    guard let endpoint = URL(string: document.settings.cloudEndpoint), let key = try KeychainStorage().key() else { throw VoiceError.message("Cloud-Optimierung benötigt einen API-Schlüssel.") }
+                    guard let endpoint = URL(string: document.settings.cloudEndpoint) else { throw VoiceError.message("Ungültige Cloud-Adresse") }
+                    let key = try CloudRecipient.authorizedKey(for: endpoint)
                     selectedFormatter = CloudFormatter(endpoint: endpoint, model: document.settings.cloudModel, key: key)
                 } else { selectedFormatter = formatter }
                 let pipeline = ProcessingPipeline(speech: speech, formatter: selectedFormatter); self.pipeline = pipeline
@@ -850,7 +858,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 else if conflict { outcome = DeliveryOutcome(.notAttempted, reason: "Wispr Flow läuft wieder. Dein Diktat bleibt verfügbar, das Tastenkürzel ist pausiert.") }
                 else if !result.isComplete { outcome = DeliveryOutcome(.notAttempted, reason: "Dieses Ergebnis ist unvollständig und wird nicht automatisch eingefügt.") }
                 else if sleepInterrupted { outcome = DeliveryOutcome(.notAttempted, reason: "Der Mac ist in den Ruhezustand gegangen. Dein Diktat wurde deshalb nicht eingefügt.") }
-                else { outcome = await DeliveryCoordinator().deliver(text: result.text, to: focus) }
+                else { outcome = await DeliveryCoordinator().deliver(text: result.text, to: focus, allowClipboard: document.settings.clipboardCompatibility != false) }
                 guard sessionID == id else { return }
                 if !practice, let context = historyContext { recordHistory(result, context: context, delivery: outcome.status) }
                 historyContext = nil
@@ -1060,7 +1068,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             #if DEBUG
             let measurementStart = ProcessInfo.processInfo.systemUptime
             #endif
-            let outcome = await DeliveryCoordinator().deliver(text: result.text, to: target)
+            let outcome = await DeliveryCoordinator().deliver(text: result.text, to: target, allowClipboard: document.settings.clipboardCompatibility != false)
             #if DEBUG
             if previewMode, CommandLine.arguments.contains("--test-delivery") {
                 let trace: [String: Any] = ["status": outcome.status.rawValue, "seconds": ProcessInfo.processInfo.systemUptime - measurementStart,
@@ -1137,7 +1145,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         recoverySelection = failureTitle == nil ? resultID ?? results.first?.id : nil
         if failureTitle != nil { recoveryClipboardStatus = ""; recoveryCanUndo = false }
         recoveryTransient = autoCopy || transient
-        if autoCopy, let result = recoveryResult, result.isComplete { copyRecoveryText(result) }
+        if autoCopy, document.settings.clipboardCompatibility != false, let result = recoveryResult, result.isComplete { copyRecoveryText(result) }
         else if recoveryCopiedID != recoveryResult?.id { recoveryClipboardStatus = ""; recoveryCanUndo = false }
         if recoveryCanUndo && !recoveryClipboard.canUndo { recoveryCanUndo = false; recoveryClipboardStatus = "Zwischenablage geändert" }
         if recoveryWindow == nil {

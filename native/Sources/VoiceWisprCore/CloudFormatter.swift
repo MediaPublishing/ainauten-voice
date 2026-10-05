@@ -8,12 +8,15 @@ private final class CloudRedirectGuard: NSObject, URLSessionTaskDelegate, @unche
 
 /// Text-only BYOK endpoint. The request schema cannot contain audio or focused-field content.
 public actor CloudFormatter: TextFormatting {
+    private let recipientApproval: @Sendable (URL) throws -> Bool
     private let endpoint: URL
     private let model: String
     private let key: String
     private let sessionConfiguration: URLSessionConfiguration?
-    public init(endpoint: URL, model: String, key: String, sessionConfiguration: URLSessionConfiguration? = nil) { self.endpoint = endpoint; self.model = model; self.key = key; self.sessionConfiguration = sessionConfiguration }
+    public init(endpoint: URL, model: String, key: String, sessionConfiguration: URLSessionConfiguration? = nil, recipientApproval: @escaping @Sendable (URL) throws -> Bool = { try CloudRecipient.isApproved($0) }) { self.recipientApproval = recipientApproval; self.endpoint = endpoint; self.model = model; self.key = key; self.sessionConfiguration = sessionConfiguration }
     public func prepare() async throws {
+        guard try recipientApproval(endpoint) else { throw VoiceError.message("Cloud-Adresse nicht bestätigt. Der Text bleibt lokal.") }
+        _ = try CloudRecipient.normalized(endpoint.absoluteString)
         guard endpoint.scheme == "https" || (endpoint.scheme == "http" && ["localhost", "127.0.0.1", "::1"].contains(endpoint.host ?? "")) else { throw VoiceError.message("Cloud-Optimierung benötigt HTTPS; HTTP ist nur lokal erlaubt.") }
         guard !key.isEmpty, !model.isEmpty else { throw VoiceError.message("API-Schlüssel und Modell fehlen.") }
     }
@@ -28,6 +31,7 @@ public actor CloudFormatter: TextFormatting {
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         let config = sessionConfiguration ?? URLSessionConfiguration.ephemeral; config.timeoutIntervalForResource = 10
         let session = URLSession(configuration: config, delegate: CloudRedirectGuard(), delegateQueue: nil); defer { session.invalidateAndCancel() }
+        guard try recipientApproval(endpoint) else { throw VoiceError.message("Cloud-Freigabe hat sich geändert. Der Text bleibt lokal.") }
         let (bytes, response) = try await session.bytes(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw VoiceError.message("Cloud-Optimierung ist fehlgeschlagen. Der Originaltext bleibt verfügbar.") }
         var data = Data()

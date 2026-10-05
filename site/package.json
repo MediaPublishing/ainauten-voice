@@ -11,14 +11,14 @@
   },
   "type": "module",
   "dependencies": {
-    "@ainauten/ui": "file:vendor/ainauten-ui",
     "@ainauten/tokens": "file:vendor/ainauten-tokens",
+    "@ainauten/ui": "file:vendor/ainauten-ui",
+    "lucide-react": "0.469.0",
     "react": "19.2.7",
-    "react-dom": "19.2.7",
-    "lucide-react": "0.469.0"
+    "react-dom": "19.2.7"
   },
   "devDependencies": {
-    "esbuild": "0.27.3",
+    "esbuild": "0.28.1",
     "tailwindcss": "3.4.19"
   }
 }

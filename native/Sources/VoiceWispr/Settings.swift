@@ -505,7 +505,9 @@ struct SettingsView: View {
             Text("Originaltext und aufbereiteter Text bleiben auf diesem Mac, auch nach einem Neustart. Abschalten gilt für neue Diktate; bestehende Texte bleiben verfügbar. Die Statistik berücksichtigt vollständige Diktate außerhalb des Papierkorbs.").font(.system(size: 12)).foregroundStyle(.secondary)
             HStack { Button("Verlauf exportieren …") { model.exportHistory() }; Button("Verlauf zurücksetzen …") { model.resetHistory() }.disabled(model.state == .recording || model.state == .processing || model.isUIPreview) }
             if !model.historyNotice.isEmpty { Text(model.historyNotice).font(.system(size: 12)).foregroundStyle(.secondary) }
-            Text("Die Zwischenablage wird beim Einfügen gesichert und wiederhergestellt. Eine neue Kopieraktion von dir hat immer Vorrang. Unklare Ergebnisse werden zur Kontrolle angezeigt und nicht automatisch erneut eingefügt.")
+            Toggle("Zwischenablage für kompatibles Einfügen verwenden", isOn: Binding(get: { model.document.settings.clipboardCompatibility ?? true }, set: { model.document.settings.clipboardCompatibility = $0 }))
+                .help("Der vorherige Inhalt wird gesichert und wiederhergestellt. Eine neue Kopieraktion von dir hat Vorrang. Unklare Ergebnisse werden nicht automatisch erneut eingefügt.")
+            Text("Beim Einfügen liegt dein Text kurz in der systemweiten Zwischenablage. Andere lokale Apps können ihn dort lesen. Ausgeschaltet wird nur direkt über Bedienungshilfen eingefügt; bei nicht unterstützten Feldern bleibt der Text in der App verfügbar.").font(.system(size: 12)).foregroundStyle(.secondary)
             Text("Cloud-Optimierung ist optional und sendet nur Text an deine gewählte Schnittstelle. Zugangsdaten liegen im macOS-Schlüsselbund.")
             Button("Lokale Daten im Finder zeigen") { NSWorkspace.shared.open(ModelPaths.support) }
             Text("Open Source: FluidAudio (Apache 2.0), FreeFlow und llama.cpp (MIT). Modelllizenzen: Parakeet CC BY 4.0, Qwen Apache 2.0.").font(.system(size: 12)).foregroundStyle(.secondary)
@@ -520,7 +522,10 @@ struct SettingsView: View {
         let alert = NSAlert(); alert.messageText = "Textoptimierung an dieser Adresse aktivieren?"
         alert.informativeText = "\(endpoint)\n\nGesendet werden der aktuelle transkribierte Text, höchstens zwei vorherige Sätze und passende Wörterbucheinträge. Audio bleibt lokal."
         alert.addButton(withTitle: "Für diese Adresse aktivieren"); alert.addButton(withTitle: "Abbrechen")
-        if alert.runModal() == .alertFirstButtonReturn { model.document.settings.cloudEndpoint = endpoint; model.document.settings.cloudEnabled = true }
+        if alert.runModal() == .alertFirstButtonReturn {
+            do { try CloudRecipient.approve(endpoint); model.document.settings.cloudEndpoint = endpoint; model.document.settings.cloudEnabled = true }
+            catch { model.errorMessage = "Cloud-Freigabe konnte nicht geschützt gespeichert werden." }
+        }
     }
     private func appName(for bundle: String) -> String {
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle) {
@@ -575,10 +580,11 @@ struct SettingsView: View {
                 }
                 Spacer()
                 Toggle("Lippenlesen aktivieren", isOn: Binding(get: { model.lipEnabled }, set: { model.setLipEnabled($0) }))
-                    .labelsHidden().toggleStyle(.switch).accessibilityLabel("Lippenlesen-Beta aktivieren")
+                    .labelsHidden().toggleStyle(.switch).disabled(!LipReadingRuntime.releaseAvailable).accessibilityLabel("Lippenlesen-Beta aktivieren")
             }
             Text("Experimentell. Die Kamera läuft nur während deiner Aufnahme. Kein Ton, keine Cloud, keine gespeicherten Videos.")
                 .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if !LipReadingRuntime.releaseAvailable { Text(LipReadingRuntime.securityNotice).font(.system(size: 12)).foregroundStyle(.secondary) }
             if model.lipEnabled {
                 Divider()
                 Picker("Sprache", selection: Binding(get: { model.lipLanguage }, set: { model.setLipLanguage($0) })) {
