@@ -19,7 +19,7 @@
 .button { background: var(--accent-active-bg); color: var(--accent-active-fg); }
 .button:hover { background: var(--accent-active-hover-bg); }
 .tabs button[aria-selected="true"] { background: var(--accent-active-bg); color: var(--accent-active-fg); }
-.hero-section { --ink: var(--ain-cosmic-purple); --paper: var(--ain-white); }
+.hero-section { --ink: #35215c; --paper: var(--ain-white); }
 .hero .button { background: var(--ain-white); color: var(--ain-cosmic-purple); }
 .hero .button:hover { background: var(--ain-star-white); }
 @media (max-width: 639px) { .wrap { width: calc(100% - 32px); } }
