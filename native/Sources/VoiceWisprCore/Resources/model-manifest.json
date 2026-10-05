@@ -1,0 +1,194 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "parakeet/Decoder.mlmodelc/analytics/coremldata.bin",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Decoder.mlmodelc/analytics/coremldata.bin",
+      "sha256": "4238c4e81ecd0dc94bd7dfbb60f7e2cc824107c1ffe0387b8607b72833dba350",
+      "size": 243,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Decoder.mlmodelc/coremldata.bin",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Decoder.mlmodelc/coremldata.bin",
+      "sha256": "18647af085d87bd8f3121c8a9b4d4564c1ede038dab63d295b4e745cf2d7fb99",
+      "size": 554,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Decoder.mlmodelc/metadata.json",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Decoder.mlmodelc/metadata.json",
+      "sha256": "a39e93cd8371b8ded92635c7804fcd0590f0d1dd9415c6d19a0484be073077d9",
+      "size": 3427,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Decoder.mlmodelc/model.mil",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Decoder.mlmodelc/model.mil",
+      "sha256": "ef2a0a281695398a62fde86ac269c68f73d5b578d7ed3b31f2ba91a2d1ea1f35",
+      "size": 13110,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Decoder.mlmodelc/weights/weight.bin",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Decoder.mlmodelc/weights/weight.bin",
+      "sha256": "48adf0f0d47c406c8253d4f7fef967436a39da14f5a65e66d5a4b407be355d41",
+      "size": 23604992,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Encoder.mlmodelc/analytics/coremldata.bin",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Encoder.mlmodelc/analytics/coremldata.bin",
+      "sha256": "42e638870d73f26b332918a3496ce36793fbb413a81cbd3d16ba01328637a105",
+      "size": 243,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Encoder.mlmodelc/coremldata.bin",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Encoder.mlmodelc/coremldata.bin",
+      "sha256": "d48034a167a82e88fc3df64f60af963ab3983538271175b8319e7d5720a0fb86",
+      "size": 485,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Encoder.mlmodelc/metadata.json",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Encoder.mlmodelc/metadata.json",
+      "sha256": "da24da9cca943fb29d7fa8e376d57fca7cb3aa08ca51b956b0b0e56813f087e9",
+      "size": 2921,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Encoder.mlmodelc/model.mil",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Encoder.mlmodelc/model.mil",
+      "sha256": "ed7b19156ca29fa7dfd6891deb9fda4b0e8893f68597c985d135736546a43808",
+      "size": 959769,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Encoder.mlmodelc/weights/weight.bin",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Encoder.mlmodelc/weights/weight.bin",
+      "sha256": "e2020f323703477a5b21d7c2d282c403e371afb5962e79877e3033e73ba6f421",
+      "size": 445187200,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/JointDecisionv3.mlmodelc/analytics/coremldata.bin",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/JointDecisionv3.mlmodelc/analytics/coremldata.bin",
+      "sha256": "26def4bf73dd56d29dee21c8ef97cb8969e62f6120ed1adc91e46828e2737b6c",
+      "size": 243,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/JointDecisionv3.mlmodelc/coremldata.bin",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/JointDecisionv3.mlmodelc/coremldata.bin",
+      "sha256": "f5fc08b741400f0088492c9e839418b1e18522f19cba28d361dd030c5f398342",
+      "size": 521,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/JointDecisionv3.mlmodelc/metadata.json",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/JointDecisionv3.mlmodelc/metadata.json",
+      "sha256": "d9307211b9a37e0f0ac260c7660b1571a3de25841035cfdf9b58fd40425f890f",
+      "size": 3453,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/JointDecisionv3.mlmodelc/model.mil",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/JointDecisionv3.mlmodelc/model.mil",
+      "sha256": "be60732943389a047175111a83f8839f3eb39d4803adafa828a0871b2f39818d",
+      "size": 11775,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/JointDecisionv3.mlmodelc/weights/weight.bin",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/JointDecisionv3.mlmodelc/weights/weight.bin",
+      "sha256": "4e0e63d840032f7f07ddb1d64446051166281e5491bf22da8a945c41f6eedb3e",
+      "size": 12642764,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Preprocessor.mlmodelc/analytics/coremldata.bin",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Preprocessor.mlmodelc/analytics/coremldata.bin",
+      "sha256": "c9beeb989c8d66f8be11df59bc6df277ec76cee404f6865b46243835ef562f6d",
+      "size": 243,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Preprocessor.mlmodelc/coremldata.bin",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Preprocessor.mlmodelc/coremldata.bin",
+      "sha256": "dbde3f2300842c1fd51ef3ff948a0bcffe65ffd2dca10707f2509f32c1d65b1d",
+      "size": 486,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Preprocessor.mlmodelc/metadata.json",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Preprocessor.mlmodelc/metadata.json",
+      "sha256": "2a98699e22d279dd37fa1d238aeb1c6db1df0d6fad687775324157689d8f3acf",
+      "size": 2841,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Preprocessor.mlmodelc/model.mil",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Preprocessor.mlmodelc/model.mil",
+      "sha256": "4b8518a956450fec57f06c2a21bdffc26973f7f1fa6842fb38fe917f896b6b93",
+      "size": 28181,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/Preprocessor.mlmodelc/weights/weight.bin",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/Preprocessor.mlmodelc/weights/weight.bin",
+      "sha256": "129b76e3aeafa8afa3ea76d995b964b145fe83700d579f6ff42c4c38fa0968ea",
+      "size": 491072,
+      "group": "parakeet"
+    },
+    {
+      "path": "parakeet/parakeet_vocab.json",
+      "url": "https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/resolve/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe/parakeet_vocab.json",
+      "sha256": "7ec60e05f1b24480736ec0eed40900f4626bce1fa9a60fd700ec7e2a59198735",
+      "size": 151122,
+      "group": "parakeet"
+    },
+    {
+      "path": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "url": "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/a06e946bb6b655725eafa393f4a9745d460374c9/Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "sha256": "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597",
+      "size": 2497281120,
+      "group": "qwen"
+    },
+    {
+      "path": "vad/silero-vad-unified-256ms-v6.2.1.mlmodelc/analytics/coremldata.bin",
+      "url": "https://huggingface.co/FluidInference/silero-vad-coreml/resolve/b419383c55c110e2c9271fa6ee0ea83d03c70d96/silero-vad-unified-256ms-v6.2.1.mlmodelc/analytics/coremldata.bin",
+      "sha256": "8067594eb3126ab8318af507f0c00cabfed40d5fedb8a0ee5075dd02e903d909",
+      "size": 243,
+      "group": "vad"
+    },
+    {
+      "path": "vad/silero-vad-unified-256ms-v6.2.1.mlmodelc/coremldata.bin",
+      "url": "https://huggingface.co/FluidInference/silero-vad-coreml/resolve/b419383c55c110e2c9271fa6ee0ea83d03c70d96/silero-vad-unified-256ms-v6.2.1.mlmodelc/coremldata.bin",
+      "sha256": "7db35a4fd995222a7fb0129713473b15d1462572ab4a2e5e4d56bcaad9e40f41",
+      "size": 625,
+      "group": "vad"
+    },
+    {
+      "path": "vad/silero-vad-unified-256ms-v6.2.1.mlmodelc/metadata.json",
+      "url": "https://huggingface.co/FluidInference/silero-vad-coreml/resolve/b419383c55c110e2c9271fa6ee0ea83d03c70d96/silero-vad-unified-256ms-v6.2.1.mlmodelc/metadata.json",
+      "sha256": "2740be542c611e1ba358e1849b4e265c65cdf0b17192767e1e5de86a31ac94d6",
+      "size": 3335,
+      "group": "vad"
+    },
+    {
+      "path": "vad/silero-vad-unified-256ms-v6.2.1.mlmodelc/model.mil",
+      "url": "https://huggingface.co/FluidInference/silero-vad-coreml/resolve/b419383c55c110e2c9271fa6ee0ea83d03c70d96/silero-vad-unified-256ms-v6.2.1.mlmodelc/model.mil",
+      "sha256": "c6a9d1bf22d413265da0a07a1d14151c3ea2fad296b3aa5859275b33ef1c3270",
+      "size": 176918,
+      "group": "vad"
+    },
+    {
+      "path": "vad/silero-vad-unified-256ms-v6.2.1.mlmodelc/weights/weight.bin",
+      "url": "https://huggingface.co/FluidInference/silero-vad-coreml/resolve/b419383c55c110e2c9271fa6ee0ea83d03c70d96/silero-vad-unified-256ms-v6.2.1.mlmodelc/weights/weight.bin",
+      "sha256": "53ecc8b5081146140ab654c89109cf001f2183abddd7a2411c5081feeffff063",
+      "size": 882304,
+      "group": "vad"
+    }
+  ]
+}

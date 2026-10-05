@@ -1,0 +1,1 @@
+{"name":"ainauten-voice-site","version":"0.1.1","private":true,"scripts":{"dev:local":"python3 -m http.server 8916 --bind 127.0.0.1","check":"python3 check.py"}}

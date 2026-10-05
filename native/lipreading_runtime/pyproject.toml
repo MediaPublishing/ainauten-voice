@@ -1,0 +1,5 @@
+[project]
+name = "ainauten-voice-lipreading-runtime"
+version = "0.1.0"
+requires-python = ">=3.11,<3.13"
+dependencies = ["numpy==1.26.4", "opencv-python-headless==4.10.0.84", "mediapipe==0.10.21", "torch==2.4.1"]

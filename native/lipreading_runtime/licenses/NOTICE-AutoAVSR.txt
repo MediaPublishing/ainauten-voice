@@ -1,0 +1,17 @@
+Lipflow bundles code from these projects:
+
+- espnet/ — a trimmed copy of ESPnet (Apache License 2.0, Copyright 2017 Johns Hopkins
+  University and ESPnet contributors), as vendored by Auto-AVSR and Chaplin. Lipflow patches:
+  distutils removed (Python 3.12+), device-agnostic CTC prefix scoring, and cached cross-attention
+  keys/values during beam search.
+- lipflow/mean_face.npy, lipflow/unigram5000_units.txt and the preprocessing in lipflow/face.py
+  and lipflow/vsr.py are adapted from Auto-AVSR / Visual_Speech_Recognition_for_Multiple_Languages
+  by Pingchuan Ma et al., Imperial College London (Apache License 2.0).
+- lipflow/data/web2-lower.txt.gz — the lowercase words of web2 (Webster's Second International,
+  1934, public domain; the /usr/share/dict/words list on macOS and BSD), so name snapping can tell
+  real words from names on Windows too.
+- Chaplin by Amanvir Parhar (MIT License) — the original "type what you mouth" idea and the
+  Hugging Face mirrors of the model weights.
+
+Model weights (downloaded by setup.sh, not redistributed here) are the Auto-AVSR LRS3 models; the
+LRS3 dataset is licensed for non-commercial research use, so treat the weights the same way.

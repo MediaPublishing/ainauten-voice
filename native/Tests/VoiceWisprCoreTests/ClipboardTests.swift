@@ -1,0 +1,151 @@
+import XCTest
+import AppKit
+@testable import VoiceWisprCore
+
+@MainActor final class ClipboardTests: XCTestCase {
+    func testRepeatedCopyOfOwnedTextKeepsOriginalUndoSnapshot() {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        board.setString("Vorheriger Inhalt", forType: .string)
+        let recovery = ClipboardRecovery(board: board)
+        XCTAssertEqual(recovery.copy("Diktat"), .copied)
+        let count = board.changeCount
+        XCTAssertEqual(recovery.copy("Diktat"), .copied)
+        XCTAssertEqual(recovery.copy("Diktat"), .copied)
+        XCTAssertEqual(board.changeCount, count)
+        XCTAssertEqual(recovery.undo(), .restored)
+        XCTAssertEqual(board.string(forType: .string), "Vorheriger Inhalt")
+    }
+    func testRecoveryCopyAndUndoRestoreEveryItemAndRepresentation() throws {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        let first = NSPasteboardItem(), second = NSPasteboardItem()
+        let formats: [NSPasteboard.PasteboardType: Data] = [
+            .string: Data("Grüße 👋".utf8), .html: Data("<b>Grüße</b>".utf8),
+            .rtf: Data(#"{\rtf1\ansi original}"#.utf8), .png: Data([137, 80, 78, 71, 0, 1]),
+            .init("public.custom-test"): Data([0, 19, 250])]
+        for (type, data) in formats { first.setData(data, forType: type) }
+        let file = Data("file:///tmp/voice-wispr-fixture.txt".utf8); second.setData(file, forType: .fileURL)
+        XCTAssertTrue(board.writeObjects([first, second]))
+        let recovery = ClipboardRecovery(board: board)
+        XCTAssertEqual(recovery.copy("Vielen Dank für die Rückmeldung."), .copied)
+        XCTAssertEqual(board.string(forType: .string), "Vielen Dank für die Rückmeldung.")
+        XCTAssertTrue(recovery.canUndo)
+        XCTAssertEqual(recovery.undo(), .restored)
+        let items = try XCTUnwrap(board.pasteboardItems)
+        XCTAssertEqual(items.count, 2)
+        // macOS may synthesize an additional UTF-16 representation.
+        XCTAssertTrue(Set(formats.keys).isSubset(of: Set(items[0].types)))
+        XCTAssertNil(items[0].data(forType: ClipboardSnapshot.nonceType))
+        for (type, data) in formats { XCTAssertEqual(items[0].data(forType: type), data) }
+        XCTAssertEqual(items[1].data(forType: .fileURL), file)
+        XCTAssertFalse(recovery.canUndo)
+        XCTAssertEqual(recovery.undo(), .changed)
+    }
+    func testRecoveryUndoNeverOverwritesANewerUserCopyEvenWithIdenticalText() {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        board.setString("vorher", forType: .string)
+        let recovery = ClipboardRecovery(board: board)
+        XCTAssertEqual(recovery.copy("Diktat"), .copied)
+        board.clearContents(); board.setString("Diktat", forType: .string)
+        let count = board.changeCount
+        XCTAssertFalse(recovery.canUndo)
+        XCTAssertEqual(recovery.undo(), .changed)
+        XCTAssertEqual(board.changeCount, count)
+        XCTAssertEqual(board.string(forType: .string), "Diktat")
+    }
+    func testRecoveryUndoProtectsUserClearAndCopiedOwnershipMarker() {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        board.setString("vorher", forType: .string)
+        let recovery = ClipboardRecovery(board: board)
+        XCTAssertEqual(recovery.copy("Diktat"), .copied)
+        let nonce = board.string(forType: ClipboardSnapshot.nonceType)!
+        board.clearContents(); board.setString("neu", forType: .string); board.setString(nonce, forType: ClipboardSnapshot.nonceType)
+        XCTAssertEqual(recovery.undo(), .changed)
+        XCTAssertEqual(board.string(forType: .string), "neu")
+        XCTAssertEqual(recovery.copy("noch ein Diktat"), .copied)
+        let count = board.clearContents()
+        XCTAssertEqual(recovery.undo(), .changed)
+        XCTAssertEqual(board.changeCount, count)
+        XCTAssertTrue((board.types ?? []).isEmpty)
+    }
+    func testRecoverySecondCopyUndoesOnlyMostRecentWriteAndEmptyBoardRestores() {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        let recovery = ClipboardRecovery(board: board)
+        XCTAssertEqual(recovery.copy("Erstes Diktat"), .copied)
+        XCTAssertEqual(recovery.copy("Zweites Diktat"), .copied)
+        XCTAssertEqual(recovery.undo(), .restored)
+        XCTAssertEqual(board.string(forType: .string), "Erstes Diktat")
+        XCTAssertEqual(recovery.undo(), .changed)
+        board.clearContents()
+        XCTAssertEqual(recovery.copy("Neues Diktat"), .copied)
+        XCTAssertEqual(recovery.undo(), .restored)
+        XCTAssertTrue((board.types ?? []).isEmpty)
+    }
+    func testRecoveryCannotBackupLargeClipboardAndNeverWritesEmptyResult() {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        let original = Data(repeating: 7, count: 64 * 1024 * 1024 + 1)
+        board.setData(original, forType: .png)
+        let count = board.changeCount, recovery = ClipboardRecovery(board: board)
+        XCTAssertEqual(recovery.copy("Diktat"), .unavailable)
+        XCTAssertEqual(board.changeCount, count)
+        XCTAssertEqual(board.data(forType: .png), original)
+        XCTAssertFalse(recovery.canUndo)
+        board.clearContents(); board.setString("Nutzertext", forType: .string)
+        let emptyCount = board.changeCount
+        XCTAssertEqual(recovery.copy(" \n\t"), .unavailable)
+        XCTAssertEqual(board.changeCount, emptyCount)
+        XCTAssertEqual(board.string(forType: .string), "Nutzertext")
+    }
+    func testMultipleItemsAndAllRepresentationsRestoreByteForByte() throws {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        let first = NSPasteboardItem()
+        let text = Data("Grüße 👋".utf8), html = Data("<b>Grüße</b>".utf8), rtf = Data(#"{\rtf1\ansi hello}"#.utf8)
+        let image = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1kAAAAASUVORK5CYII=")!
+        first.setData(text, forType: .string); first.setData(html, forType: .html); first.setData(rtf, forType: .rtf); first.setData(image, forType: .png)
+        let second = NSPasteboardItem(); let url = Data("file:///tmp/voice-wispr-fixture.txt".utf8)
+        second.setData(url, forType: .fileURL)
+        XCTAssertTrue(board.writeObjects([first, second]))
+        let saved = try XCTUnwrap(ClipboardSnapshot.capture(board))
+        let nonce = UUID(), owned = NSPasteboardItem(); owned.setString("dictation", forType: .string); owned.setString(nonce.uuidString, forType: ClipboardSnapshot.nonceType)
+        board.clearContents(); XCTAssertTrue(board.writeObjects([owned]))
+        saved.restore(board, ownership: ClipboardOwnership(nonce: nonce, changeCount: board.changeCount))
+        let restored = try XCTUnwrap(board.pasteboardItems)
+        XCTAssertEqual(restored.count, 2)
+        XCTAssertEqual(restored[0].data(forType: .string), text); XCTAssertEqual(restored[0].data(forType: .html), html)
+        XCTAssertEqual(restored[0].data(forType: .rtf), rtf); XCTAssertEqual(restored[0].data(forType: .png), image)
+        XCTAssertEqual(restored[1].data(forType: .fileURL), url)
+    }
+    func testUserCopyWinsOverOldOwnershipOnRealPasteboard() throws {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        board.setString("before", forType: .string)
+        let saved = try XCTUnwrap(ClipboardSnapshot.capture(board)), nonce = UUID()
+        board.clearContents(); board.setString("dictation", forType: .string); board.setString(nonce.uuidString, forType: ClipboardSnapshot.nonceType)
+        let ownership = ClipboardOwnership(nonce: nonce, changeCount: board.changeCount)
+        board.clearContents(); board.setString("user copied", forType: .string)
+        saved.restore(board, ownership: ownership)
+        XCTAssertEqual(board.string(forType: .string), "user copied")
+    }
+    func testEmptyClipboardRestoresAndWriteFailureRestoresOnlyOwnedClear() throws {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        let empty = try XCTUnwrap(ClipboardSnapshot.capture(board)), nonce = UUID()
+        board.setString("dictation", forType: .string); board.setString(nonce.uuidString, forType: ClipboardSnapshot.nonceType)
+        empty.restore(board, ownership: ClipboardOwnership(nonce: nonce, changeCount: board.changeCount))
+        XCTAssertTrue((board.types ?? []).isEmpty)
+        board.setString("original", forType: .string)
+        let saved = try XCTUnwrap(ClipboardSnapshot.capture(board))
+        let clearedAt = board.clearContents()
+        saved.restoreAfterFailedWrite(board, clearedAt: clearedAt, nonce: nonce)
+        XCTAssertEqual(board.string(forType: .string), "original")
+        let anotherClear = board.clearContents(); board.setString("new copy", forType: .string)
+        saved.restoreAfterFailedWrite(board, clearedAt: anotherClear, nonce: nonce)
+        XCTAssertEqual(board.string(forType: .string), "new copy")
+    }
+    func testOversizedClipboardIsUntouched() {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        let original = Data(repeating: 23, count: 64 * 1024 * 1024 + 1)
+        board.setData(original, forType: .png)
+        let count = board.changeCount
+        XCTAssertNil(ClipboardSnapshot.capture(board))
+        XCTAssertEqual(board.changeCount, count)
+        XCTAssertEqual(board.data(forType: .png), original)
+    }
+}

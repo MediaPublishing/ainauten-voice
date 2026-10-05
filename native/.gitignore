@@ -1,0 +1,11 @@
+.build/
+Vendor/llama.xcframework/
+Vendor/build-apple/
+.swiftpm/
+Vendor/upstream/
+artifacts/
+*.zip
+*.dmg
+*.app
+*.aiff
+fixtures/generated/

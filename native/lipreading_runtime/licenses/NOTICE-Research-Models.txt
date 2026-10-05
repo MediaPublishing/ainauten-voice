@@ -1,0 +1,28 @@
+Optional local lip-reading research runtimes
+
+The app bundles only its own adapters and installer, not recognition weights
+or the restricted AV-HuBERT sources. All recognition assets are installed
+separately into the user's private application-support directory.
+
+English: Lipflow (MIT), with ESPnet/Auto-AVSR attribution in the bundled
+NOTICE-AutoAVSR.txt. Upstream recognition weights are designated for
+noncommercial research; the app does not grant additional rights.
+
+German: MuAViC, copyright Meta Platforms, Inc. and affiliates.
+Creative Commons Attribution-NonCommercial 4.0 International.
+Source and model downloads: https://github.com/facebookresearch/muavic
+License: https://github.com/facebookresearch/muavic/blob/main/LICENSE
+https://creativecommons.org/licenses/by-nc/4.0/
+AV-HuBERT: https://github.com/facebookresearch/av_hubert/tree/muavic
+AV-HuBERT code also has Meta's restrictive noncommercial research license,
+not an open-source commercial-use license. It remains outside this bundle.
+https://github.com/facebookresearch/av_hubert/blob/muavic/LICENSE
+Fairseq: https://github.com/pytorch/fairseq
+Their pinned source LICENSE files are retained by the private installer.
+
+MediaPipe face model: Google, Apache-2.0.
+https://github.com/google-ai-edge/mediapipe/blob/master/LICENSE
+
+Personal use, research rights and commercial distribution are different.
+Do not bundle these research models in the general app download or present
+this experiment as a licensed commercial lip-reading product.

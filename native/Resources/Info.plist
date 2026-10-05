@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>AInauten Voice</string>
+	<key>CFBundleExecutable</key>
+	<string>VoiceWispr</string>
+	<key>CFBundleIconFile</key>
+	<string>VoiceWispr</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.mediapublishing.VoiceWispr</string>
+	<key>CFBundleName</key>
+	<string>AInauten Voice</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.1</string>
+	<key>CFBundleVersion</key>
+	<string>3</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<false/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>AInauten Voice nimmt deine Stimme nur während eines gestarteten Diktats auf. Audio wird lokal verarbeitet und nicht dauerhaft gespeichert.</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Die optionale Lippenlesen-Beta nutzt deine Kamera nur während einer bewusst gestarteten Aufnahme. Bilder werden lokal verarbeitet und nicht dauerhaft gespeichert.</string>
+	<key>SUFeedURL</key>
+	<string>https://voice.ainauten.com/updates/appcast.xml</string>
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUAllowsAutomaticUpdates</key>
+	<true/>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
+	<key>SURequireSignedFeed</key>
+	<true/>
+	<key>SUSignedFeedFailureExpirationInterval</key>
+	<integer>0</integer>
+	<key>SUEnableSystemProfiling</key>
+	<false/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
+</dict>
+</plist>

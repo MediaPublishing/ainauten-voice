@@ -1,0 +1,42 @@
+ZUERST LESEN / READ ME FIRST
+AInauten Voice installieren
+==========================
+
+1. Ziehe AInauten Voice.app im DMG auf Applications / Programme.
+2. Öffne die App danach aus deinem Programme-Ordner.
+
+APPLE KANN DIE APP NICHT ÜBERPRÜFEN?
+----------------------------------
+Die Beta ist noch nicht Apple-notarisiert. Wenn du sie von
+https://voice.ainauten.com geladen hast und ihr vertraust, kannst du den
+ersten Start einzeln erlauben:
+
+1. Klicke in der Warnung auf Fertig (Done).
+   Wähle nicht „In den Papierkorb bewegen“ (Move to Trash).
+2. Öffne  > Systemeinstellungen > Datenschutz & Sicherheit.
+   Englisch: System Settings > Privacy & Security.
+3. Scrolle zum Bereich Sicherheit. Neben der Meldung zu AInauten Voice.app
+   klicke auf Dennoch öffnen (Open Anyway).
+4. Bestätige mit Touch ID oder deinem Mac-Passwort, falls macOS danach fragt.
+   Wähle in der folgenden Meldung Öffnen (Open).
+
+macOS merkt sich diese Ausnahme für die App. Deine übrigen Sicherheitsprüfungen
+bleiben eingeschaltet. Es sind keine Terminalbefehle nötig.
+
+FEHLT „DENNOCH ÖFFNEN“?
+Versuche zuerst, die App aus Programme zu öffnen, und schließe die Warnung.
+Gehe danach erneut zu Datenschutz & Sicherheit. Die Freigabe erscheint erst
+nach einem blockierten Startversuch und ist ungefähr eine Stunde lang verfügbar.
+Auf einem verwalteten Firmen-Mac hilft gegebenenfalls deine IT-Administration.
+
+ANDERE WARNUNG?
+Bei „beschädigt“ oder „wird deinen Computer beschädigen“ starte die App nicht
+auf diesem Weg. Prüfe die Herkunft des Downloads und die Hinweise von Apple.
+
+DANACH
+Die App führt durch Modell-Download, Sprache, Mikrofon und Bedienungshilfen.
+Das Probediktat zeigt dir den erkannten Text. Plane mindestens 8 GB freien
+Speicher für Modelle und Installation ein. Nach dem Download funktioniert
+die lokale Erkennung offline. Apple Silicon, macOS 14+.
+
+Offizielle Anleitung von Apple: https://support.apple.com/de-de/102445

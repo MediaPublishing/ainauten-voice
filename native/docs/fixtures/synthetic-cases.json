@@ -1,0 +1,586 @@
+{
+  "description": "30 synthetic short fixtures (10 German, 10 English, 10 mixed), three long fixtures, and a near-20-minute stress fixture. Installed Apple voices, no cloud. Not a human acceptance corpus.",
+  "generationCommand": "python3 scripts/benchmark-fixtures.py",
+  "offlineCommand": ".build/debug/VoiceWisprProbe suite artifacts/fixtures/manifest.json 3",
+  "realTimeShortCommand": ".build/debug/VoiceWisprProbe suite artifacts/fixtures/manifest.json 3 --stream --styles=original,cleaned",
+  "realTimeLongCommand": ".build/debug/VoiceWisprProbe suite artifacts/fixtures/manifest.json 1 --stream --ids=long-60,long-180 --styles=original,cleaned",
+  "durationPolicy": "Long fixtures repeat whole, intact source units until the target minimum duration. IDs indicate minimum targets; actual measured durations are emitted in every receipt. No source sentence is truncated.",
+  "limitations": "Synthetic voice quality differs from human speech. Strict WER counts spelled-number to digit conversion as edits; the separately reported canonical WER uses only explicit aliases below. WER does not validate factual equivalence, so emitted original/formatted texts and number/negation comparisons require separate review. Offline timing is not stop-to-insertion latency. Real-time timing ends at completed text, before insertion; microphone/hotkey/delivery testing is separate.",
+  "numberAliases": {
+    "drei": "3",
+    "three": "3",
+    "vier": "4",
+    "four": "4",
+    "fünf": "5",
+    "five": "5",
+    "zwölf": "12",
+    "twelve": "12",
+    "fünfundzwanzig": "25",
+    "twenty five": "25",
+    "siebzehn": "17",
+    "seventeen": "17",
+    "einhundert": "100",
+    "one hundred": "100",
+    "zwei": "2",
+    "two": "2",
+    "eins": "1",
+    "one": "1"
+  },
+  "cases": [
+    {
+      "id": "de-01",
+      "language": "de",
+      "tags": [
+        "negation"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Bitte schicke den Bericht heute nicht an den Kunden. Wir warten auf die Freigabe am nächsten Montag."
+        }
+      ]
+    },
+    {
+      "id": "de-02",
+      "language": "de",
+      "tags": [
+        "numbers"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Wir benötigen fünfundzwanzig Bücher und zwölf Ordner. Drei davon bleiben im Büro, die anderen gehen nach Berlin."
+        }
+      ]
+    },
+    {
+      "id": "de-03",
+      "language": "de",
+      "tags": [
+        "names"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Hallo Fabian, Reto hat die Präsentation geprüft. Bitte frage auch Christos und Sabine nach ihren Ergänzungen für den Newsletter."
+        }
+      ]
+    },
+    {
+      "id": "de-04",
+      "language": "de",
+      "tags": [
+        "terms"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Das lokale Sprachmodell verarbeitet die Aufnahme auf dem Mac. Die Transkription benötigt keine Internetverbindung und speichert keine Audiodateien."
+        }
+      ]
+    },
+    {
+      "id": "de-05",
+      "language": "de",
+      "tags": [
+        "paragraphs"
+      ],
+      "styles": [
+        "original",
+        "cleaned",
+        "email"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Danke für deine Nachricht. Ich habe die Unterlagen gelesen und möchte zwei Punkte ergänzen. Der Termin passt gut. Die Kosten prüfen wir morgen gemeinsam."
+        }
+      ]
+    },
+    {
+      "id": "de-06",
+      "language": "de",
+      "tags": [
+        "lists"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Für den Workshop brauchen wir drei Dinge. Erstens einen ruhigen Raum. Zweitens ein Mikrofon. Drittens eine kurze Anleitung für alle Teilnehmer."
+        }
+      ]
+    },
+    {
+      "id": "de-07",
+      "language": "de",
+      "tags": [
+        "negation",
+        "numbers"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Die Bestellung enthält nicht siebzehn, sondern zwölf Pakete. Bitte ändere diese Zahl und füge keine zusätzlichen Produkte hinzu."
+        }
+      ]
+    },
+    {
+      "id": "de-08",
+      "language": "de",
+      "tags": [
+        "chat"
+      ],
+      "styles": [
+        "original",
+        "cleaned",
+        "chat"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Ich bin gerade unterwegs und komme fünf Minuten später. Könnt ihr schon anfangen? Ich lese eure Nachricht nach dem Termin."
+        }
+      ]
+    },
+    {
+      "id": "de-09",
+      "language": "de",
+      "tags": [
+        "terms",
+        "names"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Sabine testet die Bedienungshilfen in TextEdit und Apple Mail. Danach prüft Fabian die Zwischenablage und die Tastenkombination auf seinem Mac."
+        }
+      ]
+    },
+    {
+      "id": "de-10",
+      "language": "de",
+      "tags": [
+        "meaning"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Ich weiß noch nicht, ob wir das Angebot annehmen. Das ist eine offene Frage und keine Zusage. Bitte formuliere die Antwort entsprechend vorsichtig."
+        }
+      ]
+    },
+    {
+      "id": "en-01",
+      "language": "en",
+      "tags": [
+        "negation"
+      ],
+      "segments": [
+        {
+          "language": "en",
+          "text": "Please do not send the report to the customer today. We are waiting for approval next Monday before making any changes."
+        }
+      ]
+    },
+    {
+      "id": "en-02",
+      "language": "en",
+      "tags": [
+        "numbers"
+      ],
+      "segments": [
+        {
+          "language": "en",
+          "text": "We need twenty five books and twelve folders. Three of them stay in the office and the others will go to London."
+        }
+      ]
+    },
+    {
+      "id": "en-03",
+      "language": "en",
+      "tags": [
+        "names"
+      ],
+      "segments": [
+        {
+          "language": "en",
+          "text": "Hello Sarah, Daniel has reviewed the presentation. Please ask Michael and Emma for their suggestions before we prepare the final newsletter."
+        }
+      ]
+    },
+    {
+      "id": "en-04",
+      "language": "en",
+      "tags": [
+        "terms"
+      ],
+      "segments": [
+        {
+          "language": "en",
+          "text": "The local speech model processes the recording on the computer. Transcription does not require an internet connection and does not save audio files."
+        }
+      ]
+    },
+    {
+      "id": "en-05",
+      "language": "en",
+      "tags": [
+        "paragraphs"
+      ],
+      "styles": [
+        "original",
+        "cleaned",
+        "email"
+      ],
+      "segments": [
+        {
+          "language": "en",
+          "text": "Thank you for your message. I have read the documents and would like to add two points. The date works well. We will review the costs tomorrow."
+        }
+      ]
+    },
+    {
+      "id": "en-06",
+      "language": "en",
+      "tags": [
+        "lists"
+      ],
+      "segments": [
+        {
+          "language": "en",
+          "text": "We need three things for the workshop. First, a quiet room. Second, a microphone. Third, a short instruction sheet for all participants."
+        }
+      ]
+    },
+    {
+      "id": "en-07",
+      "language": "en",
+      "tags": [
+        "negation",
+        "numbers"
+      ],
+      "segments": [
+        {
+          "language": "en",
+          "text": "The order contains twelve packages, not seventeen. Please change this number and do not add any other products to the delivery."
+        }
+      ]
+    },
+    {
+      "id": "en-08",
+      "language": "en",
+      "tags": [
+        "chat"
+      ],
+      "styles": [
+        "original",
+        "cleaned",
+        "chat"
+      ],
+      "segments": [
+        {
+          "language": "en",
+          "text": "I am on my way and will arrive five minutes late. Could you start already? I will read your message after the meeting."
+        }
+      ]
+    },
+    {
+      "id": "en-09",
+      "language": "en",
+      "tags": [
+        "terms",
+        "names"
+      ],
+      "segments": [
+        {
+          "language": "en",
+          "text": "Sarah is testing accessibility in TextEdit and Apple Mail. Afterwards Daniel will check the clipboard and the keyboard shortcut on his computer."
+        }
+      ]
+    },
+    {
+      "id": "en-10",
+      "language": "en",
+      "tags": [
+        "meaning"
+      ],
+      "segments": [
+        {
+          "language": "en",
+          "text": "I do not know whether we will accept the offer. This is an open question and not a promise. Please keep the response cautious."
+        }
+      ]
+    },
+    {
+      "id": "mixed-01",
+      "language": "mixed",
+      "tags": [
+        "language-switch",
+        "negation"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Bitte sende den Entwurf noch nicht."
+        },
+        {
+          "language": "en",
+          "text": "We need approval before we send the draft to the customer."
+        }
+      ]
+    },
+    {
+      "id": "mixed-02",
+      "language": "mixed",
+      "tags": [
+        "language-switch",
+        "numbers"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Wir brauchen zwölf Ordner für den Workshop."
+        },
+        {
+          "language": "en",
+          "text": "Three folders stay here, and the others go to London."
+        }
+      ]
+    },
+    {
+      "id": "mixed-03",
+      "language": "mixed",
+      "tags": [
+        "language-switch",
+        "names"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Fabian hat die Präsentation geprüft."
+        },
+        {
+          "language": "en",
+          "text": "Sarah will review the final slides before we share them."
+        }
+      ]
+    },
+    {
+      "id": "mixed-04",
+      "language": "mixed",
+      "tags": [
+        "language-switch",
+        "terms"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Die Transkription läuft lokal auf dem Mac."
+        },
+        {
+          "language": "en",
+          "text": "The audio stays on the device and is never uploaded."
+        }
+      ]
+    },
+    {
+      "id": "mixed-05",
+      "language": "mixed",
+      "tags": [
+        "language-switch",
+        "paragraphs"
+      ],
+      "styles": [
+        "original",
+        "cleaned",
+        "email"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Danke für die schnelle Antwort. Der Termin passt gut."
+        },
+        {
+          "language": "en",
+          "text": "Please send the documents tomorrow so we can review the costs."
+        }
+      ]
+    },
+    {
+      "id": "mixed-06",
+      "language": "mixed",
+      "tags": [
+        "language-switch",
+        "lists"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Wir brauchen einen ruhigen Raum und ein Mikrofon."
+        },
+        {
+          "language": "en",
+          "text": "We also need a short instruction sheet for all participants."
+        }
+      ]
+    },
+    {
+      "id": "mixed-07",
+      "language": "mixed",
+      "tags": [
+        "language-switch",
+        "negation"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Das ist keine Zusage für das Projekt."
+        },
+        {
+          "language": "en",
+          "text": "Please do not describe this as a confirmed decision."
+        }
+      ]
+    },
+    {
+      "id": "mixed-08",
+      "language": "mixed",
+      "tags": [
+        "language-switch",
+        "chat"
+      ],
+      "styles": [
+        "original",
+        "cleaned",
+        "chat"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Ich komme fünf Minuten später und bin gleich da."
+        },
+        {
+          "language": "en",
+          "text": "Could you start already? I will join as soon as possible."
+        }
+      ]
+    },
+    {
+      "id": "mixed-09",
+      "language": "mixed",
+      "tags": [
+        "language-switch",
+        "terms"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Bitte prüfe die Zwischenablage in Apple Mail."
+        },
+        {
+          "language": "en",
+          "text": "Then check the keyboard shortcut and the accessibility settings."
+        }
+      ]
+    },
+    {
+      "id": "mixed-10",
+      "language": "mixed",
+      "tags": [
+        "language-switch",
+        "numbers",
+        "negation"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Wir liefern zwölf Pakete nach Berlin, nicht siebzehn."
+        },
+        {
+          "language": "en",
+          "text": "Three packages stay in the office until Monday."
+        }
+      ]
+    },
+    {
+      "id": "long-60",
+      "language": "de",
+      "kind": "long",
+      "targetSeconds": 60,
+      "tags": [
+        "long",
+        "seams"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Wir prüfen heute die lokale Spracherkennung auf dem Mac. Die Aufnahme bleibt auf diesem Gerät. Bitte sende die Nachricht nicht automatisch ab. Fabian liest den Entwurf und Reto prüft die Zahlen. Wir brauchen zwölf Ordner und drei Bücher für den Workshop. Danach testen wir das Einfügen in verschiedenen Programmen."
+        }
+      ]
+    },
+    {
+      "id": "long-180",
+      "language": "mixed",
+      "kind": "long",
+      "targetSeconds": 180,
+      "tags": [
+        "long",
+        "seams",
+        "language-switch"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Wir prüfen heute die lokale Spracherkennung auf dem Mac. Bitte sende die Nachricht nicht automatisch ab. Fabian liest den Entwurf und Reto prüft die Zahlen."
+        },
+        {
+          "language": "en",
+          "text": "The audio stays on the device. We need twelve folders and three books for the workshop. This is an open question and not a confirmed decision. Please keep the meaning unchanged."
+        }
+      ]
+    },
+    {
+      "id": "long-300",
+      "language": "mixed",
+      "kind": "long",
+      "targetSeconds": 300,
+      "tags": [
+        "long",
+        "seams",
+        "language-switch"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Wir prüfen heute die lokale Spracherkennung auf dem Mac. Bitte sende die Nachricht nicht automatisch ab. Fabian liest den Entwurf und Reto prüft die Zahlen."
+        },
+        {
+          "language": "en",
+          "text": "The audio stays on the device. We need twelve folders and three books for the workshop. This is an open question and not a confirmed decision. Please keep the meaning unchanged."
+        }
+      ]
+    },
+    {
+      "id": "limit-1200",
+      "language": "mixed",
+      "kind": "long",
+      "targetSeconds": 1199,
+      "tags": [
+        "long",
+        "seams",
+        "language-switch",
+        "capture-limit-near-20-minutes"
+      ],
+      "segments": [
+        {
+          "language": "de",
+          "text": "Wir prüfen heute die lokale Spracherkennung auf dem Mac. Bitte sende die Nachricht nicht automatisch ab. Fabian liest den Entwurf und Reto prüft die Zahlen."
+        },
+        {
+          "language": "en",
+          "text": "The audio stays on the device. We need twelve folders and three books for the workshop. This is an open question and not a confirmed decision. Please keep the meaning unchanged."
+        }
+      ]
+    }
+  ]
+}
