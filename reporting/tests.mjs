@@ -185,3 +185,11 @@ test('Pages leaves every other path to static assets, so a 404 page keeps its st
   for(const path of ['/does-not-exist','/api/other','/api/reportsx'])assert.equal((await pages.fetch(new Request('https://voice.ainauten.com'+path),env)).status,404);
   assert.deepEqual(seen,['/does-not-exist','/api/other','/api/reportsx']);
 });
+
+test('Pages retires the old installer using current verified release metadata',async()=>{
+ const env={ASSETS:{fetch:async r=>{assert.equal(new URL(r.url).pathname,'/downloads/release.json');return Response.json({filename:'AInauten-Voice-0.1.3-arm64.dmg'});}}};
+ const response=await pages.fetch(new Request('https://voice.ainauten.com/downloads/AInauten-Voice-0.1.1-arm64.dmg'),env);
+ assert.equal(response.status,302);assert.equal(response.headers.get('Location'),'https://voice.ainauten.com/downloads/AInauten-Voice-0.1.3-arm64.dmg');assert.equal(response.headers.get('Cache-Control'),'no-store');
+ env.ASSETS.fetch=async()=>Response.json({filename:'AInauten-Voice-0.1.1-arm64.dmg'});
+ assert.equal((await pages.fetch(new Request('https://voice.ainauten.com/downloads/AInauten-Voice-0.1.1-arm64.dmg'),env)).status,410);
+});
