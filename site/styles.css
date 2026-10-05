@@ -36,11 +36,6 @@ h1,h2,h3{letter-spacing:0}
 .youtube-link{display:inline-block;flex-shrink:0;font-size:12px;color:oklch(91% .03 294);text-decoration:none;padding-block:3px}
 .youtube-link:hover{text-decoration:underline}
 .video-status{color:oklch(92% .025 294);font-size:13px;margin-top:14px}
-.video-transcript{border:0;margin-top:8px}
-.video-transcript summary{padding:8px 20px 8px 0;font-size:12px;font-weight:500;color:oklch(82% .04 294);width:fit-content}
-.video-transcript summary::after{font-size:16px;top:6px}
-.video-transcript p{color:oklch(89% .025 294);font-size:13px;padding:0;margin:0 0 10px}
-.video-transcript>div{padding-top:10px}
 .hero-section :focus-visible{outline-color:oklch(90% .06 294)}
 .video-stage :focus-visible{outline-color:oklch(74% .14 294)}
 @media(max-width:1100px){.hero{gap:38px;min-height:560px}.hero h1{font-size:52px}.hero h1 span{font-size:44px}}

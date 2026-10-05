@@ -12,7 +12,7 @@ Eine native Diktier-App für Apple Silicon: Kürzel halten, sprechen, loslassen.
 
 **[▶ Video ansehen](https://youtu.be/UBhxxBohiMU)** · [Direkt auf der Website abspielen](https://voice.ainauten.com/#video)
 
-*Deutsch, mit Ton. Die Website bietet zusätzlich Untertitel und ein Texttranskript. Die Videografiken zeigen die Bedienung mit Beispieldaten; die Screenshots unten zeigen die echte App.*
+*Deutsch, mit Ton. Die Website bietet zusätzlich deutsche Untertitel. Die Videografiken zeigen die Bedienung mit Beispieldaten; die Screenshots unten zeigen die echte App.*
 
 ## Die App
 

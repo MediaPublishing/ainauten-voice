@@ -1,6 +1,6 @@
 # AInauten Voice Downloadseite
 
-Statische, eigenständige Seite ohne Tracking, externe Fonts oder Runtime-Abhängigkeiten. Brand-Herkunft und Rechtslinks aus dem bestehenden AInauten-Websystem. Screenshots stammen aus der nativen DEBUG-Vorschau, ausschließlich Beispieldaten. Der neue violette Einstieg zeigt das eigene Promo-Video mit lokaler Wiedergabe, deutschen Untertiteln und optionalem Transkript. YouTube bleibt ein Link; es wird kein fremder Player automatisch geladen.
+Statische, eigenständige Seite ohne Tracking, externe Fonts oder Runtime-Abhängigkeiten. Brand-Herkunft und Rechtslinks aus dem bestehenden AInauten-Websystem. Screenshots stammen aus der nativen DEBUG-Vorschau, ausschließlich Beispieldaten. Der neue violette Einstieg zeigt das eigene Promo-Video mit lokaler Wiedergabe, deutschen Untertiteln. YouTube bleibt ein Link; es wird kein fremder Player automatisch geladen.
 
 Lokal: npm run dev:local → http://127.0.0.1:8916
 Prüfen: npm run check
