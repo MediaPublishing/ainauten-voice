@@ -33,6 +33,7 @@ swift run -c release VoiceWisprProbe feed-pacing-check  # Timerprüfung ohne Mod
 swift run -c release VoiceWisprProbe speech-config-check --dual-decode  # tatsächlich verwendete Konfiguration, ohne Modell-Laden
 python3 scripts/check-probe-config.py  # Default und kombinierte akustische Testoptionen
 python3 scripts/human-fixtures.py --balanced  # nutzt ausschließlich den geprüften öffentlichen Cache
+python3 scripts/build-continuous-audio-fixture.py --manifest artifacts/fixtures/fleurs/balanced/manifest.json  # bereitet exakt 20 Minuten PCM vor, ohne Modelle
 mkdir -p artifacts/receipts
 swift run -c release VoiceWisprProbe suite artifacts/fixtures/fleurs/balanced/manifest.json 3 --styles=original,cleaned --long --stream > artifacts/receipts/human-suite.jsonl
 python3 scripts/check-human-suite.py --manifest artifacts/fixtures/fleurs/balanced/manifest.json --results artifacts/receipts/human-suite.jsonl --output artifacts/receipts/human-suite-check.json
