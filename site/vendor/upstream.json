@@ -11,5 +11,11 @@
     "packages/ui/src/shell.css": "683ddfbb17367c3a2bd8e6b8563ee05c32bb9b118d889f73d6c767e9a4eb9747",
     "packages/tokens/src/colors.css": "82d432a3816b9ebcdfc3f09eabf771ac5b39ae177813fb467ceae0538aba27a8"
   },
-  "notes": "Pinned shared Header/Footer/ThemeToggle/registry and tokens. Token comments with local operator paths omitted. External font import replaced by a local font in the site build."
+  "notes": "Pinned shared Header/Footer/ThemeToggle/registry and tokens. Token comments with local operator paths omitted. External font import replaced by a local font in the site build.",
+  "site_overrides": {
+    "packages/ui/src/Footer.tsx": {
+      "sha256": "8239c2b6c8a95d4b9912aeca6d1ba11f7cf58a68ea4198ecf5965eb7c5a859f8",
+      "reason": "Voice-specific footer: omit the AI disclaimer and copyright line at user request; preserve the shared link groups."
+    }
+  }
 }

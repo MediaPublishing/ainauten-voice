@@ -8,9 +8,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const html = readFileSync(path.join(root, 'index.html'), 'utf8');
 const css = readFileSync(path.join(root, 'assets/shell/ainauten-shell.css'), 'utf8');
 const provenance = JSON.parse(readFileSync(path.join(root, 'vendor/upstream.json'), 'utf8'));
-for (const [source, expected] of Object.entries(provenance.source_sha256)) {
+for (const [source, upstreamExpected] of Object.entries(provenance.source_sha256)) {
   if (!source.startsWith('packages/ui/')) continue;
   const actual = readFileSync(path.join(root, 'vendor/ainauten-ui', source.replace('packages/ui/', '')));
+  const expected = provenance.site_overrides?.[source]?.sha256 || upstreamExpected;
   assert.equal(createHash('sha256').update(actual).digest('hex'), expected, source);
 }
 assert.ok(html.includes('id="ainauten-header"') && html.includes('id="ainauten-footer"'));
@@ -25,4 +26,4 @@ for (const file of ['ainauten-shell.css', 'ainauten-shell.js', 'theme-init.js'])
   const hash = createHash('sha256').update(readFileSync(path.join(root, 'assets/shell', file))).digest('hex').slice(0, 12);
   assert.ok(html.includes(`/assets/shell/${file}?v=${hash}`), file);
 }
-console.log('SHELL CHECK PASS: unchanged shared components, all tool links, token themes, local font and cache-busted assets');
+console.log('SHELL CHECK PASS: pinned shared components with documented Voice footer override, all tool links, token themes, local font and cache-busted assets');

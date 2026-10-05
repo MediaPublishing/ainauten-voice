@@ -19,22 +19,16 @@ import {
 } from './appRegistry';
 
 const labels: Record<Locale, {
-  aiDisclaimer: string;
-  copyright: string;
   apps: string;
   membership: string;
   about: string;
 }> = {
   de: {
-    aiDisclaimer: 'Inhalte werden mit AI-Unterstützung erstellt und kuratiert.',
-    copyright: '© 2024-2026 AInauten',
     apps: 'Alle Tools',
     membership: 'Membership',
     about: 'Über uns',
   },
   en: {
-    aiDisclaimer: 'Content is created and curated with AI assistance.',
-    copyright: '© 2024-2026 AInauten',
     apps: 'All Tools',
     membership: 'Membership',
     about: 'About',
@@ -167,14 +161,6 @@ export function Footer({
           ))}
         </div>
 
-        <div className="mt-8 flex flex-col items-center gap-2 border-t border-[var(--border)] pt-6 text-center">
-          <p className="text-xs text-[var(--text-muted)]">
-            {l.aiDisclaimer}
-          </p>
-          <p className="text-xs text-[var(--text-muted)]">
-            {l.copyright}
-          </p>
-        </div>
       </div>
     </footer>
   );
