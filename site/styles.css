@@ -89,3 +89,6 @@ h1,h2,h3{letter-spacing:0}
 .support-section p{font-size:14px;margin:0;max-width:58ch}
 .support-section .button{flex-shrink:0}
 @media(max-width:760px){.support-section{align-items:flex-start;flex-direction:column;gap:18px;padding:24px}.support-section h2{font-size:20px}}
+
+/* Shared buttons expect this hover token; derive it from the active theme. */
+:root{--accent-active-hover-bg:color-mix(in srgb,var(--accent-active-bg) 90%,var(--accent-active-fg))}
