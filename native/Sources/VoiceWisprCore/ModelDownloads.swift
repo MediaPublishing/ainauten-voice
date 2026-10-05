@@ -41,7 +41,8 @@ public actor ModelDownloader {
     /// it (plus `.invalid-<UUID>` copies from older builds) before the next attempt.
     static func quarantine(for destination: URL) -> URL { destination.appendingPathExtension("invalid") }
     public static func trash(_ url: URL) {
-        do { try FileManager.default.trashItem(at: url, resultingItemURL: nil) } catch { try? FileManager.default.removeItem(at: url) }
+        // A corrupt multi-GB download is cache, not user data; the Trash would keep the space occupied.
+        try? FileManager.default.removeItem(at: url)
     }
     private func clearQuarantine(for destination: URL) {
         let name = Self.quarantine(for: destination).lastPathComponent

@@ -81,11 +81,13 @@ run('codesign', '--force', '--sign', identity, str(contents/'Frameworks/llama.fr
 # Re-sign actual nested helpers inside out; do not follow framework symlinks.
 sparkle_version = sparkle/'Versions/B'
 for helper in sorted(sparkle_version.glob('XPCServices/*.xpc')):
-    run('codesign', '--force', '--sign', identity, str(helper))
-run('codesign', '--force', '--sign', identity, str(sparkle_version/'Autoupdate'))
-run('codesign', '--force', '--sign', identity, str(sparkle_version/'Updater.app'))
+    run('codesign', '--force', '--options', 'runtime', '--preserve-metadata=entitlements', '--sign', identity, str(helper))
+run('codesign', '--force', '--options', 'runtime', '--preserve-metadata=entitlements', '--sign', identity, str(sparkle_version/'Autoupdate'))
+run('codesign', '--force', '--options', 'runtime', '--preserve-metadata=entitlements', '--sign', identity, str(sparkle_version/'Updater.app'))
 run('codesign', '--force', '--sign', identity, str(sparkle))
-run('codesign', '--force', '--sign', identity, str(app))
+# Local certificates have no Team ID: bundled llama/Sparkle require the
+# library-validation exception. No JIT, DYLD injection or debug exception.
+run('codesign', '--force', '--options', 'runtime', '--entitlements', str(root/'Resources/Release.entitlements'), '--sign', identity, str(app))
 run('codesign', '--verify', '--deep', '--strict', str(app))
 dmg = create_dmg(app, out)
 if args.install:

@@ -32,14 +32,14 @@ if args.existing_site:
         archived = root.parent / 'native/artifacts' / ('site-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
         dist.rename(archived)
     shutil.copytree(existing, dist)
-    for name in ['index.html', 'styles.css', 'app.js', '_headers', 'robots.txt', 'sitemap.xml']:
+    for name in ['index.html', 'styles.css', 'app.js', '_headers', 'robots.txt', 'sitemap.xml', '404.html']:
         shutil.copy2(root / name, dist / name)
     shutil.copytree(root / 'assets', dist / 'assets', dirs_exist_ok=True, ignore=shutil.ignore_patterns('*.mp4'))
     style_version = hashlib.sha256((dist / 'styles.css').read_bytes()).hexdigest()[:12]
     index = dist / 'index.html'
     html = index.read_text()
     assert 'href="/styles.css"' in html, 'Main stylesheet reference missing'
-    index.write_text(html.replace('href="/styles.css"', f'href="/styles.css?v={style_version}"'))
+    index.write_text(html.replace('href="/styles.css"', f'href="/styles.css?v={style_version}"').replace('{{DOWNLOAD_SHA256}}', release['sha256']))
     print(f'FRONTEND REFRESH PASS: release {release["version"]}, video, installation guide and update channel preserved')
     raise SystemExit(0)
 package = args.package.resolve()
@@ -77,7 +77,7 @@ if dist.exists():
     archived = root.parent / 'native/artifacts' / ('site-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
     dist.rename(archived)
 dist.mkdir()
-for name in ['index.html', 'styles.css', 'app.js', '_headers', 'robots.txt', 'sitemap.xml', 'help.html', 'help.css', 'help.mjs', 'report-schema.mjs', '_routes.json']:
+for name in ['index.html', 'styles.css', 'app.js', '_headers', 'robots.txt', 'sitemap.xml', 'help.html', 'help.css', 'help.mjs', 'report-schema.mjs', '_routes.json', '404.html']:
     shutil.copy2(root / name, dist / name)
 shutil.copy2(root/'pages-worker.mjs', dist/'_worker.js')
 # A changed stylesheet must also reach visitors with a cached previous version.

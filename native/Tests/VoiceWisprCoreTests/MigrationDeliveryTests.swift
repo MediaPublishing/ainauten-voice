@@ -435,6 +435,7 @@ final class MigrationDeliveryTests: XCTestCase {
         XCTAssertTrue(current.settings.languages != before.settings.languages) // The import did change settings.
         current.settings.cloudEnabled = false; current.settings.cloudEndpoint = ""; current.settings.cloudModel = "lokal"
         current.settings.lipReadingEnabled = false; current.settings.lipReadingLanguage = "de"
+        current.settings.historyEnabled = false; current.settings.paused = true
         try await store.save(current)
         try await store.undoWisprImport()
         let restored = try await store.load()
@@ -442,6 +443,7 @@ final class MigrationDeliveryTests: XCTestCase {
         XCTAssertEqual(restored.settings.languages, before.settings.languages); XCTAssertEqual(restored.settings.shortcut, before.settings.shortcut)
         XCTAssertFalse(restored.settings.cloudEnabled); XCTAssertEqual(restored.settings.cloudEndpoint, ""); XCTAssertEqual(restored.settings.cloudModel, "lokal")
         XCTAssertEqual(restored.settings.lipReadingEnabled, false); XCTAssertEqual(restored.settings.lipReadingLanguage, "de")
+        XCTAssertEqual(restored.settings.historyEnabled, false); XCTAssertTrue(restored.settings.paused)
         XCTAssertFalse(FileManager.default.fileExists(atPath: undo.path))
         let after = try Data(contentsOf: url)
         do { try await store.undoWisprImport(); XCTFail("A second undo must not roll back later edits") } catch {}

@@ -280,6 +280,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     private var wisprMenuItem: NSMenuItem?
     private var statusSymbol = "waveform"
     private var sleepInterrupted = false
+    private var memoryPressure: DispatchSourceMemoryPressure?
     private var loading = true
     private var quitting = false
     private var shutdownComplete = false
@@ -478,6 +479,10 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             updateHotkey()
         }
         refreshClock = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in Task { @MainActor in self?.refreshPermissions() } }
+        // About 3 GB stay resident otherwise. Free the formatter under pressure; the next dictation reloads it.
+        let pressure = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .main)
+        pressure.setEventHandler { [weak self] in MainActor.assumeIsolated { guard let self, self.sessionID == nil else { return }; Task { await self.formatter.unload() } } }
+        pressure.resume(); memoryPressure = pressure
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.prepareForSleep() } }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.updateHotkey() } }
         // Let Electron/Chromium apps build their text-field accessibility before the first dictation.
@@ -541,7 +546,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         #endif
         openOverview(); return true
     }
-    @objc private func openResults() { showRecovery() }
+    @objc private func openResults() { showRecovery(activate: true) }
     @objc private func togglePause() { document.settings.paused.toggle(); if document.settings.paused { cancel() } else if state == .error { dismissError() } }
     @objc private func returnToWispr() {
         document.settings.paused = true; cancel()
@@ -680,7 +685,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         }
     }
     func undoImport() {
-        Task { do { saveTask?.cancel(); try await store.undoWisprImport(); loading = true; document = try await store.load(); loading = false; importFailed = false; importReceipt = "Der Stand vor dem letzten Wispr-Import wurde wiederhergestellt."; updateHotkey() } catch { loading = false; errorMessage = error.localizedDescription } }
+        Task { do { saveTask?.cancel(); try await store.undoWisprImport(); canUndoImport = false; loading = true; document = try await store.load(); loading = false; importFailed = false; importReceipt = "Der Stand vor dem letzten Wispr-Import wurde wiederhergestellt."; updateHotkey() } catch { loading = false; errorMessage = error.localizedDescription } }
     }
     func switchFromWispr() {
         guard !switchingWispr, !previewMode else { return }
@@ -1112,7 +1117,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         default: return recoveryReason
         }
     }
-    func showRecovery(autoCopy: Bool = false, activate: Bool = true, resultID: UUID? = nil, transient: Bool = false, failureTitle: String? = nil) {
+    func showRecovery(autoCopy: Bool = false, activate: Bool = false, resultID: UUID? = nil, transient: Bool = false, failureTitle: String? = nil) {
         recoveryFailureTitle = failureTitle
         recoverySelection = failureTitle == nil ? resultID ?? results.first?.id : nil
         if failureTitle != nil { recoveryClipboardStatus = ""; recoveryCanUndo = false }
@@ -1213,8 +1218,8 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         #endif
         return recoveryHovered
     }
-    private func copyRecoveryText(_ result: DictationResult) {
-        switch recoveryClipboard.copy(result.text) {
+    private func copyRecoveryText(_ result: DictationResult, explicit: Bool = false) {
+        switch recoveryClipboard.copy(result.text, transient: !explicit) {
         case .copied: recoveryClipboardStatus = "In der Zwischenablage"; recoveryCopiedID = result.id; recoveryCanUndo = true
         case .unavailable: recoveryClipboardStatus = "Zwischenablage unverändert"; recoveryCanUndo = false; recoveryTransient = false
         case .failed: recoveryClipboardStatus = "Kopieren nicht möglich"; recoveryCanUndo = false; recoveryTransient = false
@@ -1273,7 +1278,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     func copyResult(at index: Int) {
         guard results.indices.contains(index) else { return }
         recoverySelection = results[index].id; recoveryTransient = true
-        copyRecoveryText(results[index])
+        copyRecoveryText(results[index], explicit: true)
         // Copy-last is an explicit action. It may copy a labelled partial result;
         // only complete new results enter the automatic-copy path above.
         showRecovery(activate: false, resultID: results[index].id, transient: recoveryCanUndo)

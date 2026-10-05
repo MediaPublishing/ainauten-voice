@@ -57,6 +57,9 @@ public actor SettingsStore {
         var document = snapshot.document
         document.settings.cloudEnabled = current.cloudEnabled; document.settings.cloudEndpoint = current.cloudEndpoint; document.settings.cloudModel = current.cloudModel
         document.settings.lipReadingEnabled = current.lipReadingEnabled; document.settings.lipReadingLanguage = current.lipReadingLanguage; document.settings.lipReadingShortcut = current.lipReadingShortcut
+        // Neither does it touch setup progress, pause or history. Undo must not re-enable a history the user turned off.
+        document.settings.onboardingComplete = current.onboardingComplete; document.settings.practiceCompleted = current.practiceCompleted
+        document.settings.paused = current.paused; document.settings.historyEnabled = current.historyEnabled
         try write(document, provenance: snapshot.wisprImport)
         // One undo per import; repeating it would roll back later edits again.
         try? FileManager.default.removeItem(at: backup)

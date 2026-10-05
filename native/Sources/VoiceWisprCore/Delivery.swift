@@ -142,9 +142,9 @@ public enum TransientPasteboard {
     let items: [[NSPasteboard.PasteboardType: Data]]
     let changeCount: Int
     /// Our own temporary write: text, ownership nonce and the transient markers.
-    static func ownedItem(_ text: String, nonce: UUID) -> NSPasteboardItem? {
+    static func ownedItem(_ text: String, nonce: UUID, transient: Bool = true) -> NSPasteboardItem? {
         let item = NSPasteboardItem()
-        guard item.setString(text, forType: .string), item.setString(nonce.uuidString, forType: nonceType), TransientPasteboard.mark(item) else { return nil }
+        guard item.setString(text, forType: .string), item.setString(nonce.uuidString, forType: nonceType), !transient || TransientPasteboard.mark(item) else { return nil }
         return item
     }
     static func capture(_ board: NSPasteboard) -> ClipboardSnapshot? {
@@ -211,13 +211,14 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         let nonce = board.string(forType: ClipboardSnapshot.nonceType).flatMap(UUID.init(uuidString:))
         return ownership.owns(changeCount: board.changeCount, nonce: nonce)
     }
-    @discardableResult public func copy(_ text: String) -> ClipboardCopyResult {
+    /// `transient: false` for an explicit user copy, which clipboard managers may keep.
+    @discardableResult public func copy(_ text: String, transient: Bool = true) -> ClipboardCopyResult {
         // Re-clicking the copy icon must keep the original undo snapshot.
         if canUndo, board.string(forType: .string) == text { return .copied }
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               let previous = ClipboardSnapshot.capture(board) else { return .unavailable }
         let nonce = UUID()
-        guard let item = ClipboardSnapshot.ownedItem(text, nonce: nonce), board.changeCount == previous.changeCount else { return .unavailable }
+        guard let item = ClipboardSnapshot.ownedItem(text, nonce: nonce, transient: transient), board.changeCount == previous.changeCount else { return .unavailable }
         let clearedAt = board.clearContents()
         guard board.changeCount == clearedAt else { return .unavailable }
         guard board.writeObjects([item]) else {
