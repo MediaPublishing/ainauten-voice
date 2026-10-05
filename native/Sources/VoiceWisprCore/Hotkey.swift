@@ -60,23 +60,53 @@ public final class DictationGestureMachine {
     private var source: CFRunLoopSource?
     private var expiry: Timer?
     public init() {}
+    // CGEventTap needs a synchronous reply (nil consumes the key). Its source
+    // runs exclusively on CFRunLoopGetMain(), but a CF callback can inherit an
+    // unrelated Swift executor context. Check the actual thread before bridging
+    // to our main-actor state; do not inspect that borrowed executor context.
+    nonisolated static func eventCallback(_ type: CGEventType, event: CGEvent,
+                                         pointer: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
+        guard Thread.isMainThread, let pointer else { return Unmanaged.passUnretained(event) }
+        let owner = Unmanaged<GlobalHotkey>.fromOpaque(pointer).takeUnretainedValue()
+        let operation: @MainActor () -> Unmanaged<CGEvent>? = { owner.handle(type, event: event) }
+        return withoutActuallyEscaping(operation) {
+            unsafeBitCast($0, to: (() -> Unmanaged<CGEvent>?).self)()
+        }
+    }
     public func install() -> Bool {
         if tap != nil { return true }
         guard AXIsProcessTrusted() else { return false }
         let mask = [CGEventType.keyDown, .keyUp, .flagsChanged].reduce(CGEventMask(0)) { $0 | (1 << $1.rawValue) }
         let callback: CGEventTapCallBack = { _, type, event, pointer in
-            guard let pointer else { return Unmanaged.passUnretained(event) }
-            let owner = Unmanaged<GlobalHotkey>.fromOpaque(pointer).takeUnretainedValue()
-            return MainActor.assumeIsolated { owner.handle(type, event: event) }
+            GlobalHotkey.eventCallback(type, event: event, pointer: pointer)
         }
         guard let newTap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: mask, callback: callback, userInfo: Unmanaged.passUnretained(self).toOpaque()) else { onFailure?("Globales Tastenkürzel benötigt Bedienungshilfen. Bitte die Freigabe prüfen."); return false }
         tap = newTap; source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, newTap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: newTap, enable: true)
-        expiry = Timer.scheduledTimer(withTimeInterval: 0.03, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { guard let self, self.enabled else { return }; if let action = self.machine.expire(at: ProcessInfo.processInfo.systemUptime) { self.onGesture?(action) } }
-        }
+        startExpiryTimer()
         return true
+    }
+    func startExpiryTimer() {
+        guard expiry == nil else { return }
+        expiry = Timer.scheduledTimer(withTimeInterval: 0.03, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.expireGesture() }
+        }
+    }
+    private func expireGesture() {
+        guard enabled else { return }
+        if let action = machine.expire(at: ProcessInfo.processInfo.systemUptime) { onGesture?(action) }
+    }
+    public func uninstall() {
+        expiry?.invalidate(); expiry = nil
+        if let tap { CGEvent.tapEnable(tap: tap, enable: false); CFMachPortInvalidate(tap) }
+        if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
+        source = nil; tap = nil; reset()
+    }
+    deinit {
+        expiry?.invalidate()
+        if let tap { CGEvent.tapEnable(tap: tap, enable: false); CFMachPortInvalidate(tap) }
+        if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
     }
     func handle(_ type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput { if let tap { CGEvent.tapEnable(tap: tap, enable: true) }; return Unmanaged.passUnretained(event) }

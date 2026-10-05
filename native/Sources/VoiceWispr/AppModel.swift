@@ -478,7 +478,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         // Let Electron/Chromium apps build their text-field accessibility before the first dictation.
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { note in
             let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            MainActor.assumeIsolated { WebAccessibility.enable(for: app) }
+            Task { @MainActor in WebAccessibility.enable(for: app) }
         }
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.pill?.position() } }
     }

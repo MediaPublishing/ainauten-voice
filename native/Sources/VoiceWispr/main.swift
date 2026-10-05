@@ -19,7 +19,7 @@ import VoiceWisprCore
 
 let application = NSApplication.shared
 application.setActivationPolicy(.regular)
-MainActor.assumeIsolated {
+let model = MainActor.assumeIsolated {
 let model = AppModel()
 application.delegate = model
 #if DEBUG
@@ -30,5 +30,8 @@ if preview != nil, CommandLine.arguments.contains("--preview-light") { applicati
 let preview: String? = nil
 #endif
 model.launch(preview: preview)
-application.run()
+return model
 }
+// AppKit owns this run loop. Do not keep a Swift actor-isolation scope open
+// across arbitrary native callbacks for the entire lifetime of the app.
+application.run()
