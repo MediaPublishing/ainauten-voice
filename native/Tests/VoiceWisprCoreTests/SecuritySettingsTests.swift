@@ -49,7 +49,9 @@ final class SecuritySettingsTests: XCTestCase {
         XCTAssertEqual(try CloudRecipient.normalized(" HTTPS://API.EXAMPLE.COM:443/v1/ "), "https://api.example.com/v1")
         XCTAssertTrue(try CloudRecipient.normalized("https://api.example.com/v1") != CloudRecipient.normalized("https://api.example.com/v2"))
         XCTAssertTrue(try CloudRecipient.normalized("https://api.example.com/v1") != CloudRecipient.normalized("https://other.example.com/v1"))
-        for value in ["http://external.example/v1", "https://user:secret@api.example/v1", "https://api.example/v1?secret=x", "https://api.example/v1#other"] {
+        var credentialFixture = URLComponents(string: "https://api.example/v1")!
+        credentialFixture.user = "user"; credentialFixture.password = "synthetic-invalid-fixture"
+        for value in ["http://external.example/v1", credentialFixture.string!, "https://api.example/v1?secret=x", "https://api.example/v1#other"] {
             XCTAssertThrowsError(try CloudRecipient.normalized(value))
         }
     }
