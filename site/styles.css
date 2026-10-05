@@ -81,3 +81,11 @@ h1,h2,h3{letter-spacing:0}
 .notfound .lead{max-width:48ch}
 .notfound-actions{display:flex;flex-wrap:wrap;align-items:center;gap:14px 26px;margin-top:8px}
 .notfound-actions .text-link{font-size:14px}
+
+/* Optional support sits below the download and stays readable on narrow screens. */
+.support-section{display:flex;align-items:center;justify-content:space-between;gap:28px;margin-block:32px;padding:24px 28px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}
+.support-section>div{min-width:0}
+.support-section h2{font-size:22px;line-height:1.3;margin-bottom:8px}
+.support-section p{font-size:14px;margin:0;max-width:58ch}
+.support-section .button{flex-shrink:0}
+@media(max-width:760px){.support-section{align-items:flex-start;flex-direction:column;gap:18px;padding:24px}.support-section h2{font-size:20px}}

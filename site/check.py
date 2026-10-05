@@ -120,5 +120,5 @@ if reporting_enabled:
     config = tomllib.loads((source/'wrangler.toml').read_text())
     assert any(s.get('binding') == 'REPORTING' and s.get('service') == 'ainauten-voice-reports' for s in config.get('services', [])), 'Missing private reporting service binding'
 assert f'id="build" value="{info["CFBundleVersion"]}"' in help_html
-assert 'buymeacoffee.com' not in text, 'Support link belongs in help, not primary navigation'
+assert 'buymeacoffee.com' not in text.split('<!-- AINAUTEN_HEADER_END -->', 1)[0], 'Support link must not crowd primary navigation'
 print('INSTALLER/HELP PASS: two illustrated installation steps, consistent support version, reporting flags and consent consistent')
