@@ -205,7 +205,7 @@ struct SettingsView: View {
                         if let next { step = next } else { model.completeSetup() }
                     }.buttonStyle(.borderedProminent)
                 }
-                else if let next = SetupStep(rawValue: step.rawValue + 1) { Button("Weiter") { step = next }.buttonStyle(.borderedProminent) }
+                else if let next = SetupStep(rawValue: step.rawValue + 1) { Button(step == .wispr ? "Überspringen" : "Weiter") { step = next }.buttonStyle(.borderedProminent) }
                 else { Button("Einrichtung abschließen") { model.completeSetup(); if model.document.settings.onboardingComplete { section = .dictation } }.buttonStyle(.borderedProminent).disabled(!model.canCompleteSetup) }
             }
         }
@@ -413,7 +413,8 @@ struct SettingsView: View {
     private var migration: some View { VStack(alignment: .leading, spacing: 24) { migrationPreview; Divider(); migrationSwitch } }
     private var migrationPreview: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Deine Wispr-Flow-Einstellungen übernehmen").font(.system(size: 19, weight: .semibold))
+            Text("Wispr-Flow-Einstellungen übernehmen (optional)").font(.system(size: 19, weight: .semibold))
+            Text("Die Übernahme von Einstellungen, Tastenkürzeln und Wörterbucheinträgen ist für den Betrieb nicht nötig. Du kannst diesen Schritt bedenkenlos überspringen und den Import später nachholen.").foregroundStyle(.secondary)
             if model.isUIPreview { Text("Oberflächenvorschau. Import und gespeicherte Einstellungen sind hier deaktiviert.").foregroundStyle(.secondary) }
             else if model.importRefreshing || !model.importPreviewLoaded { ProgressView("Wispr-Flow-Einstellungen werden geprüft …") }
             else if model.importPreview.isPartial { ForEach(model.importPreview.errors, id: \.self) { Text($0).foregroundStyle(.secondary) } }
