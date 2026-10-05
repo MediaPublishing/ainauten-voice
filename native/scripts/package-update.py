@@ -112,8 +112,10 @@ def main():
     # Ad-hoc builds pass --verify too. Updates must keep the stable identity, or users lose their permissions.
     identity_file = ROOT/'.local'/'signing-identity'
     require(identity_file.exists(), 'stable signing identity missing (.local/signing-identity)')
-    requirement = subprocess.run(['codesign', '-d', '-r-', str(args.app)], capture_output=True, text=True, check=True)
-    require(f'certificate leaf = H"{identity_file.read_text().strip().lower()}"' in (requirement.stdout + requirement.stderr).lower(), 'app is not signed with the stable identity')
+    fingerprint = identity_file.read_text().strip()
+    require(re.fullmatch(r'[0-9a-fA-F]{40}', fingerprint), 'invalid stable signing identity')
+    subprocess.run(['codesign', '--verify', '--deep', '--strict', '-R',
+                    f'=certificate leaf = H"{fingerprint}"', str(args.app)], check=True)
     if args.previous_feed:
         builds = [int(x.text) for x in xml_feed(args.previous_feed).findall('./channel/item/s:version', NS)]
         require(not builds or int(info['CFBundleVersion']) > max(builds), 'Release build must increase')
