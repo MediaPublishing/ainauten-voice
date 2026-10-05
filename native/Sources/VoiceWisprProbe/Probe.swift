@@ -104,6 +104,10 @@ private final class CheckpointMeasurements: @unchecked Sendable {
                 try await suite(arguments)
                 return
             }
+            if arguments.dropFirst().first == "feed-pacing-check" {
+                try await checkFeedPacing()
+                return
+            }
             if arguments.dropFirst().first == "format-cases", arguments.count == 3 {
                 try await formatCases(URL(fileURLWithPath: arguments[2]))
                 return
@@ -137,21 +141,69 @@ private final class CheckpointMeasurements: @unchecked Sendable {
             try await pipeline.start(sessionID: id, style: style)
             let processStart = ProcessInfo.processInfo.systemUptime
             var stopAt = processStart
+            var feed: StreamFeed?
             if arguments.contains("stream") {
-                for offset in stride(from: 0, to: audio.count, by: 16_000) {
-                    let upper = min(audio.count, offset + 16_000)
-                    try await pipeline.append(samples: Array(audio[offset..<upper]))
-                    let remaining = processStart + Double(upper) / 16000 - ProcessInfo.processInfo.systemUptime
-                    if remaining > 0 { try await Task.sleep(for: .seconds(remaining)) }
-                }
-                stopAt = ProcessInfo.processInfo.systemUptime
+                feed = try await feedAudio(audio, began: processStart) { try await pipeline.append(samples: $0) }
+                stopAt = feed!.scheduledStop
             } else { try await pipeline.append(samples: audio) }
             let result = try await pipeline.finish()
             let finished = ProcessInfo.processInfo.systemUptime
-            try emit(["text": result.text, "original": result.original, "fallback": result.usedFallback, "audioSeconds": Double(audio.count) / 16_000, "warmStopToResultSeconds": arguments.contains("stream") ? finished - stopAt : NSNull(), "totalProcessingSeconds": finished - processStart, "loadSeconds": loadSeconds, "style": style.rawValue, "streamedAtRealTime": arguments.contains("stream")])
+            try emit(["text": result.text, "original": result.original, "fallback": result.usedFallback, "audioSeconds": Double(audio.count) / 16_000, "warmStopToResultSeconds": arguments.contains("stream") ? finished - stopAt : NSNull(), "totalProcessingSeconds": finished - processStart, "loadSeconds": loadSeconds, "style": style.rawValue, "streamedAtRealTime": arguments.contains("stream"), "feedPacing": "append-after-capture-deadline", "feedChunkSamples": 1600, "feedCompletionDelaySeconds": feed.map { max(0, $0.completed - $0.scheduledStop) } ?? 0, "maxEarlyFeedSeconds": feed?.maxEarly ?? 0])
             await local.shutdown()
             } catch { await local.shutdown(); throw error }
         } catch { fputs("Probe failed: \(error.localizedDescription)\n", stderr); exit(1) }
+    }
+    private struct StreamFeed {
+        let scheduledStop: Double
+        let completed: Double
+        let maxEarly: Double
+        let maxLag: Double
+    }
+    private static func feedAudio(_ audio: [Float], began: Double, append: @Sendable ([Float]) async throws -> Void) async throws -> StreamFeed {
+        var early = 0.0, lag = 0.0
+        for offset in stride(from: 0, to: audio.count, by: 1600) {
+            try Task.checkCancellation()
+            let upper = min(audio.count, offset + 1600)
+            let available = began + Double(upper) / 16000
+            // Capture must have produced the entire block before it is delivered.
+            // The fractional last block ends at its exact sample deadline.
+            while available > ProcessInfo.processInfo.systemUptime {
+                let remaining = available - ProcessInfo.processInfo.systemUptime
+                if remaining > 0 { try await Task.sleep(for: .seconds(remaining)) }
+            }
+            let delivered = ProcessInfo.processInfo.systemUptime
+            early = max(early, available - delivered)
+            lag = max(lag, delivered - available)
+            try await append(Array(audio[offset..<upper]))
+        }
+        return StreamFeed(scheduledStop: began + Double(audio.count) / 16000, completed: ProcessInfo.processInfo.systemUptime, maxEarly: early, maxLag: lag)
+    }
+    private struct FeedArrival: Sendable { let frames: Int; let time: Double }
+    private actor FeedRecorder {
+        var arrivals: [FeedArrival] = []
+        func record(_ frames: Int) { arrivals.append(.init(frames: frames, time: ProcessInfo.processInfo.systemUptime)) }
+        func snapshot() -> [FeedArrival] { arrivals }
+    }
+    private static func checkFeedPacing() async throws {
+        let recorder = FeedRecorder(), began = ProcessInfo.processInfo.systemUptime
+        let feed = try await feedAudio([Float](repeating: 0, count: 5440), began: began) { samples in
+            await recorder.record(samples.count)
+        }
+        let arrivals = await recorder.snapshot()
+        guard arrivals.map(\.frames) == [1600, 1600, 1600, 640] else { throw VoiceError.message("Feed check lost or padded samples") }
+        var frames = 0
+        for arrival in arrivals {
+            frames += arrival.frames
+            guard arrival.time >= began + Double(frames) / 16000 else { throw VoiceError.message("Audio arrived before it was captured") }
+        }
+        let delayedBegan = ProcessInfo.processInfo.systemUptime
+        let delayed = try await feedAudio([Float](repeating: 0, count: 1600), began: delayedBegan) { _ in
+            try await Task.sleep(for: .milliseconds(120))
+        }
+        guard delayed.completed - delayed.scheduledStop >= 0.12 else { throw VoiceError.message("Final delivery delay disappeared from the logical stop clock") }
+        try emit(["event": "feed-pacing-check", "passed": true, "scope": "synthetic clock/transport test only; no models, microphone or insertion", "frames": frames,
+                  "captureSeconds": 0.34, "deliveredBlockFrames": arrivals.map(\.frames), "arrivalSeconds": arrivals.map { $0.time - began },
+                  "maxEarlyFeedSeconds": feed.maxEarly, "lastBlockDeadlineSeconds": feed.scheduledStop - began, "delayedFinalAppendSeconds": delayed.completed - delayed.scheduledStop])
     }
     private static func emit(_ value: [String: Any]) throws {
         let data = try JSONSerialization.data(withJSONObject: value, options: [.prettyPrinted, .sortedKeys])
@@ -220,9 +272,12 @@ private final class CheckpointMeasurements: @unchecked Sendable {
         let needsFormatting = selected.contains { fixture in (styles ?? fixture.styles.compactMap(TextStyle.init(rawValue:))).contains { $0 != .original } }
         if needsFormatting { try await local.prepare() }
         let warmAudio = try AudioConverter().resampleAudioFile(URL(fileURLWithPath: selected[0].audio))
-        _ = try await speech.transcribe(samples: Array(warmAudio.prefix(16000)), sessionID: UUID(), index: 0, offset: 0)
+        // Warm the complete first public fixture through the same bounded pipeline.
+        // It remains in all three measured repetitions; no reference is a prompt.
+        let warmPipeline = ProcessingPipeline(speech: speech, formatter: needsFormatting ? local : OriginalFormatter(), coreSamples: Int(coreSeconds(arguments) * 16000), overlapSamples: Int(overlapSeconds(arguments) * 16000))
+        _ = try await warmPipeline.process(samples: warmAudio, sessionID: UUID(), style: needsFormatting ? .cleaned : .original)
         try jsonLine(["event": "suite-start", "source": manifest.source, "coreSeconds": coreSeconds(arguments), "overlapSeconds": overlapSeconds(arguments), "vadSilenceSeconds": vadSilence(arguments), "trimTrailingSilence": arguments.contains("--trim-tail"), "encoderPrecision": arguments.contains("--encoder-v2") ? "int8-v2" : "int8", "sdkWorkers": sdkWorkers(arguments), "reconciliationContextSeconds": 8, "boundedReconciliationAboveSeconds": 600, "humanAcceptance": false, "fixtures": selected.count, "repeats": repeats, "streamedAtRealTime": streaming, "loadAndWarmSeconds": ProcessInfo.processInfo.systemUptime - loadStarted,
-                      "normalizationNotes": manifest.normalizationNotes, "hardware": "Run host; see machine receipt. Other simultaneous processes may affect latency."])
+                      "normalizationNotes": manifest.normalizationNotes, "hardware": "Run host; see machine receipt. Other simultaneous processes may affect latency.", "feedPacing": "append-after-capture-deadline", "feedChunkSamples": 1600, "latencyClock": "logical-capture-end-including-feed-lag", "warmupScope": "complete-first-fixture-pipeline-ungraded-no-case-exclusion"])
         var successful: [SuiteMeasurement] = [], failures = 0
         for fixture in selected {
             if let expected = fixture.audioSHA256 {
@@ -238,16 +293,11 @@ private final class CheckpointMeasurements: @unchecked Sendable {
                     do {
                         try await pipeline.start(sessionID: UUID(), style: style, dictionary: entries)
                         let began = ProcessInfo.processInfo.systemUptime
-                        if streaming {
-                            for offset in stride(from: 0, to: audio.count, by: 16000) {
-                                let upper = min(audio.count, offset + 16000)
-                                try await pipeline.append(samples: Array(audio[offset..<upper]))
-                                // Feed duration, including a fractional final second, never a rounded extra second.
-                                let remaining = began + Double(upper) / 16000 - ProcessInfo.processInfo.systemUptime
-                                if remaining > 0 { try await Task.sleep(for: .seconds(remaining)) }
-                            }
-                        } else { try await pipeline.append(samples: audio) }
-                        let stopped = ProcessInfo.processInfo.systemUptime
+                        var feed: StreamFeed?
+                        if streaming { feed = try await feedAudio(audio, began: began) { try await pipeline.append(samples: $0) } }
+                        else { try await pipeline.append(samples: audio) }
+                        let finalFeed = ProcessInfo.processInfo.systemUptime
+                        let stopped = feed?.scheduledStop ?? finalFeed
                         let result = try await pipeline.finish()
                         let finished = ProcessInfo.processInfo.systemUptime
                         let reference = words(fixture.reference), recognized = words(result.original), formatted = words(result.text)
@@ -259,7 +309,8 @@ private final class CheckpointMeasurements: @unchecked Sendable {
                         let stopLatency = finished - stopped
                         successful.append(.init(style: style.rawValue, kind: fixture.kind, stop: stopLatency, canonicalWER: canonical, fallback: result.usedFallback, complete: result.isComplete))
                         try jsonLine(["event": "case", "id": fixture.id, "language": fixture.language, "kind": fixture.kind, "tags": fixture.tags, "style": style.rawValue, "run": run,
-                                      "audioSeconds": Double(audio.count) / 16000, "streamedAtRealTime": streaming, "modelProcessingAfterFinalFeedSeconds": stopLatency,
+                                      "audioSeconds": Double(audio.count) / 16000, "streamedAtRealTime": streaming, "modelProcessingAfterFinalFeedSeconds": finished - finalFeed,
+                                      "feedCompletionDelaySeconds": streaming ? max(0, finalFeed - stopped) : 0, "maxEarlyFeedSeconds": feed?.maxEarly ?? 0, "maxFeedArrivalLagSeconds": feed?.maxLag ?? 0,
                                       "totalElapsedSeconds": finished - began, "stopToResultSeconds": streaming ? stopLatency : NSNull(),
                                       "strictOriginalWER": strict, "canonicalOriginalWER": canonical, "strictFormattedWER": wer(reference, formatted), "canonicalFormattedWER": wer(canonicalReference, canonicalFormatted), "dictionaryExpectedFormattedWER": wer(expectedFormatted, canonicalFormatted), "dictionaryEntries": entries.count,
                                       "strictReferenceWordCount": reference.count, "canonicalReferenceWordCount": canonicalReference.count,

@@ -26,11 +26,16 @@ python3 scripts/package.py --install
 swift run -c release VoiceWisprProbe format-cases docs/fixtures/formatting-contracts.json
 python3 scripts/human-fixtures.py  # öffentliche CC-BY-4.0-Sprachaufnahmen
 swift run -c release VoiceWisprProbe suite artifacts/fixtures/fleurs/manifest.json 3 --styles=original,cleaned,email,chat
+swift run -c release VoiceWisprProbe feed-pacing-check  # Timerprüfung ohne Modelle/Mikrofon
 python3 scripts/human-fixtures.py --balanced  # nutzt ausschließlich den geprüften öffentlichen Cache
-swift run -c release VoiceWisprProbe suite artifacts/fixtures/fleurs/balanced/manifest.json 3 --styles=original,cleaned --long --stream
+mkdir -p artifacts/receipts
+swift run -c release VoiceWisprProbe suite artifacts/fixtures/fleurs/balanced/manifest.json 3 --styles=original,cleaned --long --stream > artifacts/receipts/human-suite.jsonl
+python3 scripts/check-human-suite.py --manifest artifacts/fixtures/fleurs/balanced/manifest.json --results artifacts/receipts/human-suite.jsonl --output artifacts/receipts/human-suite-check.json
 ```
 
 `--balanced` erzeugt pro Sprache vier kurze, drei einminütige und drei 180/240/300 Sekunden lange Fälle aus den vorhandenen vollständigen Quellsätzen. Die Auswahl hängt nur von Dauer und fester Quellreihenfolge ab. Prüfsummen, Referenzen und PCM-Zeitachsen werden erhalten; es gibt keine zusätzliche Anfangs- oder Endstille. Längere Fälle enthalten verschiedene beziehungsweise wiederholte Sprecher und sind ausdrücklich zusammengesetzte Belastungstests. Drei Wiederholungen in Original und Optimiert ergeben 180 Echtzeitläufe. Diese prüfen die Modellverarbeitung; Mikrofon, Kürzel, Einfügen und persönliche Diktatqualität bleiben eigene Abnahmekriterien. Abweichende vorhandene Fixtures werden nicht überschrieben.
+
+`check-human-suite.py` prüft die vollständige Ergebnismenge, unveränderte Quellreferenzen, feste Namen/Begriffe, Zahlenwerte und Verneinungen. Die Referenzen für alle 40 Quellen stehen in `docs/fixtures/fleurs-reference-checks.json`. Explizite Zahlwort- und Einheitenvarianten gelten nur für diese zusätzliche Prüfung; die strikte WER bleibt unverändert. Fehlende/falsche Orte, Jahre oder Einheiten können damit trotz niedriger WER durchfallen. `--allow-partial` erzeugt einen ausdrücklich ausstehenden Zwischenstand, `--self-test` prüft Gegenbeispiele ohne Modelle. Rückfälle, fehlende Ergebnisse und erste langsame Läufe bleiben sichtbar. Semantische Zusätze, der Geltungsbereich einer Verneinung und das tatsächliche OS-Einfügen benötigen weiter eigene Prüfungen; auch ein vollständiger grüner Durchlauf dieses Werkzeugs ist keine vollständige Produktabnahme.
 
 `bootstrap.py` prüft die festgelegte llama-XCFramework-Prüfsumme. `Package.resolved` bindet FluidAudio an den geprüften Commit. Modelle sind über ein mitgeliefertes Datei-/SHA256-Verzeichnis gebunden. Die lokale SwiftPM-Mirrorkonfiguration in `.swiftpm` ist nicht Teil des Quellcodes; sie vermeidet auf dem Referenzgerät einen unnötig großen vollständigen Upstream-Clone.
 
@@ -49,3 +54,5 @@ Einstellungen und Wörterbuch: `~/Library/Application Support/Voice Wispr/settin
 Siehe `docs/implementation-status.md` und `docs/verification-report.md`. Build-, Contract- und UI-Prüfungen sind getrennt von realem Mikrofon-/Modell-/App-Einfügenachweis. Keine behaupteten Leistungswerte ohne Messung.
 
 Drittlizenzen und Modellkarten: `Resources/Licenses/`.
+
+Die Echtzeit-Probe liefert 100ms-Blöcke erst nach ihrem Aufnahmeende; die letzte Teilsekunde wird nicht aufgerundet. Die Stop-Uhr beginnt am logischen Ende der Aufnahmedauer und enthält verspätete Audiozustellung. `feed-pacing-check` prüft genau diese Fristen und einen absichtlich verzögerten letzten Block ohne Modelle. Frühere Sekundenblock-Feeds lieferten Audio zu früh: Ihre Zeiten sind keine Latenzabnahme. Der Checker weist sie standardmäßig ab; `--legacy-quality-only` erlaubt ausschließlich ihre Inhaltsdiagnose. Die Pipeline wird vor den Messungen mit der vollständigen ersten Fixture gewärmt, ohne diese aus den drei Wiederholungen auszuschließen.

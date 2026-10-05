@@ -1,0 +1,558 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "dataset": "google/fleurs",
+    "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+    "license": "cc-by-4.0",
+    "attribution": "Google FLEURS public read-speech corpus; annotations from its fixed references.",
+    "url": "https://huggingface.co/datasets/google/fleurs"
+  },
+  "scope": "Finite reference checks only. Names, quoted titles, geographic/demographic/taxonomic terms, selected units/count nouns, explicitly annotated number values and negation cues. Not general semantic equivalence, microphone, spontaneous speech or product acceptance. Corpus statements are dictation references, not fact-checked world knowledge.",
+  "normalization": "Unicode NFC, case-insensitive token boundaries; only the listed spoken-number aliases, kept separate from strict WER. No dictionary, acoustic prompting or test-result-based fixture exclusion. Number parsing does not interpret every possible word numeral. Negation order does not establish grammatical scope.",
+  "numberAliases": {
+    "1": [
+      "one",
+      "a minute"
+    ],
+    "2": [
+      "two"
+    ],
+    "3": [
+      "three"
+    ],
+    "12": [
+      "twelve",
+      "zwölf"
+    ],
+    "15": [
+      "fünfzehn",
+      "fünfzehnte",
+      "fünfzehnten"
+    ],
+    "20": [
+      "zwanzig",
+      "twenty",
+      "twentieth",
+      "20th"
+    ],
+    "25": [
+      "twenty five",
+      "twenty-five",
+      "twentyfive"
+    ],
+    "30": [
+      "thirty"
+    ],
+    "35": [
+      "thirty five",
+      "thirty-five",
+      "thirtyfive"
+    ],
+    "70": [
+      "siebzig",
+      "seventy"
+    ],
+    "403": [
+      "vierhundertdrei",
+      "vierhundert drei"
+    ],
+    "1940": [
+      "neunzehnhundertvierzig",
+      "neunzehn hundert vierzig"
+    ],
+    "1963": [
+      "neunzehnhundertdreiundsechzig",
+      "neunzehn hundert dreiundsechzig",
+      "eintausendneunhundertdreiundsechzig",
+      "eintausend neunhundert dreiundsechzig"
+    ]
+  },
+  "references": [
+    {
+      "config": "de_de",
+      "recordID": 2003,
+      "filename": "10004059102127011984.wav",
+      "referenceSHA256": "bbc3137f60299ad8d7bf1f9a39f9bafafd466f33192cd9903451a7f1047e9b1d",
+      "protectedTerms": [
+        "Hongkong",
+        "Kowloon"
+      ],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1738,
+      "filename": "10009182821551087671.wav",
+      "referenceSHA256": "ec7c8788dba55d155f1f239b73208e5e4f43c9f0168f797e9302b513b5168349",
+      "protectedTerms": [
+        "T. Rex"
+      ],
+      "numberValues": [],
+      "negationCues": [
+        "nicht"
+      ]
+    },
+    {
+      "config": "de_de",
+      "recordID": 1849,
+      "filename": "10014044777125235464.wav",
+      "referenceSHA256": "712ecb9fc4427b902643cbd2480e7b3cadd5e49cbd3d876bbd7b4cf41249e54b",
+      "protectedTerms": [
+        "Das Vermächtnis der Tempelritter"
+      ],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1683,
+      "filename": "10030056357041867775.wav",
+      "referenceSHA256": "f6309bf6c6f3dfc9dde1d51542ac5e8f9cab11fd68b301d9145b9729ca2d9faa",
+      "protectedTerms": [
+        "Juden",
+        "Nichtjuden"
+      ],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1739,
+      "filename": "10058186628567796965.wav",
+      "referenceSHA256": "367612a7e1dbdfb9a18be96e6e19918b91e32c68fff0f03d43146481f3063754",
+      "protectedTerms": [
+        "Mekka"
+      ],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1796,
+      "filename": "10058299886985225661.wav",
+      "referenceSHA256": "1903559eda98b2c7aa1775fd44b4f8c1a01649c86605de731a71f2d2ab783653",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1990,
+      "filename": "10095057775426831514.wav",
+      "referenceSHA256": "4b8e96dcee176498146f95c05545978e6b19ed5bf28f36837516bbe522e67259",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1721,
+      "filename": "10159541282515887574.wav",
+      "referenceSHA256": "a677b367f43216b89626b9ffc644fa523795037b437efe503c47fb0d7f795162",
+      "protectedTerms": [],
+      "numberValues": [
+        "1963"
+      ],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1884,
+      "filename": "10166547362714956625.wav",
+      "referenceSHA256": "81f017ac91f1211d63f4998a57d2f7b4792fe1dc77eceaa355a1e9d347306309",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1797,
+      "filename": "10229344228128634115.wav",
+      "referenceSHA256": "2147316775b1c47efd0b55cf499eb6aa8ac5318745ad7573080ef54b2d6cb2aa",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1869,
+      "filename": "10287357790080034783.wav",
+      "referenceSHA256": "227ca55bb3c426db95062328988f68fd5efca8dea1e9449ad40666796cc1c0e3",
+      "protectedTerms": [
+        "Zähnen"
+      ],
+      "numberValues": [
+        "70"
+      ],
+      "negationCues": [
+        "kein"
+      ]
+    },
+    {
+      "config": "de_de",
+      "recordID": 1941,
+      "filename": "10308608197319017935.wav",
+      "referenceSHA256": "23afbeae356cda6e05d8d155b476f369e60bf8f5785a8b84342040a271f7d968",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1705,
+      "filename": "10320843719886214788.wav",
+      "referenceSHA256": "890f7cf6a4994af357740d30ea8e254aa3eb6edd39d077544315436d05e1a69c",
+      "protectedTerms": [
+        "Alliierten",
+        "Südfrankreich",
+        "Operation Dragoon"
+      ],
+      "numberValues": [
+        "15",
+        "1940"
+      ],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1772,
+      "filename": "10342213717361642954.wav",
+      "referenceSHA256": "6b0843991630bc896e9b601d942c40d53145aec6631f7cfc054198e7ec293629",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1891,
+      "filename": "103625751236710165.wav",
+      "referenceSHA256": "018c8be8a43272674f6598b39450b82f071397c02eab324d26234599cb59fd8c",
+      "protectedTerms": [
+        "Lakkha Singh",
+        "Chhappan Bhog Bhajan",
+        "Raju Khandelwal"
+      ],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1894,
+      "filename": "10365333717345563614.wav",
+      "referenceSHA256": "8d2752713edabe752d28d0a0dae05e3090cc10bbbe2f71f8e2f84d2b96bb2fae",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1805,
+      "filename": "10371526464884803925.wav",
+      "referenceSHA256": "6edfbd6e0c1b0a83b36dbbbecbdf9582875c2675033cebe23370c3264706d4c2",
+      "protectedTerms": [
+        "Scotturb",
+        "Cabo da Roca",
+        "Sintra",
+        "Bus"
+      ],
+      "numberValues": [
+        "403"
+      ],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1828,
+      "filename": "10389623687459114198.wav",
+      "referenceSHA256": "15c1ffd9e610e148ce0a42222b87837e723b4f107f348b109f781926ad3f377a",
+      "protectedTerms": [
+        "Kurs über feindselige Umgebungen"
+      ],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "de_de",
+      "recordID": 1841,
+      "filename": "10438132720416552229.wav",
+      "referenceSHA256": "d1e6168fe3f33d1be5de7c283252497715849dce45055a636400360052267f72",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": [
+        "nichts"
+      ]
+    },
+    {
+      "config": "de_de",
+      "recordID": 1875,
+      "filename": "10468958335301071458.wav",
+      "referenceSHA256": "4abdb280581119588fca00738f42cdca00d2a0fd7658d95b3940a2584bb26ff3",
+      "protectedTerms": [
+        "Amazonas",
+        "Prozent"
+      ],
+      "numberValues": [
+        "20"
+      ],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1904,
+      "filename": "1003119935936341070.wav",
+      "referenceSHA256": "c2ba1cad9a353d252563cf9b449ed23d3fdf2046a1f2429552be98aed76b5bff",
+      "protectedTerms": [
+        "year"
+      ],
+      "numberValues": [
+        "25",
+        "30"
+      ],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1675,
+      "filename": "10052240106321793346.wav",
+      "referenceSHA256": "63d31e54c66a437f7f103d1ea1438dbb719573f49df77c53ed2c250698821520",
+      "protectedTerms": [
+        "Sie"
+      ],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1950,
+      "filename": "10167324587744183095.wav",
+      "referenceSHA256": "3a8817b246eec8255dbc708b58fcb0906ed609afa0f2983ed5e3c322a3dbb4c1",
+      "protectedTerms": [
+        "Sintra",
+        "Lord Byron"
+      ],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1728,
+      "filename": "10197164397713068203.wav",
+      "referenceSHA256": "1f710e30f3b84790f6e7b04e3813a08afcaf251b625010272d033c61ba72d4a3",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1938,
+      "filename": "10235738076911595987.wav",
+      "referenceSHA256": "e71bc7a42adb8e24a82108087896f4fef0355b2713156c84629b1533baa4198f",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1876,
+      "filename": "10323357556845456822.wav",
+      "referenceSHA256": "38d901be0ea7f49ef8697e5b100f48d9d94d1f35f819fad48c00bc5076b8f529",
+      "protectedTerms": [
+        "Northern Marianas"
+      ],
+      "numberValues": [],
+      "negationCues": [
+        "no"
+      ]
+    },
+    {
+      "config": "en_us",
+      "recordID": 1914,
+      "filename": "10335587906469246566.wav",
+      "referenceSHA256": "4c2ed6b3f083afe8cf22baef2ee0ec56364a40531ebe7b700c0ea574b82ac9df",
+      "protectedTerms": [
+        "century",
+        "pools"
+      ],
+      "numberValues": [
+        "20",
+        "2"
+      ],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1846,
+      "filename": "10344335557154974057.wav",
+      "referenceSHA256": "a412c8d9671188861194df5d63cf4bb0a6a4407e1a75db9bdd2440c27cf70d5a",
+      "protectedTerms": [
+        "aspect ratio",
+        "whole-number ratio"
+      ],
+      "numberValues": [
+        "12",
+        "3",
+        "2"
+      ],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1806,
+      "filename": "1036771894648013441.wav",
+      "referenceSHA256": "833a9475d46748f8b8a309fe4cc203745e5118a5b48a479c3031f0c7cc3bf6a8",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": [
+        "not"
+      ]
+    },
+    {
+      "config": "en_us",
+      "recordID": 1729,
+      "filename": "10383288285905292158.wav",
+      "referenceSHA256": "dbe455b3a89d4ad075321a46755e8e0f88353c731ad323092e4767df5fb315de",
+      "protectedTerms": [
+        "Bennet School",
+        "North Carolina",
+        "State Capital"
+      ],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1855,
+      "filename": "10405958125670257178.wav",
+      "referenceSHA256": "ce1cf26d9336f6955837cd90cfff450fcd9e076407e7bf8dc67cad4a750dcdcb",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": [
+        "not"
+      ]
+    },
+    {
+      "config": "en_us",
+      "recordID": 1919,
+      "filename": "10411016628242228511.wav",
+      "referenceSHA256": "b6d058613c0ade0f6b171eff55a0d29f6c105be36206a4476401d66a350df5b1",
+      "protectedTerms": [
+        "Nyiragongo",
+        "Mountain Gorilla",
+        "Africa"
+      ],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1802,
+      "filename": "1042003289011443756.wav",
+      "referenceSHA256": "1b680a318dcd072e14ad3de07ff8b29f85eb2fdc4fc3daebd6f74467d9a6bb16",
+      "protectedTerms": [
+        "Internet"
+      ],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1685,
+      "filename": "1045619486290403122.wav",
+      "referenceSHA256": "b09f58412ea469ab517352f153a85b5c54acedc50c28c0c009dc77c167d44805",
+      "protectedTerms": [
+        "mm"
+      ],
+      "numberValues": [
+        "35"
+      ],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1992,
+      "filename": "1046653381869710616.wav",
+      "referenceSHA256": "2b39b4054bdb0b7b5ff9dd4564d92d84cbdde1c7ae2d58127bd918477e5bf921",
+      "protectedTerms": [
+        "African"
+      ],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 2005,
+      "filename": "10471564175308895403.wav",
+      "referenceSHA256": "907fa3894bc5b64e078c28f49a2fd024e7cf3fceea48da04f06a1685178ff4e3",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1982,
+      "filename": "10481451226514948764.wav",
+      "referenceSHA256": "d2e02f6a0f823647b2340ee077b3c80b037d71e39eb69a195afc6e02ad523fb4",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1674,
+      "filename": "10492135991603561867.wav",
+      "referenceSHA256": "5860a3b0c690df5284c8a1a54a18ff64d52633c4ed464de668b600e3b620a98a",
+      "protectedTerms": [
+        "minute"
+      ],
+      "numberValues": [
+        "1"
+      ],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1952,
+      "filename": "10492761258488775721.wav",
+      "referenceSHA256": "16741b104de57508fd118e3740c4a061b840c1dedfdf1890c2707e53d91b74b4",
+      "protectedTerms": [],
+      "numberValues": [],
+      "negationCues": []
+    },
+    {
+      "config": "en_us",
+      "recordID": 1752,
+      "filename": "10536763405165824117.wav",
+      "referenceSHA256": "13d3604fdb6a16fcb38975772210a1a2424fb51b6db9071bc7bd92f782a01739",
+      "protectedTerms": [
+        "humpback chub"
+      ],
+      "numberValues": [
+        "2",
+        "2"
+      ],
+      "negationCues": []
+    }
+  ],
+  "protectedTermAliases": {
+    "mm": [
+      "millimeter",
+      "millimeters",
+      "millimetre",
+      "millimetres"
+    ],
+    "Prozent": [
+      "percent",
+      "%"
+    ],
+    "year": [
+      "years"
+    ],
+    "minute": [
+      "minutes"
+    ],
+    "Zähnen": [
+      "Zähne"
+    ]
+  }
+}
