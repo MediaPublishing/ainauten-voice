@@ -73,7 +73,7 @@ struct SettingsView: View {
                 HStack(spacing: 10) { Image(systemName: "waveform").font(.system(size: 22, weight: .medium)); Text("AInauten Voice").font(.system(size: 17, weight: .semibold)) }.padding(.bottom, 28).padding(.top, 12)
                 ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
-                ForEach([SettingsSection.overview, .history, .statistics, .dictionary, .formatting] + (settingsExpanded ? [.dictation, .setup, .migration, .privacy, .updates, .beta, .help] : [])) { item in
+                ForEach([SettingsSection.overview, .history, .statistics, .dictionary, .formatting, .help] + (settingsExpanded ? [.dictation, .setup, .migration, .privacy, .updates, .beta] : [])) { item in
                     Button { section = item; focusedSection = item } label: {
                         Label(item.rawValue, systemImage: item.icon).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 9).padding(.horizontal, 10)
                             .background(section == item ? Color.accentColor.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 7))
@@ -81,15 +81,6 @@ struct SettingsView: View {
                             .contentShape(Rectangle())
                     }.buttonStyle(.plain).focused($focusedSection, equals: item).focusEffectDisabled()
                         .accessibilityAddTraits(section == item ? [.isSelected] : [])
-                    if item == .privacy {
-                        Link(destination: URL(string: "https://buymeacoffee.com/mediapublishing")!) {
-                            Label("Kaffee spendieren", systemImage: "cup.and.saucer")
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.vertical, 9).padding(.horizontal, 10).contentShape(Rectangle())
-                        }.buttonStyle(.plain).foregroundStyle(.primary).pointerAwareFocus()
-                            .help("Buy Me a Coffee im Browser öffnen")
-                            .accessibilityLabel("Kaffee spendieren, öffnet Buy Me a Coffee im Browser")
-                    }
                 }
                 }
                 }.scrollIndicators(.hidden)
@@ -407,7 +398,7 @@ struct SettingsView: View {
             Button(appBundle.isEmpty ? "App auswählen …" : appName(for: appBundle)) { chooseApp() }
             HStack { Picker("Stil", selection: $appStyle) { ForEach(TextStyle.allCases) { Text($0.title).tag($0) } }; Button("Zuordnen") { model.document.settings.appStyles[appBundle.trimmingCharacters(in: .whitespaces)] = appStyle; appBundle = "" }.disabled(appBundle.trimmingCharacters(in: .whitespaces).isEmpty) }
             Divider()
-            TextField("OpenAI-kompatible Adresse", text: Binding(get: { model.document.settings.cloudEndpoint }, set: { model.document.settings.cloudEndpoint = $0; model.document.settings.cloudEnabled = false }))
+            TextField("OpenAI-kompatible Adresse", text: Binding(get: { model.document.settings.cloudEndpoint }, set: { model.document.settings.cloudEndpoint = $0.trimmingCharacters(in: .whitespacesAndNewlines); model.document.settings.cloudEnabled = false }))
             Toggle("Cloud nur für Textoptimierung aktivieren", isOn: Binding(get: { model.document.settings.cloudEnabled }, set: setCloudEnabled))
             Text("Bei Aktivierung wird ausschließlich dein transkribierter Text mit bis zu zwei vorherigen Sätzen und passenden Wörterbucheinträgen an \(model.document.settings.cloudEndpoint) gesendet. Eine Änderung der Adresse schaltet Cloud aus. Audio bleibt lokal. Bei Fehlern bleibt der Originaltext verfügbar.").font(.system(size: 12)).foregroundStyle(.secondary)
             if model.document.settings.cloudEnabled {

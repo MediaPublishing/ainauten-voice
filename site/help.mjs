@@ -1,11 +1,12 @@
 import { validateReport, projectAppleDiagnostic } from './report-schema.mjs';
 const $ = id => document.getElementById(id);
+const deliveryAvailable = $('report-form').dataset.reportingEnabled === 'true';
 let draft = null, diagnostic = null, controller = null, busy = false, generation = 0;
 function update() {
   try {
     draft = validateReport({ schema: 1, reportID: draft?.reportID || crypto.randomUUID(), version: $('version').value, build: $('build').value, osVersion: $('os').value, architecture: diagnostic?.architecture || 'arm64', component: diagnostic?.component || 'app', code: diagnostic?.code || 'user_reported', frames: diagnostic?.frames || [], events: [], userInput: {description: $('description').value, contact: $('contact').value} });
     $('preview').textContent = JSON.stringify(draft, null, 2);
-    $('send').disabled = busy || !$('consent').checked; $('save').disabled = busy;
+    $('send').disabled = !deliveryAvailable || busy || !$('consent').checked; $('save').disabled = busy;
   } catch { draft = null; $('preview').textContent = 'Bitte Version, macOS-Version und die freiwilligen Angaben prüfen.'; $('send').disabled = true; $('save').disabled = true; }
 }
 for (const id of ['description','contact','version','build','os','consent']) $(id).addEventListener('input', () => { if (id !== 'consent' && draft) draft.reportID = crypto.randomUUID(); update(); });
@@ -21,7 +22,7 @@ $('diagnostic').addEventListener('change', async () => {
   if (draft) { draft.reportID = crypto.randomUUID(); update(); }
 });
 $('report-form').addEventListener('submit', async event => {
-  event.preventDefault(); update(); if (!draft || !$('consent').checked || busy) return;
+  event.preventDefault(); update(); if (!deliveryAvailable || !draft || !$('consent').checked || busy) return;
   const current = generation; const report = structuredClone(draft); const body = JSON.stringify(report); controller = new AbortController(); busy = true; update(); $('result').textContent = 'Bericht wird gesendet …';
   try {
     const response = await fetch('/api/reports', {method:'POST', headers:{'Content-Type':'application/json'}, body, signal:controller.signal, redirect:'error', credentials:'omit'});

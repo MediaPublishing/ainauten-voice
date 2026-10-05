@@ -38,7 +38,7 @@ func unwrap<T>(_ x: T?, file: StaticString = #filePath, line: UInt = #line) thro
 (out/'Runner.swift').write_text(support+'\n'.join(calls)+f'\n        print("Executed {len(calls)} contract cases; failures: \\(failures)")\n        exit(failures == 0 ? 0 : 1)\n    }}\n}}\n')
 # This adapter links the native SwiftPM object layout below. Swift 6.4 defaults
 # to swiftbuild, whose product layout differs; select the matching engine.
-subprocess.run(['swift','build','--build-system','native','--target','VoiceWisprCore'], cwd=root, check=True)
+subprocess.run(['swift','build','--build-system','native','--target','VoiceWisprCore','--jobs','4'], cwd=root, check=True)
 build = root/'.build/arm64-apple-macosx/debug'
 module = build/'Modules'
 cmd = ['xcrun','swiftc','-parse-as-library','-target','arm64-apple-macosx14.0','-I',str(module),'-I',str(root/'Sources/CSQLite'),'-I',str(build/'FastClusterWrapper.build'),'-I',str(build/'MachTaskSelfWrapper.build'),'-F',str(build),'-L',str(build),'-framework','llama','-framework','Accelerate','-framework','CoreML','-framework','AppKit','-framework','AVFoundation','-framework','ApplicationServices','-framework','Security','-framework','Carbon','-lsqlite3','-lc++','-Xlinker','-rpath','-Xlinker',str(build)]

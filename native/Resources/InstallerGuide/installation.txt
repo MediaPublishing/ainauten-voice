@@ -39,4 +39,10 @@ Das Probediktat zeigt dir den erkannten Text. Plane mindestens 8 GB freien
 Speicher für Modelle und Installation ein. Nach dem Download funktioniert
 die lokale Erkennung offline. Apple Silicon, macOS 14+.
 
+AUTOMATISCHE UPDATES
+Ab Version 0.1.2 sind automatische Updates standardmäßig aktiv. Die App lädt
+neue Versionen im Hintergrund und installiert sie beim Beenden. Einstellungen,
+Wörterbuch und Verlauf bleiben erhalten. Ausschalten oder sofort prüfen:
+Einstellungen > Updates. Eine bewusst gespeicherte Abschaltung bleibt erhalten.
+
 Offizielle Anleitung von Apple: https://support.apple.com/de-de/102445

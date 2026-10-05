@@ -38,6 +38,14 @@ class Page(HTMLParser):
 
 page = Page()
 page.feed(text)
+redirects = {}
+if (root / '_redirects').is_file():
+    for line in (root / '_redirects').read_text().splitlines():
+        route, target, status = line.split()
+        assert status == '302'
+        assert target.startswith(f'https://github.com/MediaPublishing/ainauten-voice/releases/download/v{version}/')
+        assert urlsplit(target).path.rsplit('/', 1)[-1] == route.rsplit('/', 1)[-1]
+        redirects[route] = target
 assert page.h1 == 1
 assert len(page.ids) == len(set(page.ids)), 'Duplicate IDs'
 for ref in page.refs:
@@ -51,7 +59,7 @@ for ref in page.refs:
         if root == source and path == '/installation.html':
             assert (source.parent / 'native/Resources/InstallerGuide/installation.html').is_file(), ref
             continue
-        assert (root / path[1:]).is_file(), ref
+        assert (root / path[1:]).is_file() or path in redirects, ref
 assert f'AInauten-Voice-{version}-arm64.dmg' in text
 assert f'Beta {version}' in text
 for term in ['Beispieldaten', 'nicht Apple-notarisiert', 'Audio bleibt', 'Mikrofon', 'Bedienungshilfen', 'Apple Silicon', 'SHA256SUMS.txt', 'aria-selected', 'Impressum', 'Datenschutz']:
@@ -67,7 +75,24 @@ assert vtt.startswith('WEBVTT') and vtt.count('-->') == 9, 'Missing caption cues
 assert 'AInauten Voice' in vtt and 'Wispr Flow' in vtt
 assert "media-src 'self'" in (root / '_headers').read_text()
 readme = (source.parent / 'README.md').read_text()
-assert ('https://github.com/user-attachments/assets/' in readme or
-        ('[![AInauten Voice: Videovorschau' in readme and 'https://youtu.be/UBhxxBohiMU' in readme)), 'README video missing'
-assert 'https://voice.ainauten.com/' in readme, 'README homepage missing'
+assert '## In 36 Sekunden erklärt' in readme
+assert 'https://voice.ainauten.com/#video' in readme or re.search(r'https://github.com/user-attachments/assets/[a-f0-9-]+', readme), 'README video missing'
+assert f'**{version}, Build {info["CFBundleVersion"]}**' in readme, 'README release does not match the app'
+if root != source:
+    import json
+    release = json.loads((root / 'downloads/release.json').read_text())
+    assert release['version'] == version and release['build'] == int(info['CFBundleVersion'])
+    assert release['updaterIncluded'] is True and release['automaticUpdatesByDefault'] is True
 print(f'SITE PASS: {len(page.refs)} links/assets, four screenshots, release {version}, local player/no autoplay, nine German captions, privacy/install information')
+
+# A claimed illustrated guide must ship its two locally served images.
+guide_root = root if root != source else source.parent/'native/Resources/InstallerGuide'
+guide = (guide_root/'installation.html').read_text()
+assert guide.count('installation-images/') == 2
+for name in ['macos-warnung.png', 'dennoch-oeffnen.png']:
+    assert (guide_root/'installation-images'/name).is_file()
+help_html = (root/'help.html').read_text()
+assert 'data-reporting-enabled="false"' in help_html
+assert f'id="build" value="{info["CFBundleVersion"]}"' in help_html
+assert 'buymeacoffee.com' not in text, 'Support link belongs in help, not primary navigation'
+print('INSTALLER/HELP PASS: two illustrated installation steps, consistent support version, inactive receiver identified')

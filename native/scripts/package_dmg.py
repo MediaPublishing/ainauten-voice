@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Wrap a verified app unchanged, with prominent offline first-start guidance."""
 import argparse
+import base64
 import datetime
 import pathlib
 import plistlib
+import re
 import shutil
 import subprocess
 from app_bundle import verify_runtime
@@ -18,6 +20,14 @@ def write_offline_guide(destination):
     link = '<link rel="stylesheet" href="installation.css">'
     if html.count(link) != 1:
         raise ValueError('Guide stylesheet link must appear exactly once')
+    def embed_image(match):
+        asset = (GUIDE / match[1]).resolve()
+        if not asset.is_relative_to((GUIDE / 'installation-images').resolve()) or asset.suffix != '.png':
+            raise ValueError('Expected a PNG from the installer guide image directory')
+        encoded = base64.b64encode(asset.read_bytes()).decode('ascii')
+        return 'src="data:image/png;base64,' + encoded + '"'
+
+    html = re.sub(r'src="(installation-images/[^"]+)"', embed_image, html)
     # One self-contained document opens even without an internet connection.
     (destination / '00 - ZUERST LESEN.html').write_text(
         html.replace(link, '<style>\n' + css + '\n</style>'), encoding='utf-8')

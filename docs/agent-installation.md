@@ -13,7 +13,7 @@ Mac mit Apple Silicon (M1 oder neuer), macOS 14 oder neuer, mindestens 8 GB RAM;
 ## Schritte für den Agent
 
 1. Plattform und vorhandene Installation prüfen. Wenn AInauten Voice läuft, den Nutzer bitten, die App regulär zu beenden. Keine Aufnahme unterbrechen oder Datenordner löschen.
-2. Release-Metadaten von `https://voice.ainauten.com/downloads/release.json` laden. Die aktuelle Beta heißt `AInauten-Voice-0.1.1-arm64.dmg`, Version 0.1.1, Build 2. Datei ausschließlich vom zugehörigen HTTPS-Downloadpfad laden. Mit `size` und `sha256` aus den Metadaten vergleichen; zusätzlich die [Prüfsummen](https://voice.ainauten.com/downloads/SHA256SUMS.txt) prüfen. Bei Abweichung abbrechen.
+2. Release-Metadaten von `https://voice.ainauten.com/downloads/release.json` laden. Verwende `filename`, `version` und `build` aus diesen Metadaten; keine alte Versionsnummer fest im Installationsskript hinterlegen. Datei ausschließlich vom zugehörigen HTTPS-Downloadpfad laden. Mit `size` und `sha256` aus den Metadaten vergleichen; zusätzlich die [Prüfsummen](https://voice.ainauten.com/downloads/SHA256SUMS.txt) prüfen. Bei Abweichung abbrechen.
 3. DMG-Integrität prüfen, schreibgeschützt einbinden. Das enthaltene Bundle muss `AInauten Voice.app`, Bundle-ID `com.mediapublishing.VoiceWispr` und Version 0.1.1 tragen. Codesignatur prüfen. Eine gültige lokale Signatur bedeutet noch keine Apple-Notarisierung.
 4. Eine bestehende App als datiertes Backup aufbewahren. Das neue Bundle nach Programme (`/Applications`, falls beschreibbar, sonst `~/Applications`) kopieren und die Kopie erneut prüfen. Symlinks im Bundle erhalten. Den Datenordner `~/Library/Application Support/Voice Wispr` und vorhandene Schlüsselbunddienste unverändert lassen. Keine doppelt gestarteten Versionen erzeugen. DMG anschließend auswerfen.
 5. Dem Nutzer Installationspfad und geprüfte Version nennen. Der Nutzer öffnet die App und bestätigt die unten beschriebenen Freigaben. Die Einrichtung lädt die Modelle einmalig und führt zum Probediktat.
@@ -28,6 +28,8 @@ Danach Mikrofon und Bedienungshilfen für die tatsächlich installierte App erla
 
 ## Updates und Entwicklungsbuilds
 
-Der signierte Updatekanal ist eingerichtet, bietet derzeit aber noch kein neues Release an. Der öffentliche Download 0.1.1, Build 2 enthält noch keinen Updater. Für diese Version ist einmalig der nächste updatefähige Installer nötig; danach lässt sich die automatische Suche samt Download in **Einstellungen → Updates** einschalten. Installiert wird beim Beenden/Neustart. Einstellungen, Wörterbuch und Verlauf bleiben erhalten.
+Der öffentliche Download **0.1.2, Build 6** enthält den signierten Updater. Automatische Suche und Downloads sind für neue Installationen standardmäßig aktiv; ein ausdrücklich gespeichertes Nein bleibt erhalten. Die App prüft täglich, installiert beim Beenden und unterbricht laufende Diktate nicht. Unter **Einstellungen → Updates** lassen sich die Automatik ausschalten und Updates sofort prüfen. Einstellungen, Wörterbuch und Verlauf bleiben erhalten.
+
+Apps ohne Updater, insbesondere die frühere Beta 0.1.1, Build 2, benötigen einmalig den aktuellen Installer. Ein Git-Push oder eine Änderung der Website allein verteilt kein Update; dafür wird ein geprüftes App-Paket im signierten Kanal veröffentlicht. Apple-Notarisierung bleibt ein separater Schritt.
 
 Quellcode-Builds sind für Entwickler: siehe [native/README.md](../native/README.md). Sie können noch unveröffentlichte Funktionen enthalten und sind nicht mit der geprüften Download-Beta gleichzusetzen. Die Python-Werkzeuge dienen dem Build; Endnutzer benötigen keinen Python- oder Modellserver.

@@ -30,6 +30,12 @@ private final class NoReportRedirects: NSObject, URLSessionTaskDelegate {
     func waitForProbe() async { await preferenceTask?.value; await sendingTask?.value; await automaticTask?.value; await cleanupTask?.value; await refresh() }
     func waitForProbeCleanup() async { await cleanupTask?.value }
     #endif
+    var deliveryAvailable: Bool {
+        #if DEBUG
+        if probeTransport != nil || preview { return true }
+        #endif
+        return Bundle.main.object(forInfoDictionaryKey: "AInautenReportDeliveryEnabled") as? Bool == true
+    }
     private let endpoint = URL(string: "https://voice.ainauten.com/api/reports")!
     private var sender: @Sendable (Data) async throws -> ReportReceipt {
         #if DEBUG
@@ -61,6 +67,7 @@ private final class NoReportRedirects: NSObject, URLSessionTaskDelegate {
         catch { message = "Der lokale Meldeverlauf konnte nicht gelesen werden. Es wurde nichts gesendet." }
     }
     func setAutomatic(_ value: Bool) {
+        guard !value || deliveryAvailable else { message = "Direkter Versand ist noch nicht verfügbar. Du kannst den Bericht lokal speichern."; return }
         automaticChoice = value; automatic = value
         if !value { automaticTask?.cancel() }
         guard let store else { return }
@@ -89,7 +96,7 @@ private final class NoReportRedirects: NSObject, URLSessionTaskDelegate {
         }
     }
     private func scheduleAutomatic() {
-        guard automatic, !preview, automaticTask == nil else { return }
+        guard deliveryAvailable, automatic, !preview, automaticTask == nil else { return }
         automaticTask = Task { await sendAutomatic(); let cancelled = Task.isCancelled; automaticTask = nil; if cancelled && automatic { scheduleAutomatic() } }
     }
     private func sendAutomatic() async {
@@ -100,6 +107,7 @@ private final class NoReportRedirects: NSObject, URLSessionTaskDelegate {
         catch { message = "Empfang noch nicht bestätigt. Du kannst die Meldung prüfen oder lokal speichern."; await refresh() }
     }
     func send() {
+        guard deliveryAvailable else { message = "Direkter Versand ist noch nicht verfügbar. Du kannst den Bericht lokal speichern."; return }
         guard !sending, (try? draft.validatedData()) != nil else { return }
         if preview { message = "Vorschau: kein Versand und keine Nutzerdaten."; return }
         guard let store else { return }

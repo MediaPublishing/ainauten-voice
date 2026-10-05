@@ -32,6 +32,10 @@ struct ErrorReportView: View {
                 Spacer()
                 if !editing { Button("Fehler melden") { reports.beginReport(); editing = true }.buttonStyle(.borderedProminent) }
             }
+            if !reports.deliveryAvailable {
+                Text("Berichte kannst du bereits lokal speichern. Der direkte Versand wird noch eingerichtet.")
+                    .font(.system(size: 12)).foregroundStyle(.secondary)
+            }
             if editing {
                 Text("Technisch: App-Version, macOS, Fehlercode und bereinigte Absturzstellen. Keine Aufnahmen, Diktate, Zwischenablage oder Wörterbucheinträge.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: 6) {
@@ -48,14 +52,14 @@ struct ErrorReportView: View {
                     } else { Text("Bitte Beschreibung oder Kontaktadresse prüfen.").foregroundStyle(.orange) }
                 }
                 HStack {
-                    Button(reports.sending ? "Wird gesendet …" : "Senden") { reports.send() }.buttonStyle(.borderedProminent).disabled(reports.sending || (try? reports.draft.validatedData()) == nil)
+                    Button(reports.sending ? "Wird gesendet …" : "Senden") { reports.send() }.buttonStyle(.borderedProminent).disabled(!reports.deliveryAvailable || reports.sending || (try? reports.draft.validatedData()) == nil)
                     Button("Lokal speichern") { reports.export() }.disabled(reports.sending || (try? reports.draft.validatedData()) == nil)
                     Button("Abbrechen") { reports.cancel(); editing = false }
                 }
             }
             if !reports.message.isEmpty { Text(reports.message).textSelection(.enabled).font(.system(size: 12)).accessibilityAddTraits(.updatesFrequently) }
             Divider()
-            Toggle("Technische Fehler automatisch melden", isOn: Binding(get: { reports.automatic }, set: { reports.setAutomatic($0) }))
+            Toggle("Technische Fehler automatisch melden", isOn: Binding(get: { reports.automatic && reports.deliveryAvailable }, set: { reports.setAutomatic($0) })).disabled(!reports.deliveryAvailable)
             Text("Standardmäßig aus. Nur bereinigte technische Daten; freiwillige Texte werden nie automatisch ergänzt. Du siehst jede Meldung hier und kannst die Automatik jederzeit ausschalten.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if !reports.entries.isEmpty {
                 Text("Meldeverlauf · 7 Tage").fontWeight(.semibold)
@@ -74,6 +78,12 @@ struct ErrorReportView: View {
                 }
             }
             Link("Die App startet nicht? Hilfe auf der Website", destination: URL(string: "https://voice.ainauten.com/help.html")!).font(.system(size: 12))
+            Link(destination: URL(string: "https://buymeacoffee.com/mediapublishing")!) {
+                Label("Kaffee spendieren", systemImage: "cup.and.saucer")
+                    .font(.system(size: 12))
+            }.buttonStyle(.plain).foregroundStyle(.secondary).pointerAwareFocus()
+                .help("AInauten Voice freiwillig unterstützen · öffnet Buy Me a Coffee im Browser")
+                .accessibilityLabel("Kaffee spendieren, öffnet Buy Me a Coffee im Browser")
         }.frame(maxWidth: 620, alignment: .leading)
     }
 }

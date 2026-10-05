@@ -5,6 +5,8 @@ from package_dmg import create_dmg
 
 root = pathlib.Path(__file__).resolve().parents[1]
 p = argparse.ArgumentParser(); p.add_argument('--debug', action='store_true'); p.add_argument('--install', action='store_true')
+p.add_argument('--sdk', type=pathlib.Path, help='Explicit compatible macOS SDK; leaves the system default unchanged')
+p.add_argument('--build-system', choices=['native', 'swiftbuild'], help='Swift build engine override for compatible CLT packaging')
 p.add_argument('--sign-identity', help='SHA-1 of an existing code-signing identity in the macOS keychain')
 p.add_argument('--install-directory', type=pathlib.Path, help='Existing installation directory; defaults to the system installation when writable')
 args = p.parse_args()
@@ -24,10 +26,16 @@ if identity != '-':
     identities = subprocess.check_output(['security', 'find-identity', '-p', 'codesigning'], text=True)
     if identity.upper() not in identities.upper(): p.error('configured signing identity is unavailable; refusing ad-hoc fallback')
 def run(*cmd): return subprocess.run(cmd, cwd=root, check=True)
+# The internal development report must never be distributed in an app bundle.
+user_report = root/'docs/user-verification-report.md'
+report_text = user_report.read_text()
+if not report_text.startswith('# AInauten Voice: Prüfbericht') or any(value in report_text for value in ['/Users/', '/home/', 'PRIVATE KEY', 'Administratorpasswort', 'Voice Wispr']):
+    raise SystemExit('The user verification report is missing or contains internal data')
 configuration = 'debug' if args.debug else 'release'
 run('python3', 'scripts/bootstrap.py')
-run('swift', 'build', '-c', configuration, '-j', '4')
-build = pathlib.Path(subprocess.check_output(['swift', 'build', '-c', configuration, '--show-bin-path'], cwd=root, text=True).strip())
+build_options = (['--sdk', str(args.sdk)] if args.sdk else []) + (['--build-system', args.build_system] if args.build_system else [])
+run('swift', 'build', *build_options, '-c', configuration, '-j', '4')
+build = pathlib.Path(subprocess.check_output(['swift', 'build', *build_options, '-c', configuration, '--show-bin-path'], cwd=root, text=True).strip())
 stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 out = root / 'artifacts' / stamp; out.mkdir(parents=True)
 app = out / 'AInauten Voice.app'; contents = app / 'Contents'
@@ -46,7 +54,7 @@ sparkle = contents/'Frameworks/Sparkle.framework'
 shutil.copytree(sparkle_distribution/'Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework', sparkle, symlinks=True)
 shutil.copytree(root/'Resources/Licenses', contents/'Resources/Licenses')
 shutil.copy2(sparkle_distribution/'LICENSE', contents/'Resources/Licenses/Sparkle-MIT.txt')
-shutil.copy2(root/'docs/verification-report.md', contents/'Resources/verification-report.md')
+shutil.copy2(user_report, contents/'Resources/verification-report.md')
 # Only our adapter/installer is bundled. Research sources and model weights
 # remain in the user's private support directory after explicit Beta setup.
 lip = contents/'Resources/LipReading'; lip.mkdir()
