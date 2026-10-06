@@ -4,7 +4,8 @@
     "/api/reports",
     "/api/reports/*",
     "/api/operator/reports/*",
-    "/downloads/AInauten-Voice-0.1.1-arm64.dmg"
+    "/downloads/AInauten-Voice-0.1.1-arm64.dmg",
+    "/api/operator/reports"
   ],
   "exclude": []
 }

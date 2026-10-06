@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VoiceWisprCore
 
 /// Uses Foundation's Markdown parser and AppKit's selectable rich text, entirely locally.
 struct ReportView: NSViewRepresentable {
@@ -27,7 +28,7 @@ struct ReportView: NSViewRepresentable {
         text.textContainer?.lineFragmentPadding = 0
         text.minSize = .zero
         text.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        text.setAccessibilityLabel("Prüfbericht, auswählbarer Text")
+        text.setAccessibilityLabel(L10n.text("report.accessibility"))
         scroll.documentView = text
         return scroll
     }

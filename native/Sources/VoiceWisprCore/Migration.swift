@@ -43,7 +43,7 @@ public struct MigrationResult: Sendable, Equatable {
         for (key, singular, plural) in [
             ("invalidDictionaryEntries", "leerer oder ungültiger Wörterbucheintrag", "leere oder ungültige Wörterbucheinträge"),
             ("overlongPhrases", "Ausdruck über 255 Zeichen", "Ausdrücke über 255 Zeichen"),
-            ("oversizedReplacements", "Ersetzung über 1 MB", "Ersetzungen über 1 MB")
+            ("oversizedReplacements", "Ersetzung über 16 KB", "Ersetzungen über 16 KB")
         ] {
             let count = preview.unsupportedCounts[key] ?? 0
             if count > 0 { text += " \(count) \(count == 1 ? singular : plural) ausgelassen." }
@@ -153,7 +153,7 @@ public struct WisprMigrationService: Sendable {
             for (key, label, count) in [
                 ("invalidDictionaryEntries", "Leere oder ungültige Wörterbucheinträge", source.invalidRows),
                 ("overlongPhrases", "Ausdrücke über 255 Zeichen", source.overlongPhrases),
-                ("oversizedReplacements", "Ersetzungen über 1 MB", source.oversizedReplacements)
+                ("oversizedReplacements", "Ersetzungen über 16 KB", source.oversizedReplacements)
             ] where count > 0 {
                 preview.unsupported.append("\(label) (\(count))"); preview.unsupportedCounts[key] = count
             }
@@ -365,7 +365,7 @@ private struct WisprSQLite {
             // Match SettingsStore's character/byte bounds without truncating content.
             guard phrase.count <= 255 else { result.overlongPhrases += 1; continue }
             let replacement = string(2).flatMap { $0.isEmpty ? nil : $0 }
-            guard (replacement?.utf8.count ?? 0) <= 1_000_000 else { result.oversizedReplacements += 1; continue }
+            guard (replacement?.utf8.count ?? 0) <= DictionaryEntry.maximumReplacementBytes else { result.oversizedReplacements += 1; continue }
             if replacement == nil { result.words += 1 } else { result.replacements += 1 }
             result.rows.append(WisprRow(id: "wispr:\(id)", phrase: phrase, replacement: replacement))
         }

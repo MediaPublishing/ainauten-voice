@@ -29,7 +29,7 @@ public enum DictionaryCSV {
             let phrase = row[phraseIndex].trimmingCharacters(in: .whitespacesAndNewlines)
             let replacement = replacementIndex.map { row[$0].trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap { $0.isEmpty ? nil : $0 }
             guard !phrase.isEmpty, phrase.count <= 255 else { skipped += 1; continue }
-            guard (replacement?.utf8.count ?? 0) <= 1_000_000 else { throw VoiceError.message("Eine CSV-Ersetzung ist zu groß.") }
+            guard (replacement?.utf8.count ?? 0) <= DictionaryEntry.maximumReplacementBytes else { throw VoiceError.message("Eine CSV-Ersetzung ist zu groß.") }
             guard seen.insert(phrase.precomposedStringWithCanonicalMapping.lowercased()).inserted else { skipped += 1; continue }
             entries.append(.init(phrase: phrase, replacement: replacement, manuallyModified: true))
         }

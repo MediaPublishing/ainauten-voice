@@ -30,6 +30,7 @@ https://github.com/user-attachments/assets/bf5a39be-fa37-4d6b-8ff7-f2203b581335
 - **Wispr Flow importieren:** Unterstützte Wörter, Ersetzungen, Sprachen und Kürzel übernehmen.
 - **Diktate wiederfinden:** Im lokalen Verlauf suchen, kopieren und als Favorit speichern.
 - **Nutzung sehen:** Gesprochene Wörter, Aufnahmezeit und Sprechgeschwindigkeit.
+- **Deutsch oder Englisch verwenden:** Die Oberfläche folgt deiner Systemsprache; unter **Einstellungen → Diktieren → Oberflächensprache** kannst du sie direkt wechseln. Deine Diktatsprachen bleiben erhalten.
 - **Automatisch aktualisieren:** Signierte Updates im Hintergrund laden, beim Beenden installieren.
 
 ![AInauten Voice: Übersicht mit Verlauf und Nutzungsstatistik](site/assets/screenshots/overview.png)
@@ -50,14 +51,14 @@ Mikrofon, Bedienungshilfen und den ersten macOS-Start bestätigst du selbst. [De
 
 ## Deine Daten
 
-Audio bleibt auf deinem Mac und wird nicht dauerhaft gespeichert. Den lokalen Textverlauf kannst du ausschalten. Cloud-Textoptimierung ist optional und standardmäßig aus.
+Audio bleibt auf deinem Mac und wird nicht dauerhaft gespeichert. Den lokalen Textverlauf kannst du ausschalten. Cloud-Textoptimierung ist optional und standardmäßig aus. Kompatibles Einfügen verwendet kurz die systemweite Zwischenablage; unter Datenschutz kannst du das ausschalten. Lippenlesen ist vorübergehend gesperrt, bis eine signierte und isolierte Laufzeit verfügbar ist.
 
 <details>
 <summary>Für Entwickler: Technik, Versionsstand und Lizenz</summary>
 
 Die native App verwendet SwiftUI/AppKit, FluidAudio mit Parakeet v3 und eingebettetes llama.cpp mit Qwen3-4B. [Entwicklungsanleitung](native/README.md) · [Prüfbericht](native/docs/verification-report.md) · [Website entwickeln](site/README.md).
 
-Der öffentliche Download ist Beta **0.1.4, Build 8**, mit signierten automatischen Updates. Die Automatik ist standardmäßig aktiv und lässt sich unter **Einstellungen → Updates** ausschalten. Ältere Apps ohne Updater müssen einmalig durch den aktuellen Download ersetzt werden. Manuelle Fehlerberichte sind unter **Hilfe** verfügbar und gehen nach deiner Bestätigung an den privaten Eingang. Forschungsmodelle und automatische Fehlerübermittlung bleiben standardmäßig aus. Ein Git-Push allein verteilt kein App-Update. [Installations- und Updatehinweise](docs/agent-installation.md#updates-und-entwicklungsbuilds).
+Der öffentliche Download ist Beta **0.1.10, Build 14**, mit signierten automatischen Updates. Die Automatik ist standardmäßig aktiv und lässt sich unter **Einstellungen → Updates** ausschalten. Ältere Apps ohne Updater müssen einmalig durch den aktuellen Download ersetzt werden. Manuelle Fehlerberichte sind unter **Hilfe** verfügbar und gehen nach deiner Bestätigung an den privaten Eingang. Forschungsmodelle und automatische Fehlerübermittlung bleiben standardmäßig aus. Ein Git-Push allein verteilt kein App-Update. [Installations- und Updatehinweise](docs/agent-installation.md#updates-und-entwicklungsbuilds).
 
 Der Quellcode ist öffentlich einsehbar. Für den eigenen App-Code wurde bislang keine Open-Source-Lizenz erteilt; alle Rechte bleiben vorbehalten. Abhängigkeiten und Modelle haben eigene Lizenzen. [Lizenznachweise](native/Resources/Licenses/NOTICE.md) · [Forschungsmodell-Lizenzen](native/lipreading_runtime/licenses/NOTICE-Research-Models.txt).
 
@@ -66,3 +67,7 @@ Der Quellcode ist öffentlich einsehbar. Für den eigenen App-Code wurde bislang
 Entwickelt von [AInauten](https://www.ainauten.com/). AInauten Voice ist ein eigenständiges Projekt ohne Verbindung zu Wispr. Wispr Flow ist eine Marke ihres Inhabers.
 
 Fehler und Ideen: [Issue anlegen](https://github.com/MediaPublishing/ainauten-voice/issues/new/choose). Sicherheitslücken bitte [privat melden](https://github.com/MediaPublishing/ainauten-voice/security/advisories/new).
+
+### Sicherheitsänderungen im Quellcode
+
+Der öffentliche Download **0.1.10 (14)** ist weiterhin lokal signiert, nicht Apple-notarisiert und verwendet für kompatibles Einfügen standardmäßig kurz die systemweite Zwischenablage. Die aktualisierte Quelle schaltet diese automatische Nutzung standardmäßig aus; nur eine ausdrückliche Freigabe aktiviert sie. Neue öffentliche Releases sind ohne Apple Developer ID, aktive Bibliotheksvalidierung und geprüfte Notarisierung gesperrt. Diese Änderungen sind noch kein ausgeliefertes App-Update. [Details und offene Apple-Einrichtung](native/docs/security-followup-2026-10-06.md).

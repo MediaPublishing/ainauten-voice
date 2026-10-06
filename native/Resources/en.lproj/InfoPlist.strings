@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "AInauten Voice records your voice only during a dictation you start. Audio is processed locally and is not saved permanently.";
+"NSCameraUsageDescription" = "The optional lip-reading beta uses your camera only during a recording you start. Images are processed locally and are not saved permanently.";

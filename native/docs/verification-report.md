@@ -1,18 +1,32 @@
 # AInauten Voice: Prüfbericht
 
-Stand: 4. Oktober 2026. **Beta, praktische Gesamtabnahme teilweise offen.**
+Stand: 6. Oktober 2026. **Beta, praktische Gesamtabnahme teilweise offen.**
 
 ## Öffentlicher Download
 
-Version 0.1.1, Build 2 für Apple Silicon, macOS 14 als Build-Ziel. Lokal signiert, noch nicht Apple-notarisiert. Der aktuelle Entwicklungsstand kann zusätzliche Funktionen enthalten.
+Version **0.1.10, Build 14** für Apple Silicon, macOS 14 als Build-Ziel. Die App ist lokal signiert und nutzt Hardened Runtime, ist jedoch noch nicht Apple-notarisiert. Die Signatur benötigt derzeit eine Ausnahme für Bibliotheksvalidierung.
+
+Der Download enthält den separat signierten Sparkle-Updater, Hilfe, einen aktivierten privaten Fehlerempfang sowie eine deutsche und englische Oberfläche. Automatische Updates sind standardmäßig aktiv; eine ausdrücklich gespeicherte Abschaltung bleibt erhalten. Fehlerberichte werden nur mit Zustimmung gesendet, automatische Fehlerübermittlung bleibt standardmäßig aus. Automatische AI-Reparaturen sind nicht aktiviert.
 
 ## Nachweise
 
-- Für den veröffentlichten App-Stand wurden 243 automatisierte Vertragsfälle geprüft.
-- Native Oberfläche, Modellverarbeitung, Textoptimierung, Wörterbuch, Migration, Zwischenablage und einzelne Einfügeziele wurden lokal geprüft.
-- Deutsch, Englisch und Sprachwechsel wurden mit reproduzierbaren synthetischen Fällen sowie öffentlichen FLEURS-Sprachaufnahmen geprüft.
+- Die Textoptimierung bewahrt Satzzeichen und Sprachgrenzen in den zusätzlich geprüften Revisionsfällen. Die akustische Erkennung verwendet weiterhin dasselbe Modell; allgemeine Qualitätsgrenzen bleiben offen.
+
+- Die aktuelle Aufnahme-Anzeige und Startdiagnose warten auf den ersten echten Audioblock. Zehn gezielte native App-Zustandsprüfungen bestanden ohne Fehler; verspätete oder alte Callback-Ereignisse ersetzen die erste Messung nicht. Der Wert misst die interne Startanfrage bis zum ersten empfangenen Audio, keinen Tastendruck, Bildaufbau oder p95. Diese Änderung ist in 0.1.10, Build 14 enthalten.
+- Der aktuelle Quellstand sperrt auch den direkten Lippenlese-Installer im Release. Drei gezielte native Release-Prüfungen bestanden; der alte Installer scheitert nachweislich am neuen Test. Die ungeprüften Forschungs-Abhängigkeiten sind damit nicht aktualisiert oder sicherheitsqualifiziert. Der Fix ist in 0.1.10, Build 14 enthalten.
+- Im aktuellen Quellstand bestätigt die Zwischenablage-Wiederherstellung erst eine zusätzliche Prüfung aller ursprünglichen Datenformate und Einträge. **20 gezielte native Vertragsfälle ohne Fehler**, mit separaten AppKit-Testzwischenablagen und unabhängiger Gegenprüfung. Dieser Fix ist in 0.1.10, Build 14 enthalten; keine Mikrofon- oder vollständige App-Abnahme daraus abgeleitet.
+- Für die letzte Oberflächenänderung wurden **97 gezielt ausgewählte portable Vertragsfälle ohne Fehler** ausgeführt. Das sind ausgewählte Prüfungen, kein vollständiger Apple-XCTest-Lauf und keine Gesamtabnahme.
+- Der native Release-Build, die eingebetteten Sprachressourcen, der direkte Oberflächensprachwechsel und die Speicherung der Sprachwahl über einen Neustart wurden geprüft. Diktatsprachen und vorhandene Einstellungen blieben erhalten.
+- Native Oberfläche, Modellverarbeitung, Textoptimierung, Wörterbuch, Migration, Zwischenablage und einzelne Einfügeziele wurden in früheren Prüfungen lokal geprüft. Diese Nachweise decken jeweils ihren konkreten Testumfang ab.
+- Deutsch, Englisch und Sprachwechsel wurden mit reproduzierbaren Textfällen sowie öffentlichen FLEURS-Sprachaufnahmen geprüft. Die Sprachtests haben auch Fehler ergeben; sie belegen keine durchgehend erfüllten Qualitätsziele.
+- Die aktuelle lokale Textoptimierung bestand elf unveränderte Textfälle und zwei Prüfungen mit einem Transkriptadapter. Eine Zitatprüfung nutzte den sicheren Originaltext-Rückfall. Diese Tests verwenden das echte lokale Textmodell, jedoch keine Mikrofonaufnahme oder Spracherkennung; die Einstellungen blieben unverändert.
+- Vier aktuelle TextEdit-Prüfungen bestätigten Auswahlersetzung, Einfügen am Cursor, langen Text und die Ablehnung eines gewechselten Ziels in eigenen Testdokumenten. Sie prüfen die Zustellung im Core, keine physische Aufnahme oder vollständige Ziel-App-Matrix.
+- Für die Auswahländerung bestanden **83 gezielte Vertragsfälle** und ein weiterer tatsächlicher Lauf aller elf Textfälle sowie beider Pipelineprüfungen.
+- Ein isolierter Vergleich der Auswahl im Textmodell umfasste sechs vollständige Läufe und alle elf bisherigen Textfälle. Die Ausgaben blieben identisch. Der Median der gepaarten Fallquotienten sank um rund 15 %; dies ist ein begrenzter Modellzeitvergleich, keine Messung bis zur Einfügung in eine andere App. [Details und Grenzen](formatter-selection-2026-10-05.md).
+- Für das aktuelle Paket bestanden 58 gezielt ausgewählte portable Vertragsfälle sowie 31 Prüfungen des Fehlerempfangs ohne Fehler. Das sind gezielte Prüfungen, keine vollständige App-Abnahme.
+- Ein synthetischer Bericht aus dem aktuellen Release erreichte den privaten Fehlerempfang und genau ein privates GitHub-Issue. Eine Wiederholung mit derselben Berichts-ID erzeugte keinen zweiten Bericht. Automatische Nutzerberichte bleiben standardmäßig aus.
 - Screenshots und Promo-Material zeigen ausschließlich ausdrücklich gekennzeichnete Beispieldaten.
-- App-Signatur, DMG-Integrität und öffentlicher Download wurden geprüft. Die Offline-Installationsanleitung liegt im DMG.
+- App-Signatur, DMG-Integrität, öffentlicher Download und signierter Updatekanal wurden für 0.1.10, Build 14 erneut geprüft. Die veröffentlichten Pakete stimmen bytegenau mit dem geprüften Kandidaten überein. Die Offline-Installationsanleitung liegt im DMG.
 
 ## Sprachrückmeldung und unpersönlicher Probetest
 
@@ -20,13 +34,13 @@ Das Probediktat zeigt den erkannten Text in der Einrichtung. Es wird nicht autom
 
 ## Offene Grenzen
 
-Keine vollständige praktische Abnahme für alle Mikrofone, Apps, langen Aufnahmen, macOS-Versionen oder die festgelegten Geschwindigkeitsziele. Namen und Fachbegriffe können Fehler enthalten. Die Optimierung ersetzt keine inhaltliche Prüfung.
+Keine vollständige praktische Abnahme für alle Mikrofone, Apps, langen Aufnahmen oder macOS-Versionen. macOS 14 ist das Build-Ziel; das aktuelle Paket wurde auf einem neueren macOS geprüft.
 
-Der Entwicklungsstand enthält einen vorbereiteten, separat signierten Sparkle-Updatekanal und eine ausgeschaltete Forschungs-Beta für Lippenlesen. Beides gehört noch nicht zum öffentlichen Download. Kameraqualität und deutsche Lippenleseerkennung sind nicht allgemein abgenommen. Forschungsmodelle werden nicht mitgeliefert und unterliegen teilweise nichtkommerziellen Lizenzen.
+Die festgelegten Qualitäts- und Geschwindigkeitsziele sind weiterhin offen. Öffentliche Sprachtests überschreiten in einzelnen Fällen die Grenze von 8 % Wortfehlern und verlieren vereinzelt Namen oder Zahlen. Gemessene Modellverarbeitungszeiten überschreiten die Ziele für optimierte Texte; diese Messungen sind kein Nachweis für die Dauer bis zum tatsächlichen Einfügen in eine andere App. Auch ein durchgelaufener 20-Minuten-Audiofall erfüllte die Qualitätsgrenze nicht. Die Optimierung ersetzt keine inhaltliche Prüfung.
 
-## Neuerer Entwicklungsstand
+Kompatibles Einfügen verwendet kurz die systemweite Zwischenablage. Es lässt sich unter Datenschutz abschalten. Unklare Zustellung wird nicht automatisch wiederholt, damit kein Text doppelt eingefügt wird.
 
-Der neuere Quellstand enthält einen standardmäßig ausgeschalteten Fehlerbericht-Ausbau. Dafür wurden 265 portable Vertragsfälle sowie 17 lokale JavaScript-Tests geprüft. Lokale Prüfungen sind kein Nachweis für aktivierten öffentlichen Fehlerempfang oder automatische AI-Reparaturen. Diese Funktionen werden noch nicht allgemein ausgeliefert.
+Lippenlesen ist im Release vorübergehend gesperrt, bis eine signierte und isolierte Laufzeit verfügbar ist. Mikrofondiktate sind davon nicht betroffen. Kameraqualität und deutsche Lippenleseerkennung sind nicht allgemein abgenommen. Forschungsmodelle werden nicht mitgeliefert und unterliegen teilweise nichtkommerziellen Lizenzen.
 
 ## Reproduzierbare Prüfungen
 
@@ -35,6 +49,7 @@ cd native
 python3 scripts/portable-checks.py
 python3 scripts/check-lip-adapters.py
 python3 scripts/run-update-native-checks.py
+python3 scripts/check-paragraph-quality.py  # vorhandenes lokales Modell; keine Mikrofonaufnahme
 ```
 
-Ein vollständiger Swift-/XCTest-Lauf benötigt die passende Apple-Entwicklungsumgebung; portable Vertragsprüfungen ersetzen keine echte Mikrofon-/App-Abnahme. Weitere Modellprüfungen sind in der [Entwicklungsanleitung](../README.md) beschrieben. Audio, Benutzerprofile, private Wörterbücher, Rohbelege und lokale Schlüssel sind kein Bestandteil dieses Repositorys.
+Ein vollständiger Swift-/XCTest-Lauf benötigt die passende Apple-Entwicklungsumgebung; portable Vertragsprüfungen ersetzen keine echte Mikrofon-/App-Abnahme. Hinweise zum passenden SDK und weitere Modellprüfungen stehen in der [Entwicklungsanleitung](../README.md). Audio, Benutzerprofile, private Wörterbücher, Rohbelege und lokale Schlüssel sind kein Bestandteil dieses Repositorys.

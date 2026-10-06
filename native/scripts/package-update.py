@@ -103,6 +103,8 @@ def main():
     previous.add_argument('--bootstrap', action='store_true', help='First channel publication only')
     parser.add_argument('--release-notes', type=pathlib.Path, required=True)
     args = parser.parse_args()
+    from distribution_security import verify_distribution_app
+    verify_distribution_app(args.app)
     info = info_for(args.app)
     tools = ROOT/'.build/artifacts/sparkle/Sparkle/bin'
     # Public-key lookup only, in the explicitly named existing account.

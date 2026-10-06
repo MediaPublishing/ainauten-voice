@@ -69,6 +69,19 @@ assert not re.search(r'<link[^>]+rel="stylesheet"[^>]+href="https?://', text), '
 assert 'LocalWhisper.git' not in text
 for meta in ['<meta property="og:locale" content="de_DE">', '<meta property="og:site_name" content="AInauten Voice">', 'href="/assets/favicon-32.png" sizes="32x32"', 'rel="apple-touch-icon" href="/assets/apple-touch-icon.png"', 'href="/assets/icon-192.png" sizes="192x192"']:
     assert meta in text, meta
+# Serve the conventional root fallback and link it on every public page.
+import struct
+ico = (root / 'favicon.ico').read_bytes()
+assert struct.unpack('<HHH', ico[:6]) == (0, 1, 1), 'Invalid favicon directory'
+width, height, colors, reserved, planes, depth, length, offset = struct.unpack('<BBBBHHII', ico[6:22])
+assert (width, height, reserved, planes, depth) == (32, 32, 0, 1, 32)
+assert offset == 22 and length == len(ico) - offset
+assert ico[offset:] == (root / 'assets/favicon-32.png').read_bytes(), 'Favicon must use the existing logo'
+icon_pages = ['index.html', 'help.html', '404.html'] + (['installation.html'] if root != source else [])
+for name in icon_pages:
+    html = (root / name).read_text().split('</head>', 1)[0]
+    assert 'rel="icon" href="/favicon.ico?v=1"' in html, f'Favicon missing: {name}'
+    assert 'rel="apple-touch-icon" href="/assets/apple-touch-icon.png"' in html, f'Touch icon missing: {name}'
 # Readable text: no font size below 12 px in the main stylesheet.
 assert not [size for size in re.findall(r'font(?:-size)?:[^;}]*?(\d+(?:\.\d+)?)px', (root / 'styles.css').read_text()) if float(size) < 12], 'Text below 12 px'
 # Honest requirements, the one-time model download and a checkable download.
@@ -120,5 +133,6 @@ if reporting_enabled:
     config = tomllib.loads((source/'wrangler.toml').read_text())
     assert any(s.get('binding') == 'REPORTING' and s.get('service') == 'ainauten-voice-reports' for s in config.get('services', [])), 'Missing private reporting service binding'
 assert f'id="build" value="{info["CFBundleVersion"]}"' in help_html
-assert 'buymeacoffee.com' not in text, 'Support link belongs in help, not primary navigation'
+assert f'id="version" value="{info["CFBundleShortVersionString"]}"' in help_html
+assert 'buymeacoffee.com' not in text.split('<!-- AINAUTEN_HEADER_END -->', 1)[0], 'Support link must not crowd primary navigation'
 print('INSTALLER/HELP PASS: two illustrated installation steps, consistent support version, reporting flags and consent consistent')

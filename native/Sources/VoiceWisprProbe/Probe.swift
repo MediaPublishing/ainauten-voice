@@ -21,6 +21,106 @@ private final class CheckpointMeasurements: @unchecked Sendable {
     }
 }
 
+/// Developer-only tracing of public fixtures. The new stream contains timings,
+/// counts and content hashes, never transcripts, audio or dictionary contents.
+private final class StageTrace: @unchecked Sendable {
+    private let lock = NSLock()
+    private var fixture = "warmup", style = "", run = 0
+    func select(fixture: String, style: String, run: Int) {
+        lock.lock(); defer { lock.unlock() }
+        self.fixture = fixture; self.style = style; self.run = run
+    }
+    private func identity() -> [String: Any] {
+        lock.lock(); defer { lock.unlock() }
+        return ["fixture": fixture, "style": style, "run": run]
+    }
+    private func emit(_ fields: [String: Any]) {
+        lock.lock(); defer { lock.unlock() }
+        guard let data = try? JSONSerialization.data(withJSONObject: fields, options: [.sortedKeys]) else { return }
+        FileHandle.standardOutput.write(data + Data([10]))
+    }
+    static func digest(_ text: String) -> String {
+        SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+    static func redactedRecord(_ fields: [String: Any]) -> [String: Any] {
+        var result = fields
+        for key in ["reference", "original", "text"] {
+            if let text = result[key] as? String {
+                result[key + "UTF8Bytes"] = text.utf8.count
+                result[key + "SHA256"] = digest(text)
+            }
+        }
+        for key in ["reference", "original", "text", "referenceNegations", "recognizedNegations", "formattedNegations",
+                    "referenceNumbers", "recognizedNumbers", "formattedNumbers", "error"] {
+            result.removeValue(forKey: key)
+        }
+        if fields["contentsLogged"] != nil { result["contentsLogged"] = false }
+        if fields["error"] != nil { result["errorKind"] = "failed" }
+        return result
+    }
+    func captureEnd() {
+        var event = identity()
+        event["event"] = "diagnostic-stage"; event["stage"] = "capture-end"; event["phase"] = "mark"
+        event["uptimeSeconds"] = ProcessInfo.processInfo.systemUptime
+        emit(event)
+    }
+    func measure<T>(_ stage: String, details: [String: Any] = [:], operation: () async throws -> T,
+                    output: (T) -> [String: Any] = { _ in [:] }) async throws -> T {
+        var event = identity()
+        let began = ProcessInfo.processInfo.systemUptime
+        event["event"] = "diagnostic-stage"; event["stage"] = stage; event["phase"] = "begin"
+        event["callID"] = UUID().uuidString; event["uptimeSeconds"] = began
+        event.merge(details) { current, _ in current }
+        emit(event)
+        do {
+            let value = try await operation()
+            let ended = ProcessInfo.processInfo.systemUptime
+            event["phase"] = "end"; event["uptimeSeconds"] = ended; event["durationSeconds"] = ended - began
+            event.merge(output(value)) { current, _ in current }
+            emit(event)
+            return value
+        } catch {
+            let ended = ProcessInfo.processInfo.systemUptime
+            event["phase"] = "error"; event["uptimeSeconds"] = ended; event["durationSeconds"] = ended - began
+            event["errorKind"] = error is CancellationError ? "cancelled" : "failed"
+            emit(event)
+            throw error
+        }
+    }
+}
+
+private struct StageSpeech: SpeechTranscribing, SpeechActivityDetecting, SpeechSessionReconciling {
+    let base: SpeechRuntime
+    let trace: StageTrace
+    func prepare() async throws { try await trace.measure("speech-prepare") { try await base.prepare() } }
+    func detectActivity(samples: [Float], state: SpeechActivityState) async throws -> SpeechActivityResult {
+        // Do not log per-frame callbacks or alter the VAD's state progression.
+        try await base.detectActivity(samples: samples, state: state)
+    }
+    func transcribe(samples: [Float], sessionID: UUID, index: Int, offset: Double) async throws -> TranscriptSegment {
+        try await trace.measure("transcribe", details: ["samples": samples.count, "segmentIndex": index, "offsetSeconds": offset]) {
+            try await base.transcribe(samples: samples, sessionID: sessionID, index: index, offset: offset)
+        } output: { ["outputUTF8Bytes": $0.text.utf8.count, "outputSHA256": StageTrace.digest($0.text)] }
+    }
+    func reconcile(samples: [Float], sessionID: UUID) async throws -> TranscriptSegment {
+        try await trace.measure("reconcile", details: ["samples": samples.count]) {
+            try await base.reconcile(samples: samples, sessionID: sessionID)
+        } output: { ["outputUTF8Bytes": $0.text.utf8.count, "outputSHA256": StageTrace.digest($0.text)] }
+    }
+}
+
+private struct StageFormatter: TextFormatting {
+    let base: LocalFormatter
+    let trace: StageTrace
+    func prepare() async throws { try await trace.measure("formatter-prepare") { try await base.prepare() } }
+    func format(_ text: String, style: TextStyle, context: String, vocabulary: [String]) async throws -> String {
+        try await trace.measure("format", details: ["inputUTF8Bytes": text.utf8.count, "inputSHA256": StageTrace.digest(text),
+                                                   "contextUTF8Bytes": context.utf8.count, "vocabularyCount": vocabulary.count]) {
+            try await base.format(text, style: style, context: context, vocabulary: vocabulary)
+        } output: { ["outputUTF8Bytes": $0.utf8.count, "outputSHA256": StageTrace.digest($0)] }
+    }
+}
+
 @main struct Probe {
     static func main() async {
         do {
@@ -219,8 +319,8 @@ private final class CheckpointMeasurements: @unchecked Sendable {
         let data = try JSONSerialization.data(withJSONObject: value, options: [.prettyPrinted, .sortedKeys])
         print(String(decoding: data, as: UTF8.self))
     }
-    private static func jsonLine(_ value: [String: Any]) throws {
-        let data = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+    private static func jsonLine(_ value: [String: Any], suppressContents: Bool = false) throws {
+        let data = try JSONSerialization.data(withJSONObject: suppressContents ? StageTrace.redactedRecord(value) : value, options: [.sortedKeys])
         print(String(decoding: data, as: UTF8.self)); fflush(stdout)
     }
     private struct FormatCases: Decodable {
@@ -266,6 +366,9 @@ private final class CheckpointMeasurements: @unchecked Sendable {
         }
         guard !selected.isEmpty else { throw VoiceError.message("No matching fixtures") }
         let useSettingsDictionary = arguments.contains("--settings-dictionary")
+        guard !arguments.contains("--trace-stages") || (publicHuman && !useSettingsDictionary) else {
+            throw VoiceError.message("Stage tracing requires public FLEURS fixtures without the user dictionary")
+        }
         var entries: [DictionaryEntry] = []
         if useSettingsDictionary {
             let settingsURL = ModelPaths.support.appendingPathComponent("settings.json")
@@ -275,8 +378,13 @@ private final class CheckpointMeasurements: @unchecked Sendable {
         let dictionary = DictionaryMatcher(entries)
         let streaming = arguments.contains("--stream")
         let speechConfiguration = suiteSpeechConfiguration(arguments)
-        let speech = SpeechRuntime(configuration: speechConfiguration)
+        let baseSpeech = SpeechRuntime(configuration: speechConfiguration)
         let local = LocalFormatter(modelURL: ModelPaths.formatter)
+        let trace = arguments.contains("--trace-stages") ? StageTrace() : nil
+        let speech: any SpeechTranscribing
+        let measuredFormatter: any TextFormatting
+        if let trace { speech = StageSpeech(base: baseSpeech, trace: trace); measuredFormatter = StageFormatter(base: local, trace: trace) }
+        else { speech = baseSpeech; measuredFormatter = local }
         do {
         let loadStarted = ProcessInfo.processInfo.systemUptime
         try await speech.prepare()
@@ -285,7 +393,7 @@ private final class CheckpointMeasurements: @unchecked Sendable {
         let warmAudio = try AudioConverter().resampleAudioFile(URL(fileURLWithPath: selected[0].audio))
         // Warm the complete first public fixture through the same bounded pipeline.
         // It remains in all three measured repetitions; no reference is a prompt.
-        let warmPipeline = ProcessingPipeline(speech: speech, formatter: needsFormatting ? local : OriginalFormatter(), coreSamples: Int(coreSeconds(arguments) * 16000), overlapSamples: Int(overlapSeconds(arguments) * 16000))
+        let warmPipeline = ProcessingPipeline(speech: speech, formatter: needsFormatting ? measuredFormatter : OriginalFormatter(), coreSamples: Int(coreSeconds(arguments) * 16000), overlapSamples: Int(overlapSeconds(arguments) * 16000))
         _ = try await warmPipeline.process(samples: warmAudio, sessionID: UUID(), style: needsFormatting ? .cleaned : .original)
         try jsonLine(["event": "suite-start", "source": manifest.source, "coreSeconds": coreSeconds(arguments), "overlapSeconds": overlapSeconds(arguments), "vadSilenceSeconds": vadSilence(arguments), "trimTrailingSilence": arguments.contains("--trim-tail"), "encoderPrecision": arguments.contains("--encoder-v2") ? "int8-v2" : "int8", "sdkWorkers": speechConfiguration.sdkWorkers, "dualDecodeArbitration": speechConfiguration.dualDecodeArbitration, "reconciliationContextSeconds": 8, "boundedReconciliationAboveSeconds": 600, "humanAcceptance": false, "fixtures": selected.count, "repeats": repeats, "streamedAtRealTime": streaming, "loadAndWarmSeconds": ProcessInfo.processInfo.systemUptime - loadStarted,
                       "normalizationNotes": manifest.normalizationNotes, "hardware": "Run host; see machine receipt. Other simultaneous processes may affect latency.", "feedPacing": "append-after-capture-deadline", "feedChunkSamples": 1600, "latencyClock": "logical-capture-end-including-feed-lag", "warmupScope": "complete-first-fixture-pipeline-ungraded-no-case-exclusion"])
@@ -298,7 +406,8 @@ private final class CheckpointMeasurements: @unchecked Sendable {
             let audio = try AudioConverter().resampleAudioFile(URL(fileURLWithPath: fixture.audio))
             for style in styles ?? fixture.styles.compactMap(TextStyle.init(rawValue:)) {
                 for run in 1...repeats {
-                    let formatter: any TextFormatting = style == .original ? OriginalFormatter() : local
+                    trace?.select(fixture: fixture.id, style: style.rawValue, run: run)
+                    let formatter: any TextFormatting = style == .original ? OriginalFormatter() : measuredFormatter
                     let checkpoints = CheckpointMeasurements()
                     let pipeline = ProcessingPipeline(speech: speech, formatter: formatter, coreSamples: Int(coreSeconds(arguments) * 16000), overlapSamples: Int(overlapSeconds(arguments) * 16000), checkpointMinimumSamples: arguments.contains("--no-checkpoints") ? AudioCaptureBuffer.maximumSamples + 1 : 720_000, observeCheckpoint: { checkpoints.record($0, $1) })
                     do {
@@ -309,6 +418,7 @@ private final class CheckpointMeasurements: @unchecked Sendable {
                         else { try await pipeline.append(samples: audio) }
                         let finalFeed = ProcessInfo.processInfo.systemUptime
                         let stopped = feed?.scheduledStop ?? finalFeed
+                        trace?.captureEnd()
                         let result = try await pipeline.finish()
                         let finished = ProcessInfo.processInfo.systemUptime
                         let reference = words(fixture.reference), recognized = words(result.original), formatted = words(result.text)
@@ -332,10 +442,10 @@ private final class CheckpointMeasurements: @unchecked Sendable {
                                       "resultProcessingStatus": !result.isComplete ? "recognition-partial" : style == .original ? "original-successful" : result.usedFallback ? "formatting-fallback-partial-or-full" : "formatted-successful",
                                       "referenceNegations": useSettingsDictionary ? NSNull() : negations(reference) as Any, "recognizedNegations": useSettingsDictionary ? NSNull() : negations(recognized) as Any, "formattedNegations": useSettingsDictionary ? NSNull() : negations(formatted) as Any,
                                       "referenceNumbers": useSettingsDictionary ? NSNull() : canonicalReference.filter { $0.allSatisfy(\.isNumber) } as Any, "recognizedNumbers": useSettingsDictionary ? NSNull() : canonicalRecognized.filter { $0.allSatisfy(\.isNumber) } as Any, "formattedNumbers": useSettingsDictionary ? NSNull() : canonicalFormatted.filter { $0.allSatisfy(\.isNumber) } as Any,
-                                      "numbersPreserved": expectedFormatted.filter { $0.allSatisfy(\.isNumber) } == canonicalFormatted.filter { $0.allSatisfy(\.isNumber) }, "negationsPreserved": negations(expectedFormatted) == negations(canonicalFormatted)])
+                                      "numbersPreserved": expectedFormatted.filter { $0.allSatisfy(\.isNumber) } == canonicalFormatted.filter { $0.allSatisfy(\.isNumber) }, "negationsPreserved": negations(expectedFormatted) == negations(canonicalFormatted)], suppressContents: trace != nil)
                     } catch {
                         await pipeline.cancel(); failures += 1
-                        try jsonLine(["event": "case-failure", "id": fixture.id, "style": style.rawValue, "run": run, "error": error.localizedDescription])
+                        try jsonLine(["event": "case-failure", "id": fixture.id, "style": style.rawValue, "run": run, "error": error.localizedDescription], suppressContents: trace != nil)
                     }
                 }
             }

@@ -24,6 +24,21 @@ private actor RevisionFormatter: TextFormatting {
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
+private actor RevisionPunctuationFormatter: TextFormatting {
+    func prepare() async throws {}
+    func format(_ text: String, style: TextStyle, context: String, vocabulary: [String]) async throws -> String {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.hasSuffix(",") ? String(text.dropLast()) + "." : text
+    }
+}
+private actor RevisionEndFormatter: TextFormatting {
+    func prepare() async throws {}
+    func format(_ text: String, style: TextStyle, context: String, vocabulary: [String]) async throws -> String {
+        var value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        while let last = value.last, ".,!?;:".contains(last) { value.removeLast() }
+        return value + "."
+    }
+}
 
 /// Deliberately completes late, even after cancellation, to test the session fence.
 private actor DelayedRevisionFormatter: TextFormatting {
@@ -69,6 +84,103 @@ final class FormattingRevisionTests: XCTestCase {
     private var final: String { old.replacingOccurrences(of: "vor dem Versand", with: "nicht vor dem Versand") }
     private func assemble(_ plan: FormattingRevision.Plan) -> String {
         plan.pieces.map { piece in switch piece { case .reuse(let s), .revise(let s): s } }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    func testEnglishRevisionDoesNotReopenGermanSentence() throws {
+        let german = "Wir prüfen heute den Entwurf und warten vor dem Versand auf die Rückmeldung."
+        let english = "Please keep the draft on this computer until we have received approval."
+        let targetEnglish = english.replacingOccurrences(of: "draft", with: "report")
+        let plan = try XCTUnwrap(FormattingRevision.plan(target: german + " " + targetEnglish, cache: [.init(input: german, output: german, formatted: true), .init(input: english, output: english, formatted: true)]))
+        XCTAssertEqual(assemble(plan), german + " " + targetEnglish)
+        XCTAssertTrue(plan.pieces.allSatisfy { if case .revise(let s) = $0 { return !s.contains("Rückmeldung") }; return true })
+        XCTAssertEqual(ProcessingPipeline.lexicalSequence(assemble(plan)), ProcessingPipeline.lexicalSequence(german + " " + targetEnglish))
+    }
+    func testArtificialRevisionEndDoesNotSplitUnchangedWordPair() async throws {
+        let input = "Lion acts much like packs of wolves or dogs in the wild."
+        let target = input.replacingOccurrences(of: "acts much", with: "acts often much")
+        let plan = try XCTUnwrap(FormattingRevision.plan(target: target, cache: [.init(input: input, output: input, formatted: true)]))
+        XCTAssertTrue(plan.trailingSeparators.values.contains(""))
+        let result = try await FormattingRevision.render(plan: plan, target: target, formatter: RevisionEndFormatter(), style: .cleaned, dictionary: DictionaryMatcher([]))
+        XCTAssertEqual(result.0, target)
+        XCTAssertFalse(result.1)
+        XCTAssertFalse(result.0.contains("like. packs"))
+    }
+    func testRevisionKeepsValidatedSentenceQuestionAndCommaSeparators() async throws {
+        for separator in [".", "?", ",", ":"] {
+            let input = "We keep the report here Please wait for the final decision."
+            let output = input.replacingOccurrences(of: "here Please", with: "here\(separator) Please")
+            let target = input.replacingOccurrences(of: "the report", with: "the new report")
+            let plan = try XCTUnwrap(FormattingRevision.plan(target: target, cache: [.init(input: input, output: output, formatted: true)]))
+            XCTAssertTrue(plan.trailingSeparators.values.contains(separator))
+            let result = try await FormattingRevision.render(plan: plan, target: target, formatter: RevisionEndFormatter(), style: .cleaned, dictionary: DictionaryMatcher([]))
+            XCTAssertEqual(result.0, target.replacingOccurrences(of: "here Please", with: "here\(separator) Please"))
+            XCTAssertFalse(result.1)
+        }
+    }
+    func testExplicitRelativeClauseCommaOverridesCachedPeriod() async throws {
+        let target = "Ein weiterer Satz am Gaumen, was bedeutete, dass es kein Entkommen gab."
+        let plan = FormattingRevision.Plan(pieces: [.reuse("Ein weiterer"), .revise("Satz am Gaumen, was bedeutete,"), .reuse(" dass es kein Entkommen gab.")], reusedWords: 8, revisedWords: 5, trailingSeparators: [1: "."])
+        let result = try await FormattingRevision.render(plan: plan, target: target, formatter: RevisionEndFormatter(), style: .cleaned, dictionary: DictionaryMatcher([]))
+        XCTAssertTrue(result.0.contains("bedeutete, dass"))
+        XCTAssertFalse(result.1)
+    }
+    func testLiteralAndQuotedRevisionBoundariesCannotAuthorizeSeparators() throws {
+        for literal in ["https://example.org/a", "12.5", "U.S.", "\"like\"", "'like'", "’like’", "'like", "like'", "@someone"] {
+            // The unchanged pair at the artificial end contains a literal.
+            let input = "We keep the \(literal) here until the final decision arrives."
+            let target = input.replacingOccurrences(of: "keep the", with: "often keep the")
+            let plan = try XCTUnwrap(FormattingRevision.plan(target: target, cache: [.init(input: input, output: input, formatted: true)]))
+            XCTAssertTrue(plan.trailingSeparators.isEmpty)
+            XCTAssertEqual(ProcessingPipeline.lexicalSequence(assemble(plan)), ProcessingPipeline.lexicalSequence(target))
+        }
+    }
+    func testInternalApostropheStillAllowsVerifiedBoundaryReuse() async throws {
+        for word in ["don't", "don’t"] {
+            let input = "We explain why we \(word) change the settings again today."
+            let target = input.replacingOccurrences(of: "why we", with: "why sometimes we")
+            let plan = try XCTUnwrap(FormattingRevision.plan(target: target, cache: [.init(input: input, output: input, formatted: true)]))
+            XCTAssertTrue(plan.trailingSeparators.values.contains(""))
+            let result = try await FormattingRevision.render(plan: plan, target: target, formatter: RevisionEndFormatter(), style: .cleaned, dictionary: DictionaryMatcher([]))
+            XCTAssertEqual(result.0, target)
+            XCTAssertFalse(result.1)
+        }
+    }
+    func testNonconsecutiveCachePairAndParagraphCutCannotAuthorizeSeparator() throws {
+        for input in ["Lion acts much like old packs of wolves or dogs in the wild.", "Lion acts much like\n\npacks of wolves or dogs in the wild."] {
+            let target = input.replacingOccurrences(of: "acts much", with: "acts often much").replacingOccurrences(of: "old packs", with: "packs")
+            let plan = try XCTUnwrap(FormattingRevision.plan(target: target, cache: [.init(input: input, output: input, formatted: true)]))
+            if input.contains("\n") { XCTAssertTrue(plan.trailingSeparators.isEmpty) }
+            else {
+                // Removing an old intervening word prevents anchoring its former cut.
+                XCTAssertFalse(plan.pieces.enumerated().contains { index, piece in
+                    if case .revise(let text) = piece, text.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("like") { return plan.trailingSeparators[index] != nil }
+                    return false
+                })
+            }
+        }
+    }
+    func testFinalDictationEndStillAllowsSentenceCompletion() async throws {
+        let input = "We keep the report on this computer until approval"
+        let target = input.replacingOccurrences(of: "approval", with: "final approval")
+        let plan = try XCTUnwrap(FormattingRevision.plan(target: target, cache: [.init(input: input, output: input, formatted: true)]))
+        XCTAssertTrue(plan.trailingSeparators.isEmpty)
+        let result = try await FormattingRevision.render(plan: plan, target: target, formatter: RevisionEndFormatter(), style: .cleaned, dictionary: DictionaryMatcher([]))
+        XCTAssertEqual(result.0, target + ".")
+        XCTAssertFalse(result.1)
+    }
+    func testRevisionKeepsCommaBeforeRetainedRelativeClause() async throws {
+        let target = "Ein weiterer Satz am Gaumen, was bedeutete, dass es kein Entkommen gab."
+        let plan = FormattingRevision.Plan(pieces: [.reuse("Ein weiterer"), .revise("Satz am Gaumen, was bedeutete,"), .reuse(" dass es kein Entkommen gab.")], reusedWords: 8, revisedWords: 5)
+        let value = try await FormattingRevision.render(plan: plan, target: target, formatter: RevisionPunctuationFormatter(), style: .cleaned, dictionary: DictionaryMatcher([]))
+        XCTAssertEqual(value.0, target)
+        XCTAssertFalse(value.1)
+        XCTAssertTrue(value.0.contains("bedeutete, dass"))
+    }
+    func testRevisionDoesNotForceCommaWithoutFollowingRelativeClause() async throws {
+        let target = "Wir prüfen heute den Entwurf, danach warten wir auf die Rückmeldung."
+        let plan = FormattingRevision.Plan(pieces: [.revise("Wir prüfen heute den Entwurf,"), .reuse(" danach warten wir auf die Rückmeldung.")], reusedWords: 7, revisedWords: 6)
+        let value = try await FormattingRevision.render(plan: plan, target: target, formatter: RevisionPunctuationFormatter(), style: .cleaned, dictionary: DictionaryMatcher([]))
+        XCTAssertEqual(value.0, "Wir prüfen heute den Entwurf. danach warten wir auf die Rückmeldung.")
+        XCTAssertFalse(value.1)
     }
     func testOnlyChangedNeighbourhoodIsRevisedAndAllFinalWordsRemain() throws {
         let plan = try XCTUnwrap(FormattingRevision.plan(target: final, cache: [.init(input: old, output: old, formatted: true)]))

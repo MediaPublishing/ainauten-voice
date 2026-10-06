@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "AInauten Voice nimmt deine Stimme nur während eines gestarteten Diktats auf. Audio wird lokal verarbeitet und nicht dauerhaft gespeichert.";
+"NSCameraUsageDescription" = "Die optionale Lippenlesen-Beta nutzt deine Kamera nur während einer bewusst gestarteten Aufnahme. Bilder werden lokal verarbeitet und nicht dauerhaft gespeichert.";

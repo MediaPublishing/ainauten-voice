@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import Darwin
 
 private struct StoredSettings: Codable {
     var version: Int
@@ -13,24 +14,55 @@ private struct StoredSettings: Codable {
 private struct StoredProvenance: Decodable { var wisprImport: MigrationProvenance? }
 
 public actor SettingsStore {
+    private var quarantinedProvenance: MigrationProvenance?
     public let url: URL
     public init(url: URL) { self.url = url }
-    public func load() throws -> ExportDocument { try stored().document }
+    public func load() throws -> ExportDocument {
+        do { return try stored().document }
+        catch {
+            // Provenance is bookkeeping only; retain bounded readable metadata.
+            quarantinedProvenance = (try? Self.boundedData(from: url)).flatMap { try? JSONDecoder().decode(StoredProvenance.self, from: $0) }?.wisprImport
+            // Preserve malformed startup state before any later safe-default save.
+            if FileManager.default.fileExists(atPath: url.path) {
+                let quarantine = url.deletingLastPathComponent().appendingPathComponent("settings-quarantine-" + UUID().uuidString + ".json")
+                try? FileManager.default.moveItem(at: url, to: quarantine)
+            }
+            throw error
+        }
+    }
+    public static let maximumFileBytes = 8 * 1024 * 1024
+    /// One descriptor, no links, bounded allocation even if the file grows while reading.
+    public static func boundedData(from source: URL, maximumBytes: Int = maximumFileBytes) throws -> Data {
+        guard maximumBytes > 0, maximumBytes <= maximumFileBytes else { throw VoiceError.message("Ungültige Dateigrenze") }
+        let fd = Darwin.open(source.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK)
+        guard fd >= 0 else { throw VoiceError.message("Einstellungsdatei ist nicht sicher lesbar") }
+        let handle = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
+        defer { try? handle.close() }
+        var status = stat()
+        guard fstat(fd, &status) == 0, status.st_mode & S_IFMT == S_IFREG,
+              status.st_size >= 0, status.st_size <= maximumBytes else { throw VoiceError.message("Einstellungsdatei ist zu groß oder keine reguläre Datei") }
+        let data = try handle.read(upToCount: maximumBytes + 1) ?? Data()
+        guard data.count <= maximumBytes else { throw VoiceError.message("Einstellungsdatei ist zu groß") }
+        return data
+    }
     private func stored() throws -> StoredSettings {
         guard FileManager.default.fileExists(atPath: url.path) else { return StoredSettings(ExportDocument(), provenance: nil) }
-        let stored = try JSONDecoder().decode(StoredSettings.self, from: Data(contentsOf: url))
+        let stored = try JSONDecoder().decode(StoredSettings.self, from: Self.boundedData(from: url))
         try Self.validate(stored.document)
         return stored
     }
     public func save(_ document: ExportDocument) throws {
-        let provenance = (try? Data(contentsOf: url)).flatMap { try? JSONDecoder().decode(StoredProvenance.self, from: $0) }?.wisprImport
+        let provenance = (try? Self.boundedData(from: url)).flatMap { try? JSONDecoder().decode(StoredProvenance.self, from: $0) }?.wisprImport ?? quarantinedProvenance
         try write(document, provenance: provenance)
+        quarantinedProvenance = nil
     }
     private func write(_ document: ExportDocument, provenance: MigrationProvenance?) throws {
         try Self.validate(document)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         // Data.atomic handles both the first save and replacement in one same-directory rename.
-        try JSONEncoder.pretty.encode(StoredSettings(document, provenance: provenance)).write(to: url, options: .atomic)
+        let data = try JSONEncoder.pretty.encode(StoredSettings(document, provenance: provenance))
+        guard data.count <= Self.maximumFileBytes else { throw VoiceError.message("Einstellungen überschreiten die Dateigrenze") }
+        try data.write(to: url, options: .atomic)
         try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
     }
     public func applyWisprImport(_ service: WisprMigrationService) throws -> MigrationResult {
@@ -50,7 +82,7 @@ public actor SettingsStore {
     public func undoWisprImport() throws {
         let backup = url.deletingLastPathComponent().appendingPathComponent("wispr-import-undo.json")
         guard FileManager.default.fileExists(atPath: backup.path) else { throw VoiceError.message("Es gibt keinen Wispr-Import, der rückgängig gemacht werden kann.") }
-        let snapshot = try JSONDecoder().decode(StoredSettings.self, from: Data(contentsOf: backup))
+        let snapshot = try JSONDecoder().decode(StoredSettings.self, from: Self.boundedData(from: backup))
         // The import never touches cloud or camera choices. An old snapshot must not
         // re-enable a recipient or the camera beta, so those stay as they are now.
         let current = try stored().document.settings
@@ -66,7 +98,7 @@ public actor SettingsStore {
     }
     public func export(to destination: URL) throws { try JSONEncoder.pretty.encode(try load()).write(to: destination, options: .atomic) }
     public func importDocument(from source: URL) throws -> ExportDocument {
-        var document = try JSONDecoder().decode(ExportDocument.self, from: Data(contentsOf: source))
+        var document = try JSONDecoder().decode(ExportDocument.self, from: Self.boundedData(from: source))
         // Imported files cannot authorize a new recipient or reuse a stored key there.
         document.settings.cloudEnabled = false
         document.settings.lipReadingEnabled = false
@@ -77,12 +109,15 @@ public actor SettingsStore {
         guard document.version == 1 else { throw VoiceError.message("Unbekannte Exportversion") }
         guard !document.settings.languages.isEmpty, document.settings.languages.count <= 64,
               document.settings.languages.allSatisfy({ $0.range(of: "^[a-z]{2,3}(-[A-Za-z]{2,8})?$", options: .regularExpression) != nil }),
-              document.dictionary.count <= 100_000, Set(document.dictionary.map(\.id)).count == document.dictionary.count,
-              document.dictionary.allSatisfy({ !$0.id.isEmpty && !$0.phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.phrase.count <= 255 && ($0.replacement?.utf8.count ?? 0) <= 1_000_000 }) else { throw VoiceError.message("Ungültige Einstellungen oder Wörterbucheinträge") }
+              document.dictionary.count <= 10_000,
+              document.settings.appStyles.count <= 512,
+              document.settings.appStyles.keys.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 255 }),
+              document.settings.cloudEndpoint.utf8.count <= 2048, document.settings.cloudModel.utf8.count <= 255,
+              document.dictionary.reduce(0, { $0 + $1.phrase.utf8.count + ($1.replacement?.utf8.count ?? 0) + $1.id.utf8.count + ($1.sourceID?.utf8.count ?? 0) + ($1.sourceFingerprint?.utf8.count ?? 0) }) <= 2 * 1024 * 1024, Set(document.dictionary.map(\.id)).count == document.dictionary.count,
+              document.dictionary.allSatisfy({ !$0.id.isEmpty && $0.id.utf8.count <= 128 && ($0.sourceID?.utf8.count ?? 0) <= 128 && ($0.sourceFingerprint?.utf8.count ?? 0) <= 256 && !$0.phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.phrase.count <= 255 && ($0.replacement?.utf8.count ?? 0) <= DictionaryEntry.maximumReplacementBytes }) else { throw VoiceError.message("Ungültige Einstellungen oder Wörterbucheinträge") }
         // An unused endpoint may be empty or half-typed; enabling cloud re-validates it.
         if document.settings.cloudEnabled {
-            guard let endpoint = URL(string: document.settings.cloudEndpoint), endpoint.host != nil,
-                  endpoint.scheme == "https" || (endpoint.scheme == "http" && ["localhost", "127.0.0.1", "::1"].contains(endpoint.host ?? "")) else { throw VoiceError.message("Cloud-Endpunkt muss HTTPS oder eine lokale Adresse sein") }
+            guard (try? CloudRecipient.normalized(document.settings.cloudEndpoint)) != nil else { throw VoiceError.message("Cloud-Endpunkt muss HTTPS oder eine lokale Adresse sein") }
         }
         let allowedFlags: UInt64 = (1 << 17) | (1 << 18) | (1 << 19) | (1 << 20) | (1 << 23)
         guard document.settings.lipReadingLanguage == nil || ["en", "de"].contains(document.settings.lipReadingLanguage!) else { throw VoiceError.message("Unbekannte Lippenlese-Sprache") }

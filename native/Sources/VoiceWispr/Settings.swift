@@ -7,6 +7,8 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case overview = "Übersicht", history = "Verlauf", statistics = "Statistik"
     case setup = "Einrichtung", dictation = "Diktieren", formatting = "Text & Stil", dictionary = "Wörterbuch", migration = "Wispr Flow", privacy = "Datenschutz", updates = "Updates", beta = "Beta", help = "Hilfe"
     var id: String { rawValue }
+    var title: String { L10n.text("navigation.\(previewKey)") }
+    private var previewKey: String { switch self { case .overview: "overview"; case .history: "history"; case .statistics: "statistics"; case .setup: "setup"; case .dictation: "dictation"; case .formatting: "formatting"; case .dictionary: "dictionary"; case .migration: "migration"; case .privacy: "privacy"; case .updates: "updates"; case .beta: "beta"; case .help: "help" } }
     var icon: String { switch self { case .overview: "waveform"; case .history: "clock.arrow.circlepath"; case .statistics: "chart.bar.xaxis"; case .setup: "checklist"; case .dictation: "keyboard"; case .formatting: "text.alignleft"; case .dictionary: "character.book.closed"; case .migration: "arrow.left.arrow.right"; case .privacy: "lock"; case .updates: "arrow.triangle.2.circlepath"; case .beta: "flask"; case .help: "questionmark.circle" } }
     var isMain: Bool { [.overview, .history, .statistics, .dictionary, .formatting].contains(self) }
     var previewName: String { switch self { case .overview: "overview"; case .history: "history"; case .statistics: "statistics"; case .dictionary: "dictionary"; case .updates: "updates"; case .beta: "beta"; case .help: "help"; default: "" } }
@@ -18,7 +20,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 enum SetupStep: Int, CaseIterable, Identifiable {
     case models, wispr, language, permissions, practice, switchover
     var id: Int { rawValue }
-    var title: String { switch self { case .models: "Modelle"; case .wispr: "Wispr Flow"; case .language: "Sprache"; case .permissions: "Freigaben"; case .practice: "Probediktat"; case .switchover: "Wechsel" } }
+    var title: String { L10n.text("setup.step.\(rawValue)") }
 }
 
 struct SettingsNavigation: Equatable {
@@ -28,7 +30,7 @@ struct SettingsNavigation: Equatable {
 }
 
 struct WindowCloseButton: View {
-    var label = "Fenster schließen"
+    var label = L10n.text("window.close")
     var action: () -> Void
     var body: some View {
         Button(action: action) {
@@ -53,6 +55,7 @@ private struct SidebarLabelStyle: LabelStyle {
 
 struct SettingsView: View {
     @ObservedObject var model: AppModel
+    @ObservedObject private var interfaceLanguage = InterfaceLanguageStore.shared
     @State private var section: SettingsSection = .overview
     @FocusState private var focusedSection: SettingsSection?
     @ObservedObject private var focusPresentation = FocusPresentation.shared
@@ -65,6 +68,7 @@ struct SettingsView: View {
     @State private var showReport = false
     @State private var captureAction = "hold"
     @State private var settingsExpanded = false
+    @State private var languageSaveError: String?
 
     var body: some View {
         GeometryReader { geometry in
@@ -75,7 +79,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                 ForEach([SettingsSection.overview, .history, .statistics, .dictionary, .formatting, .help] + (settingsExpanded ? [.dictation, .setup, .migration, .privacy, .updates, .beta] : [])) { item in
                     Button { section = item; focusedSection = item } label: {
-                        Label(item.rawValue, systemImage: item.icon).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 9).padding(.horizontal, 10)
+                        Label(item.title, systemImage: item.icon).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 9).padding(.horizontal, 10)
                             .background(section == item ? Color.accentColor.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 7))
                             .overlay { RoundedRectangle(cornerRadius: 7).stroke(focusedSection == item && focusPresentation.keyboardNavigation ? Color(nsColor: .keyboardFocusIndicatorColor) : .clear, lineWidth: 2).allowsHitTesting(false) }
                             .contentShape(Rectangle())
@@ -89,24 +93,24 @@ struct SettingsView: View {
                     if settingsExpanded { section = .dictation; focusedSection = .dictation }
                     else if !section.isMain { section = .overview; focusedSection = .overview }
                 } label: {
-                    HStack { Label("Einstellungen", systemImage: "gearshape"); Spacer(); Image(systemName: settingsExpanded ? "chevron.up" : "chevron.down").font(.system(size: 10)) }
+                    HStack { Label(L10n.text("navigation.settings"), systemImage: "gearshape"); Spacer(); Image(systemName: settingsExpanded ? "chevron.up" : "chevron.down").font(.system(size: 10)) }
                         .padding(.vertical, 10).padding(.horizontal, 10).contentShape(Rectangle())
-                }.buttonStyle(.plain).pointerAwareFocus().help("Kürzel, Sprachen, Einrichtung und Datenschutz")
+                }.buttonStyle(.plain).pointerAwareFocus().help(L10n.text("navigation.settings.help"))
                 VStack(alignment: .leading, spacing: 4) {
-                    Label("Audio bleibt auf deinem Mac", systemImage: "lock.fill").font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    Text("Version \(model.updates.version) · Lokal").font(.system(size: 11)).foregroundStyle(.tertiary)
+                    Label(L10n.text("sidebar.localAudio"), systemImage: "lock.fill").font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text(L10n.text("sidebar.version", model.updates.version)).font(.system(size: 11)).foregroundStyle(.tertiary)
                         .padding(.leading, SidebarLabelStyle.textInset)
                 }.padding(.leading, 10)
             }.labelStyle(SidebarLabelStyle()).padding(18).frame(width: 195).background(Color(nsColor: .windowBackgroundColor))
             Divider()
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .center) {
-                    Text(section.rawValue).font(.system(size: 28, weight: .bold))
+                    Text(section.title).font(.system(size: 28, weight: .bold))
                     Spacer()
                     Button { showReport = true } label: {
                         Image(systemName: "doc.text.magnifyingglass").font(.system(size: 16))
                             .frame(width: 28, height: 28).contentShape(Rectangle())
-                    }.buttonStyle(.plain).foregroundStyle(.secondary).help("Prüfbericht anzeigen").accessibilityLabel("Prüfbericht anzeigen").pointerAwareFocus()
+                    }.buttonStyle(.plain).foregroundStyle(.secondary).help(L10n.text("report.show")).accessibilityLabel(L10n.text("report.show")).pointerAwareFocus()
                     WindowCloseButton { model.closeSettings() }
                 }.padding(.horizontal, 28).padding(.top, 32).padding(.bottom, 20)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -115,11 +119,11 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 22) {
                         if section != .help { CrashReportNotice(reports: model.reports) { section = .help; focusedSection = .help } }
                         if let error = model.errorMessage {
-                            HStack(alignment: .top) { Image(systemName: "exclamationmark.triangle"); Text(error).textSelection(.enabled); Spacer(); Button("Melden") { section = .help; focusedSection = .help }; WindowCloseButton(label: "Fehlermeldung schließen") { model.dismissError() } }.padding(12).background(Color.orange.opacity(0.09), in: RoundedRectangle(cornerRadius: 8))
+                            HStack(alignment: .top) { Image(systemName: "exclamationmark.triangle"); Text(error).textSelection(.enabled); Spacer(); Button(L10n.text("error.report")) { section = .help; focusedSection = .help }; WindowCloseButton(label: L10n.text("error.dismiss")) { model.dismissError() } }.padding(12).background(Color.orange.opacity(0.09), in: RoundedRectangle(cornerRadius: 8))
                         }
                         if !model.importReceipt.isEmpty && (section == .setup || section == .migration) {
                             VStack(alignment: .leading, spacing: 4) {
-                                Label(model.importFailed ? "Import nicht abgeschlossen" : "Import-Ergebnis", systemImage: model.importFailed ? "exclamationmark.triangle" : "checkmark.circle").font(.system(size: 13, weight: .semibold))
+                                Label(model.importFailed ? L10n.text("import.incomplete") : L10n.text("import.result"), systemImage: model.importFailed ? "exclamationmark.triangle" : "checkmark.circle").font(.system(size: 13, weight: .semibold))
                                 Text(model.importReceipt).font(.system(size: 12)).textSelection(.enabled)
                             }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background((model.importFailed ? Color.orange : Color.green).opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
                         }
@@ -157,7 +161,7 @@ struct SettingsView: View {
         .onChange(of: model.microphoneGranted && model.accessibilityGranted) { _, granted in if granted && section == .setup && step == .permissions { step = .practice } }
         .sheet(isPresented: $showReport) {
             VStack(alignment: .leading, spacing: 16) {
-                HStack { Text("Prüfbericht").font(.system(size: 20, weight: .semibold)); Spacer(); WindowCloseButton(label: "Prüfbericht schließen") { showReport = false }.keyboardShortcut(.cancelAction) }
+                HStack { Text(L10n.text("settings.report.title")).font(.system(size: 20, weight: .semibold)); Spacer(); WindowCloseButton(label: L10n.text("settings.report.close")) { showReport = false }.keyboardShortcut(.cancelAction) }
                 ReportView(markdown: reportText)
             }.padding(24)
                 .frame(width: min(860, max(530, geometry.size.width - 48)),
@@ -168,18 +172,18 @@ struct SettingsView: View {
 
     private var onboarding: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Text("Dein Mac, deine Stimme.").font(.system(size: 18, weight: .semibold))
+            Text(L10n.text("setup.intro")).font(.system(size: 18, weight: .semibold))
             if model.document.settings.onboardingComplete {
-                Label("Einrichtung abgeschlossen. Der erfolgreiche Probetest ist bestätigt.", systemImage: "checkmark.circle").foregroundStyle(.green)
-                if step != .practice { Button("Zum Diktieren") { section = .dictation; focusedSection = .dictation } }
-            } else { Text("Starte den Download, dann richtest du den Rest ein, während die Modelle laden.").foregroundStyle(.secondary) }
+                Label(L10n.text("setup.complete"), systemImage: "checkmark.circle").foregroundStyle(.green)
+                if step != .practice { Button(L10n.text("setup.toDictation")) { section = .dictation; focusedSection = .dictation } }
+            } else { Text(L10n.text("setup.downloadIntro")).foregroundStyle(.secondary) }
             HStack(spacing: 6) { ForEach(SetupStep.allCases) { item in
                 let done = model.setupStepDone(item)
                 Button { step = item } label: { VStack(spacing: 6) {
                     Group { if done && item != step { Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)) } else { Text("\(item.rawValue + 1)").font(.system(size: 12, weight: .semibold)) } }
                         .frame(width: 26, height: 26).background(item == step ? Color.accentColor : done ? Color.green.opacity(0.16) : Color.secondary.opacity(0.1), in: Circle()).foregroundStyle(item == step ? Color.white : done ? Color.green : Color.primary)
                     Text(item.title).font(.system(size: 10)).lineLimit(1)
-                }.frame(maxWidth: .infinity).contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel("Schritt \(item.rawValue + 1): \(item.title)" + (done ? ", erledigt" : ""))
+                }.frame(maxWidth: .infinity).contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel(L10n.text("setup.stepAX", String(item.rawValue + 1), item.title) + (done ? L10n.text("setup.stepDone") : ""))
             } }
             if model.downloading && step != .models {
                 HStack(spacing: 10) { ProgressView(value: model.downloadFraction).frame(maxWidth: 220); Text(model.downloadLabel).font(.system(size: 11)).monospacedDigit().foregroundStyle(.secondary).lineLimit(1) }
@@ -197,56 +201,56 @@ struct SettingsView: View {
             }.frame(maxWidth: .infinity, alignment: .leading)
             Divider()
             HStack {
-                if let previous = SetupStep(rawValue: step.rawValue - 1) { Button("Zurück") { step = previous } }
+                if let previous = SetupStep(rawValue: step.rawValue - 1) { Button(L10n.text("common.back")) { step = previous } }
                 Spacer()
                 if step == .practice && model.practiceFeedback.succeeded {
                     let next = model.pendingSetupStep
-                    Button(next == .switchover ? "Weiter zum Wispr-Flow-Wechsel" : next == .permissions ? "Bedienungshilfen freigeben" : "Zum Diktieren") {
+                    Button(next == .switchover ? L10n.text("setup.nextSwitch") : next == .permissions ? L10n.text("permissions.accessibility.allow") : L10n.text("setup.toDictation")) {
                         if let next { step = next } else { model.completeSetup() }
                     }.buttonStyle(.borderedProminent)
                 }
-                else if let next = SetupStep(rawValue: step.rawValue + 1) { Button(step == .wispr ? "Überspringen" : "Weiter") { step = next }.buttonStyle(.borderedProminent) }
-                else { Button("Einrichtung abschließen") { model.completeSetup(); if model.document.settings.onboardingComplete { section = .dictation } }.buttonStyle(.borderedProminent).disabled(!model.canCompleteSetup) }
+                else if let next = SetupStep(rawValue: step.rawValue + 1) { Button(L10n.text(step == .wispr ? "common.skip" : "common.next")) { step = next }.buttonStyle(.borderedProminent) }
+                else { Button(L10n.text("setup.finish")) { model.completeSetup(); if model.document.settings.onboardingComplete { section = .dictation } }.buttonStyle(.borderedProminent).disabled(!model.canCompleteSetup) }
             }
         }
     }
     private var practice: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(model.practiceFeedback.succeeded ? (model.practiceAudioSource != nil ? "Testaudio erkannt" : "Diktat erkannt") : "Ein Satz genügt").font(.system(size: 19, weight: .semibold))
+            Text(model.practiceFeedback.succeeded ? (model.practiceAudioSource != nil ? L10n.text("practice.audioRecognized") : L10n.text("practice.recognized")) : L10n.text("practice.intro")).font(.system(size: 19, weight: .semibold))
             if let source = model.practiceAudioSource {
-                Label("Dateitest · \(source)", systemImage: "testtube.2").foregroundStyle(.secondary)
-                Text("Dieser Test verarbeitet die angegebene Audiodatei. Das Mikrofon bleibt aus. Starte das Testaudio und klicke anschließend auf „Testaudio auswerten“.").foregroundStyle(.secondary)
+                Label(L10n.text("practice.file", source), systemImage: "testtube.2").foregroundStyle(.secondary)
+                Text(L10n.text("practice.fileHelp")).foregroundStyle(.secondary)
             } else {
-                Text("Sage zum Beispiel: „Dies ist ein kurzer Test der Spracherkennung.“ Nach zwei Sekunden Sprechpause stoppt die Probe automatisch, spätestens nach 15 Sekunden. Der erkannte Text erscheint hier; dein anderes Textfeld bleibt unverändert.").foregroundStyle(.secondary)
+                Text(L10n.text("practice.help")).foregroundStyle(.secondary)
             }
             if model.practiceFeedback.phase == .recording {
-                Label(model.practiceAudioSource != nil ? "Testaudio ist bereit" : model.captureReady ? "Ich höre zu · \(model.durationLabel)" : "Mikrofon wird gestartet …", systemImage: model.practiceAudioSource != nil ? "waveform" : "mic.fill")
+                Label(model.practiceAudioSource != nil ? L10n.text("practice.audioReady") : model.captureReady ? L10n.text("practice.listening", model.durationLabel) : L10n.text("practice.microphoneStarting"), systemImage: model.practiceAudioSource != nil ? "waveform" : "mic.fill")
                 ProgressView(value: Double(model.level)).frame(maxWidth: 250)
             }
-            if model.practiceFeedback.phase == .processing { ProgressView("Dein Satz wird verarbeitet …") }
+            if model.practiceFeedback.phase == .processing { ProgressView(L10n.text("practice.processing")) }
             HStack {
-                Button(model.practiceAudioSource != nil ? (model.practiceFeedback.phase == .recording ? "Testaudio auswerten" : "Testaudio starten") : model.practiceFeedback.phase == .recording ? "Jetzt stoppen" : model.practiceFeedback.phase == .idle ? "Probediktat starten" : "Noch einmal testen") {
+                Button(model.practiceAudioSource != nil ? (model.practiceFeedback.phase == .recording ? L10n.text("practice.processAudio") : L10n.text("practice.startAudio")) : model.practiceFeedback.phase == .recording ? L10n.text("practice.stop") : model.practiceFeedback.phase == .idle ? L10n.text("practice.start") : L10n.text("practice.again")) {
                     if model.practiceFeedback.phase == .recording { model.stop() } else { model.startPractice() }
                 }.buttonStyle(.borderedProminent).disabled(!model.modelsReady || !model.microphoneGranted || model.state == .processing || (model.state == .recording && !model.practiceFeedback.isActive))
-                if model.practiceFeedback.isActive { Button("Abbrechen") { model.cancel() }.keyboardShortcut(.cancelAction) }
+                if model.practiceFeedback.isActive { Button(L10n.text("common.cancel")) { model.cancel() }.keyboardShortcut(.cancelAction) }
             }
             if !model.practiceFeedback.message.isEmpty {
-                Label(model.practiceFeedback.message, systemImage: model.practiceFeedback.succeeded ? "checkmark.circle" : model.practiceFeedback.phase == .cancelled ? "xmark.circle" : "exclamationmark.circle")
+                Label(L10n.diagnostic(model.practiceFeedback.message), systemImage: model.practiceFeedback.succeeded ? "checkmark.circle" : model.practiceFeedback.phase == .cancelled ? "xmark.circle" : "exclamationmark.circle")
                     .foregroundStyle(model.practiceFeedback.succeeded ? Color.green : Color.primary)
             }
             if let result = model.practiceFeedback.result {
-                HStack { Text(result.isComplete ? "Erkannter Text" : "Erkannter Teiltext").font(.system(size: 13, weight: .semibold)); Spacer(); Button("Kopieren") { model.copyPracticeResult() } }
+                HStack { Text(result.isComplete ? L10n.text("practice.text") : L10n.text("practice.partialText")).font(.system(size: 13, weight: .semibold)); Spacer(); Button(L10n.text("common.copy")) { model.copyPracticeResult() } }
                 Text(result.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12).background(Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8))
-                if result.usedFallback { Label("Die Optimierung war nicht verfügbar. Angezeigt wird der Originaltext.", systemImage: "info.circle").foregroundStyle(.secondary) }
+                if result.usedFallback { Label(L10n.text("practice.fallback"), systemImage: "info.circle").foregroundStyle(.secondary) }
             } else if model.practiceFeedback.phase == .idle && model.practiceComplete {
-                Text("Ein früherer Probetest war erfolgreich. Starte eine neue Probe, um das aktuelle Ergebnis zu sehen.").foregroundStyle(.secondary)
+                Text(L10n.text("practice.previous")).foregroundStyle(.secondary)
             }
-            if !model.microphoneGranted { Button("Mikrofon freigeben") { step = .permissions } }
-            else if !model.modelsReady { Label(model.downloading ? "Die Probe ist möglich, sobald die Modelle geladen sind." : "Lade zuerst die Modelle im Schritt „Modelle“.", systemImage: "hourglass").foregroundStyle(.secondary) }
+            if !model.microphoneGranted { Button(L10n.text("permissions.microphone.allow")) { step = .permissions } }
+            else if !model.modelsReady { Label(model.downloading ? L10n.text("practice.waitForModels") : L10n.text("practice.modelsFirst"), systemImage: "hourglass").foregroundStyle(.secondary) }
         }
     }
-    private let languages: [(String, String)] = [("de","Deutsch"),("en","Englisch"),("bg","Bulgarisch"),("da","Dänisch"),("et","Estnisch"),("fi","Finnisch"),("fr","Französisch"),("el","Griechisch"),("it","Italienisch"),("hr","Kroatisch"),("lv","Lettisch"),("lt","Litauisch"),("mt","Maltesisch"),("nl","Niederländisch"),("pl","Polnisch"),("pt","Portugiesisch"),("ro","Rumänisch"),("ru","Russisch"),("sk","Slowakisch"),("sl","Slowenisch"),("es","Spanisch"),("sv","Schwedisch"),("cs","Tschechisch"),("uk","Ukrainisch"),("hu","Ungarisch")]
-    private func languageName(_ code: String) -> String { languages.first { $0.0 == code }?.1 ?? Locale(identifier: "de").localizedString(forLanguageCode: code) ?? code }
+    private let languages = ["de", "en", "bg", "da", "et", "fi", "fr", "el", "it", "hr", "lv", "lt", "mt", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "es", "sv", "cs", "uk", "hu"]
+    private func languageName(_ code: String) -> String { L10n.wordsLocale.localizedString(forLanguageCode: code)?.localizedCapitalized ?? code }
     private func flag(_ code: String) -> String { ["de":"🇩🇪", "en":"🇬🇧", "bg":"🇧🇬", "da":"🇩🇰", "et":"🇪🇪", "fi":"🇫🇮", "fr":"🇫🇷", "el":"🇬🇷", "it":"🇮🇹", "hr":"🇭🇷", "lv":"🇱🇻", "lt":"🇱🇹", "mt":"🇲🇹", "nl":"🇳🇱", "pl":"🇵🇱", "pt":"🇵🇹", "ro":"🇷🇴", "ru":"🇷🇺", "sk":"🇸🇰", "sl":"🇸🇮", "es":"🇪🇸", "sv":"🇸🇪", "cs":"🇨🇿", "uk":"🇺🇦", "hu":"🇭🇺"][code] ?? "🌐" }
     private func languageChip(_ code: String, _ name: String, selected: Bool) -> some View {
         Button {
@@ -257,7 +261,7 @@ struct SettingsView: View {
                 .padding(.horizontal, 8).padding(.vertical, 8).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
         }.buttonStyle(.bordered).tint(selected ? .accentColor : .secondary)
             .disabled(selected && model.document.settings.languages.count == 1)
-            .accessibilityLabel(name + (selected ? ", ausgewählt. Entfernen" : ", hinzufügen"))
+            .accessibilityLabel(L10n.text(selected ? "dictation.language.removeAX" : "dictation.language.addAX", name))
             .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
     private var languagePicker: some View {
@@ -265,66 +269,67 @@ struct SettingsView: View {
     }
     private func languageSelection(compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: compact ? 8 : 12) {
-            Text(compact ? "Sprachen" : "Welche Sprachen sprichst du?").font(.system(size: compact ? 16 : 19, weight: .semibold))
-            Text(compact ? "Automatische Erkennung, auch bei Sprachwechseln." : "Die Erkennung findet die Sprache automatisch, auch beim Wechsel mitten im Satz.").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            if !compact { Text("Ausgewählt").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary) }
+            Text(compact ? L10n.text("dictation.languages") : L10n.text("dictation.languageQuestion")).font(.system(size: compact ? 16 : 19, weight: .semibold))
+            Text(compact ? L10n.text("dictation.languageBrief") : L10n.text("dictation.languageHelp")).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if !compact { Text(L10n.text("dictation.languages.selected")).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary) }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 8)], alignment: .leading, spacing: 8) {
                 ForEach(model.document.settings.languages, id: \.self) { code in languageChip(code, languageName(code), selected: true) }
             }
-            if !compact { Text("Klicke eine Sprache an. Mindestens eine bleibt ausgewählt.").font(.system(size: 12)).foregroundStyle(.secondary) }
+            if !compact { Text(L10n.text("dictation.languages.required")).font(.system(size: 12)).foregroundStyle(.secondary) }
             Button { showAllLanguages.toggle() } label: {
-                HStack(spacing: 8) { Image(systemName: showAllLanguages ? "chevron.down" : "chevron.right").font(.system(size: 10, weight: .semibold)); Text(showAllLanguages ? "Weitere Sprachen ausblenden" : "Weitere Sprachen hinzufügen"); Spacer() }.padding(.vertical, 8).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-            }.buttonStyle(.plain).accessibilityLabel(showAllLanguages ? "Weitere Sprachen ausblenden" : "Weitere Sprachen hinzufügen")
+                HStack(spacing: 8) { Image(systemName: showAllLanguages ? "chevron.down" : "chevron.right").font(.system(size: 10, weight: .semibold)); Text(showAllLanguages ? L10n.text("dictation.languages.hide") : L10n.text("dictation.languages.add")); Spacer() }.padding(.vertical, 8).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityLabel(showAllLanguages ? L10n.text("dictation.languages.hide") : L10n.text("dictation.languages.add"))
             if showAllLanguages {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 8)], alignment: .leading, spacing: 8) {
-                    ForEach(languages.filter { !model.document.settings.languages.contains($0.0) }, id: \.0) { code, name in languageChip(code, name, selected: false) }
+                    ForEach(languages.filter { !model.document.settings.languages.contains($0) }, id: \.self) { code in languageChip(code, languageName(code), selected: false) }
                 }.padding(.top, 8).frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
     private var models: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Erkennung und Optimierung installieren").font(.system(size: 19, weight: .semibold))
-            Text("Einmalig etwa 3 GB: Parakeet für deine Stimme, Qwen für gute Texte. Danach funktionieren beide offline.").foregroundStyle(.secondary)
-            if model.downloading { ProgressView(value: model.downloadFraction); Text(model.downloadLabel).font(.system(size: 12)).monospacedDigit(); Button("Download pausieren") { model.pauseDownload() } }
-            else if model.preparing { ProgressView("Modelle werden geladen …") }
-            else if model.modelsReady { Label("Beide Modelle sind geladen", systemImage: "checkmark.circle").foregroundStyle(.green) }
+            Text(L10n.text("models.installTitle")).font(.system(size: 19, weight: .semibold))
+            Text(L10n.text("models.size")).foregroundStyle(.secondary)
+            if model.downloading { ProgressView(value: model.downloadFraction); Text(model.downloadLabel).font(.system(size: 12)).monospacedDigit(); Button(L10n.text("models.pause")) { model.pauseDownload() } }
+            else if model.preparing { ProgressView(L10n.text("models.loading")) }
+            else if model.modelsReady { Label(L10n.text("models.loaded"), systemImage: "checkmark.circle").foregroundStyle(.green) }
             else {
-                Button("Modelle herunterladen (ca. 3 GB)") {
+                Button(L10n.text("models.download")) {
                     model.installModels()
                     // The download continues in the background while the remaining steps are done.
                     if section == .setup && step == .models { step = .wispr }
                 }.buttonStyle(.borderedProminent)
             }
-            Text("Der Download läuft im Hintergrund weiter, du kannst direkt mit den nächsten Schritten fortfahren. Unterbrochene Downloads werden fortgesetzt, jede Datei wird vor dem Laden geprüft.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(L10n.text("models.resumeHelp")).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
     private var permissions: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Zwei Freigaben für dein Diktat").font(.system(size: 19, weight: .semibold))
-            HStack { VStack(alignment: .leading, spacing: 4) { Label("Mikrofon", systemImage: model.microphoneGranted ? "checkmark.circle" : "mic"); Text("Nur während einer Aufnahme aktiv.").font(.system(size: 12)).foregroundStyle(.secondary) }; Spacer(); Button(model.microphoneGranted ? "Erlaubt" : "Freigeben") { model.requestMicrophone() }.disabled(model.microphoneGranted) }
-            HStack { VStack(alignment: .leading, spacing: 4) { Label("Bedienungshilfen", systemImage: model.accessibilityGranted ? "checkmark.circle" : "keyboard"); Text("Für Tastenkürzel und geprüftes Einfügen.").font(.system(size: 12)).foregroundStyle(.secondary) }; Spacer(); Button(model.accessibilityGranted ? "Erlaubt" : "Einstellungen öffnen") { model.requestAccessibility() }.disabled(model.accessibilityGranted) }
+            Text(L10n.text("permissions.title")).font(.system(size: 19, weight: .semibold))
+            HStack { VStack(alignment: .leading, spacing: 4) { Label(L10n.text("permissions.microphone"), systemImage: model.microphoneGranted ? "checkmark.circle" : "mic"); Text(L10n.text("permissions.microphone.help")).font(.system(size: 12)).foregroundStyle(.secondary) }; Spacer(); Button(model.microphoneGranted ? L10n.text("permissions.allowed") : L10n.text("permissions.allow")) { model.requestMicrophone() }.disabled(model.microphoneGranted) }
+            HStack { VStack(alignment: .leading, spacing: 4) { Label(L10n.text("permissions.accessibility"), systemImage: model.accessibilityGranted ? "checkmark.circle" : "keyboard"); Text(L10n.text("permissions.accessibility.help")).font(.system(size: 12)).foregroundStyle(.secondary) }; Spacer(); Button(model.accessibilityGranted ? L10n.text("permissions.allowed") : L10n.text("permissions.openSettings")) { model.requestAccessibility() }.disabled(model.accessibilityGranted) }
             if !model.accessibilityGranted {
-                Text("1. Öffne „Bedienungshilfen“.\n2. Ziehe die App unten in die Liste oder füge sie über + hinzu.\n3. Schalte den Eintrag „AInauten Voice“ ein.").fixedSize(horizontal: false, vertical: true)
+                Text(L10n.text("permissions.steps")).fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 12) {
                     Image(nsImage: NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)).resizable().frame(width: 38, height: 38).accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 3) { Text("AInauten Voice.app").font(.system(size: 13, weight: .semibold)); Text("Diese laufende App in die Liste ziehen").font(.system(size: 12)).foregroundStyle(.secondary) }
+                    VStack(alignment: .leading, spacing: 3) { Text("AInauten Voice.app").font(.system(size: 13, weight: .semibold)); Text(L10n.text("permissions.dragHint")).font(.system(size: 12)).foregroundStyle(.secondary) }
                     Spacer()
                     Image(systemName: "arrow.up.forward.square").foregroundStyle(.secondary)
                 }.padding(12).frame(maxWidth: .infinity).background(Color.accentColor.opacity(0.06), in: RoundedRectangle(cornerRadius: 8)).contentShape(Rectangle())
                     .onDrag { NSItemProvider(contentsOf: Bundle.main.bundleURL) ?? NSItemProvider(object: Bundle.main.bundleURL as NSURL) }
-                    .accessibilityLabel("AInauten Voice App. In die macOS-Bedienungshilfen ziehen. Alternativ im Finder zeigen.")
+                    .accessibilityLabel(L10n.text("permissions.dragAX"))
                 Text(Bundle.main.bundlePath).font(.system(size: 11)).foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-                Button("Aktuelle App im Finder zeigen") { NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL]) }
-                Text("Die Freigabe von Wispr Flow lässt sich nicht übernehmen.").font(.system(size: 12)).foregroundStyle(.secondary)
+                Button(L10n.text("permissions.findApp")) { NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL]) }
+                Text(L10n.text("permissions.cannotImport")).font(.system(size: 12)).foregroundStyle(.secondary)
             }
         }
     }
     private var dictation: some View {
         VStack(alignment: .leading, spacing: 16) {
+            interfaceLanguagePicker
             Label(model.status, systemImage: model.state == .ready ? "mic" : model.conflict ? "exclamationmark.circle" : "info.circle").fixedSize(horizontal: false, vertical: true)
-            if model.conflict { Button("Wechsel von Wispr Flow abschließen") { section = .migration; focusedSection = .migration } }
-            Text("Cursor ins Textfeld setzen, Kürzel halten, sprechen und loslassen. Doppeltipp startet freihändig; erneutes Drücken stoppt. Die Pill erscheint nur während des Diktats.").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if model.conflict { Button(L10n.text("dictation.switchFlow")) { section = .migration; focusedSection = .migration } }
+            Text(L10n.text("dictation.help")).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Divider()
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 28) {
@@ -341,39 +346,54 @@ struct SettingsView: View {
             dictationReadiness
         }
     }
+    private var interfaceLanguagePicker: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Picker(L10n.text("settings.interfaceLanguage"), selection: Binding(get: { interfaceLanguage.choice }, set: { next in
+                do { try interfaceLanguage.setChoice(next); languageSaveError = nil }
+                catch { languageSaveError = error.localizedDescription }
+            })) {
+                Text(L10n.text("settings.interfaceLanguage.system")).tag(InterfaceLanguage.system)
+                Text("Deutsch").tag(InterfaceLanguage.de)
+                Text("English").tag(InterfaceLanguage.en)
+            }.frame(maxWidth: 440, alignment: .leading)
+                .help(L10n.text("settings.interfaceLanguage.help"))
+            Text(L10n.text("settings.interfaceLanguage.help")).font(.system(size: 11)).foregroundStyle(.secondary)
+            if let languageSaveError { Text(languageSaveError).font(.system(size: 12)).foregroundStyle(.orange) }
+        }
+    }
     private var dictationShortcuts: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Tastenkürzel").font(.system(size: 16, weight: .semibold)).padding(.bottom, 4)
+            Text(L10n.text("shortcuts.title")).font(.system(size: 16, weight: .semibold)).padding(.bottom, 4)
             VStack(alignment: .leading, spacing: 4) {
-                shortcutRow("Halten zum Diktieren", action: "hold", shortcuts: [model.document.settings.shortcut] + (model.document.settings.shortcutBindings?.holdExtras ?? []))
-                shortcutRow("Freihändig", action: "handsFree", shortcuts: model.document.settings.shortcutBindings?.handsFree ?? [])
-                shortcutRow("Abbrechen", action: "cancel", shortcuts: model.document.settings.shortcutBindings?.cancel.isEmpty == false ? model.document.settings.shortcutBindings!.cancel : [Shortcut(keyCode: 53, modifiers: 0)])
-                shortcutRow("Letzten Text kopieren", action: "copyLast", shortcuts: model.document.settings.shortcutBindings?.copyLast ?? [])
-                shortcutRow("Letzten Text einfügen", action: "pasteLast", shortcuts: model.document.settings.shortcutBindings?.pasteLast ?? [])
+                shortcutRow(L10n.text("shortcuts.hold"), action: "hold", shortcuts: [model.document.settings.shortcut] + (model.document.settings.shortcutBindings?.holdExtras ?? []))
+                shortcutRow(L10n.text("shortcuts.handsFree"), action: "handsFree", shortcuts: model.document.settings.shortcutBindings?.handsFree ?? [])
+                shortcutRow(L10n.text("common.cancel"), action: "cancel", shortcuts: model.document.settings.shortcutBindings?.cancel.isEmpty == false ? model.document.settings.shortcutBindings!.cancel : [Shortcut(keyCode: 53, modifiers: 0)])
+                shortcutRow(L10n.text("shortcuts.copyLast"), action: "copyLast", shortcuts: model.document.settings.shortcutBindings?.copyLast ?? [])
+                shortcutRow(L10n.text("shortcuts.pasteLast"), action: "pasteLast", shortcuts: model.document.settings.shortcutBindings?.pasteLast ?? [])
             }
-            if model.shortcutCapture { Text("Kombination drücken und loslassen. Esc bricht die Auswahl ab.").foregroundStyle(.secondary).font(.system(size: 12)) }
+            if model.shortcutCapture { Text(L10n.text("shortcuts.captureHelp")).foregroundStyle(.secondary).font(.system(size: 12)) }
             Divider().padding(.vertical, 4)
-            Toggle("Tastenkürzel aktiv", isOn: Binding(get: { !model.document.settings.paused }, set: { model.document.settings.paused = !$0; if !$0 { model.cancel() } }))
-                .help("Ausgeschaltet reagiert AInauten Voice nicht auf globale Kürzel.")
-            if model.document.settings.paused { Text("Globale Kürzel sind ausgeschaltet.").font(.system(size: 12)).foregroundStyle(.secondary) }
-            Toggle("AInauten Voice bei der Anmeldung starten", isOn: Binding(get: { model.loginEnabled }, set: { model.setLogin($0) }))
+            Toggle(L10n.text("shortcuts.enabled"), isOn: Binding(get: { !model.document.settings.paused }, set: { model.document.settings.paused = !$0; if !$0 { model.cancel() } }))
+                .help(L10n.text("shortcuts.disabledHelp"))
+            if model.document.settings.paused { Text(L10n.text("shortcuts.disabled")).font(.system(size: 12)).foregroundStyle(.secondary) }
+            Toggle(L10n.text("startup.enabled"), isOn: Binding(get: { model.loginEnabled }, set: { model.setLogin($0) }))
         }
     }
     private var dictationReadiness: some View {
         VStack(alignment: .leading, spacing: 8) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 20) {
-                    readinessLabel("Mikrofon", ready: model.microphoneGranted)
-                    readinessLabel("Bedienungshilfen", ready: model.accessibilityGranted)
-                    readinessLabel(model.modelsReady ? "Modelle geladen" : model.preparing ? "Modelle laden …" : "Modelle fehlen", ready: model.modelsReady)
+                    readinessLabel(L10n.text("permissions.microphone"), ready: model.microphoneGranted)
+                    readinessLabel(L10n.text("permissions.accessibility"), ready: model.accessibilityGranted)
+                    readinessLabel(model.modelsReady ? L10n.text("models.ready") : model.preparing ? L10n.text("models.loadingBrief") : L10n.text("models.missing"), ready: model.modelsReady)
                 }
                 VStack(alignment: .leading, spacing: 6) {
-                    readinessLabel("Mikrofon", ready: model.microphoneGranted)
-                    readinessLabel("Bedienungshilfen", ready: model.accessibilityGranted)
-                    readinessLabel(model.modelsReady ? "Modelle geladen" : model.preparing ? "Modelle laden …" : "Modelle fehlen", ready: model.modelsReady)
+                    readinessLabel(L10n.text("permissions.microphone"), ready: model.microphoneGranted)
+                    readinessLabel(L10n.text("permissions.accessibility"), ready: model.accessibilityGranted)
+                    readinessLabel(model.modelsReady ? L10n.text("models.ready") : model.preparing ? L10n.text("models.loadingBrief") : L10n.text("models.missing"), ready: model.modelsReady)
                 }
             }
-            Button(model.pendingSetupStep == nil ? "Einrichtung anzeigen" : "Einrichtung fortsetzen") {
+            Button(model.pendingSetupStep == nil ? L10n.text("setup.show") : L10n.text("setup.resume")) {
                 section = .setup; focusedSection = .setup; step = model.pendingSetupStep ?? .permissions
             }.buttonStyle(.link)
         }.font(.system(size: 12))
@@ -382,42 +402,42 @@ struct SettingsView: View {
         Label(title, systemImage: ready ? "checkmark.circle" : "exclamationmark.circle")
             .foregroundStyle(ready ? Color.secondary : Color.orange)
             .fixedSize(horizontal: true, vertical: false)
-            .accessibilityLabel(title + (ready ? ": bereit" : ": offen"))
+            .accessibilityLabel(L10n.text(ready ? "readiness.readyAX" : "readiness.pendingAX", title))
     }
     private var formatting: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("So soll dein Text aussehen").font(.system(size: 19, weight: .semibold))
-            Picker("Standard", selection: $model.document.settings.defaultStyle) { ForEach(TextStyle.allCases) { Text($0.title).tag($0) } }
-            Picker("Manuelle Auswahl", selection: $model.document.settings.manualStyle) { Text("Automatisch nach App").tag(TextStyle?.none); ForEach(TextStyle.allCases) { Text($0.title).tag(Optional($0)) } }
-            Text("Eine manuelle Auswahl hat Vorrang. E-Mail fügt lesbare Absätze hinzu, Chat bleibt knapp. Namen, Zahlen und Bedeutung sollen erhalten bleiben.").foregroundStyle(.secondary)
+            Text(L10n.text("formatting.title")).font(.system(size: 19, weight: .semibold))
+            Picker(L10n.text("formatting.default"), selection: $model.document.settings.defaultStyle) { ForEach(TextStyle.allCases) { Text($0.interfaceTitle).tag($0) } }
+            Picker(L10n.text("formatting.manual"), selection: $model.document.settings.manualStyle) { Text(L10n.text("formatting.byApp")).tag(TextStyle?.none); ForEach(TextStyle.allCases) { Text($0.interfaceTitle).tag(Optional($0)) } }
+            Text(L10n.text("formatting.help")).foregroundStyle(.secondary)
             Divider()
-            Text("Stil pro App").font(.system(size: 16, weight: .semibold))
+            Text(L10n.text("formatting.appStyles")).font(.system(size: 16, weight: .semibold))
             ForEach(model.document.settings.appStyles.keys.sorted(), id: \.self) { bundle in
-                HStack { Text(appName(for: bundle)).lineLimit(1); Spacer(); Text(model.document.settings.appStyles[bundle]?.title ?? ""); Button { model.document.settings.appStyles.removeValue(forKey: bundle) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain).accessibilityLabel("App-Zuordnung entfernen") }
+                HStack { Text(appName(for: bundle)).lineLimit(1); Spacer(); Text(model.document.settings.appStyles[bundle]?.interfaceTitle ?? ""); Button { model.document.settings.appStyles.removeValue(forKey: bundle) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain).accessibilityLabel(L10n.text("formatting.removeApp")) }
             }
-            Button(appBundle.isEmpty ? "App auswählen …" : appName(for: appBundle)) { chooseApp() }
-            HStack { Picker("Stil", selection: $appStyle) { ForEach(TextStyle.allCases) { Text($0.title).tag($0) } }; Button("Zuordnen") { model.document.settings.appStyles[appBundle.trimmingCharacters(in: .whitespaces)] = appStyle; appBundle = "" }.disabled(appBundle.trimmingCharacters(in: .whitespaces).isEmpty) }
+            Button(appBundle.isEmpty ? L10n.text("formatting.chooseApp") : appName(for: appBundle)) { chooseApp() }
+            HStack { Picker(L10n.text("formatting.style"), selection: $appStyle) { ForEach(TextStyle.allCases) { Text($0.interfaceTitle).tag($0) } }; Button(L10n.text("formatting.assign")) { model.document.settings.appStyles[appBundle.trimmingCharacters(in: .whitespaces)] = appStyle; appBundle = "" }.disabled(appBundle.trimmingCharacters(in: .whitespaces).isEmpty) }
             Divider()
-            TextField("OpenAI-kompatible Adresse", text: Binding(get: { model.document.settings.cloudEndpoint }, set: { model.document.settings.cloudEndpoint = $0.trimmingCharacters(in: .whitespacesAndNewlines); model.document.settings.cloudEnabled = false }))
-            Toggle("Cloud nur für Textoptimierung aktivieren", isOn: Binding(get: { model.document.settings.cloudEnabled }, set: setCloudEnabled))
-            Text("Bei Aktivierung wird ausschließlich dein transkribierter Text mit bis zu zwei vorherigen Sätzen und passenden Wörterbucheinträgen an \(model.document.settings.cloudEndpoint) gesendet. Eine Änderung der Adresse schaltet Cloud aus. Audio bleibt lokal. Bei Fehlern bleibt der Originaltext verfügbar.").font(.system(size: 12)).foregroundStyle(.secondary)
+            TextField(L10n.text("cloud.endpoint"), text: Binding(get: { model.document.settings.cloudEndpoint }, set: { model.document.settings.cloudEndpoint = $0.trimmingCharacters(in: .whitespacesAndNewlines); model.document.settings.cloudEnabled = false }))
+            Toggle(L10n.text("cloud.enable"), isOn: Binding(get: { model.document.settings.cloudEnabled }, set: setCloudEnabled))
+            Text(L10n.text("cloud.disclosure", model.document.settings.cloudEndpoint)).font(.system(size: 12)).foregroundStyle(.secondary)
             if model.document.settings.cloudEnabled {
-                TextField("Modellname", text: $model.document.settings.cloudModel)
-                SecureField("Eigener API-Schlüssel", text: $key)
-                Button("Im Schlüsselbund speichern") { model.saveKey(key); key = "" }.disabled(key.isEmpty)
-                Button("API-Schlüssel entfernen") { model.saveKey(""); key = "" }
-                Text("Der Schlüssel wird nicht exportiert.").font(.system(size: 12)).foregroundStyle(.secondary)
+                TextField(L10n.text("cloud.model"), text: $model.document.settings.cloudModel)
+                SecureField(L10n.text("cloud.key"), text: $key)
+                Button(L10n.text("cloud.saveKey")) { model.saveKey(key); key = "" }.disabled(key.isEmpty)
+                Button(L10n.text("cloud.removeKey")) { model.saveKey(""); key = "" }
+                Text(L10n.text("cloud.keyNotExported")).font(.system(size: 12)).foregroundStyle(.secondary)
             }
         }
     }
     private var migration: some View { VStack(alignment: .leading, spacing: 24) { migrationPreview; Divider(); migrationSwitch } }
     private var migrationPreview: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Wispr-Flow-Einstellungen übernehmen (optional)").font(.system(size: 19, weight: .semibold))
-            Text("Die Übernahme von Einstellungen, Tastenkürzeln und Wörterbucheinträgen ist für den Betrieb nicht nötig. Du kannst diesen Schritt bedenkenlos überspringen und den Import später nachholen.").foregroundStyle(.secondary)
-            if model.isUIPreview { Text("Oberflächenvorschau. Import und gespeicherte Einstellungen sind hier deaktiviert.").foregroundStyle(.secondary) }
-            else if model.importRefreshing || !model.importPreviewLoaded { ProgressView("Wispr-Flow-Einstellungen werden geprüft …") }
-            else if model.importPreview.isPartial { ForEach(model.importPreview.errors, id: \.self) { Text($0).foregroundStyle(.secondary) } }
+            Text(L10n.text("import.title")).font(.system(size: 19, weight: .semibold))
+            Text(L10n.text("import.optional")).foregroundStyle(.secondary)
+            if model.isUIPreview { Text(L10n.text("import.preview")).foregroundStyle(.secondary) }
+            else if model.importRefreshing || !model.importPreviewLoaded { ProgressView(L10n.text("import.checking")) }
+            else if model.importPreview.isPartial { ForEach(model.importPreview.errors, id: \.self) { Text(L10n.diagnostic($0)).foregroundStyle(.secondary) } }
             else {
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 36) {
@@ -426,135 +446,140 @@ struct SettingsView: View {
                     }.fixedSize(horizontal: true, vertical: false)
                     VStack(alignment: .leading, spacing: 20) { migrationCounts; migrationBindings }
                 }
-                ForEach(model.importPreview.unsupported, id: \.self) { Text("Ausgelassen: \(unsupportedLabel($0))").font(.system(size: 12)).foregroundStyle(.secondary) }
+                ForEach(model.importPreview.unsupported, id: \.self) { Text(L10n.text("import.omitted", unsupportedLabel($0))).font(.system(size: 12)).foregroundStyle(.secondary) }
             }
             if !model.isUIPreview {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 10) { migrationImportButton; migrationRefreshButton }.fixedSize(horizontal: true, vertical: false)
                     VStack(alignment: .leading, spacing: 10) { migrationImportButton; migrationRefreshButton }
                 }
-                Text("In AInauten Voice gespeichert: \(model.document.dictionary.count) Wörterbucheinträge. Sprachen: \(model.document.settings.languages.map(languageName).joined(separator: ", ")). Tastenkürzel: \(model.document.settings.shortcut.spokenLabel).")
+                Text(L10n.text("import.saved", model.document.dictionary.count.formatted(), model.document.settings.languages.map(languageName).joined(separator: ", "), model.document.settings.shortcut.spokenLabel))
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
-            Button("Wörterbuch aus CSV importieren …") { model.importDictionaryCSV() }.disabled(model.isUIPreview)
-            if model.canUndoImport { Button("Letzten Wispr-Import rückgängig machen") { model.undoImport() } }
+            Button(L10n.text("import.csv")) { model.importDictionaryCSV() }.disabled(model.isUIPreview)
+            if model.canUndoImport { Button(L10n.text("import.undo")) { model.undoImport() } }
             if !model.importReceipt.isEmpty && !model.importFailed && section == .migration {
-                Button(model.document.settings.onboardingComplete ? "Zum Diktieren" : "Einrichtung fortsetzen") {
+                Button(model.document.settings.onboardingComplete ? L10n.text("setup.toDictation") : L10n.text("setup.resume")) {
                     section = model.document.settings.onboardingComplete ? .dictation : .setup
                     focusedSection = section
                     if !model.document.settings.onboardingComplete { step = model.pendingSetupStep ?? .practice }
                 }.buttonStyle(.borderedProminent)
             }
-            Text("Die Quelle wird nur gelesen. Wiederholter Import erzeugt keine Duplikate; deine manuellen Änderungen bleiben erhalten.").font(.system(size: 12)).foregroundStyle(.secondary)
-            Text("Bereits von dir angepasste Sprachen, Tastenkürzel und Schreibstile behalten Vorrang.").font(.system(size: 12)).foregroundStyle(.secondary)
+            Text(L10n.text("import.readOnly")).font(.system(size: 12)).foregroundStyle(.secondary)
+            Text(L10n.text("import.manualPriority")).font(.system(size: 12)).foregroundStyle(.secondary)
         }
     }
     private var migrationCounts: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Wörterbuch").font(.system(size: 13, weight: .semibold)).padding(.bottom, 2)
-            LabeledContent("Wörter", value: "\(model.importPreview.words)")
-            LabeledContent("Ersetzungen", value: "\(model.importPreview.replacements)")
-            LabeledContent("Gelöschte Einträge überspringen", value: "\(model.importPreview.deleted)")
+            Text(L10n.text("settings.dictionary.title")).font(.system(size: 13, weight: .semibold)).padding(.bottom, 2)
+            LabeledContent(L10n.text("import.words"), value: "\(model.importPreview.words)")
+            LabeledContent(L10n.text("import.replacements"), value: "\(model.importPreview.replacements)")
+            LabeledContent(L10n.text("import.deleted"), value: "\(model.importPreview.deleted)")
             if model.importPreview.sourceDuplicates > 0 {
-                LabeledContent("Doppelte Einträge zusammenführen", value: "\(model.importPreview.sourceDuplicates)")
-                LabeledContent("Eindeutige Einträge übernehmen", value: "\(model.importPreview.uniqueEntries)")
+                LabeledContent(L10n.text("import.duplicates"), value: "\(model.importPreview.sourceDuplicates)")
+                LabeledContent(L10n.text("import.unique"), value: "\(model.importPreview.uniqueEntries)")
             }
         }
     }
     private var migrationBindings: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Einstellungen").font(.system(size: 13, weight: .semibold)).padding(.bottom, 2)
-            LabeledContent("Sprachen", value: model.importPreview.languages.map(languageName).joined(separator: ", "))
-            if let shortcut = model.importPreview.shortcut { LabeledContent("Tastenkürzel", value: shortcut.label) }
-            if !model.importPreview.shortcutBindings.handsFree.isEmpty { LabeledContent("Freihändig", value: model.importPreview.shortcutBindings.handsFree.map(\.label).joined(separator: " / ")) }
-            if !model.importPreview.shortcutBindings.copyLast.isEmpty { LabeledContent("Letzten Text kopieren", value: model.importPreview.shortcutBindings.copyLast.map(\.label).joined(separator: " / ")) }
-            if !model.importPreview.shortcutBindings.pasteLast.isEmpty { LabeledContent("Letzten Text einfügen", value: model.importPreview.shortcutBindings.pasteLast.map(\.label).joined(separator: " / ")) }
+            Text(L10n.text("navigation.settings")).font(.system(size: 13, weight: .semibold)).padding(.bottom, 2)
+            LabeledContent(L10n.text("dictation.languages"), value: model.importPreview.languages.map(languageName).joined(separator: ", "))
+            if let shortcut = model.importPreview.shortcut { LabeledContent(L10n.text("shortcuts.title"), value: shortcut.label) }
+            if !model.importPreview.shortcutBindings.handsFree.isEmpty { LabeledContent(L10n.text("shortcuts.handsFree"), value: model.importPreview.shortcutBindings.handsFree.map(\.label).joined(separator: " / ")) }
+            if !model.importPreview.shortcutBindings.copyLast.isEmpty { LabeledContent(L10n.text("shortcuts.copyLast"), value: model.importPreview.shortcutBindings.copyLast.map(\.label).joined(separator: " / ")) }
+            if !model.importPreview.shortcutBindings.pasteLast.isEmpty { LabeledContent(L10n.text("shortcuts.pasteLast"), value: model.importPreview.shortcutBindings.pasteLast.map(\.label).joined(separator: " / ")) }
         }
     }
     private var migrationImportButton: some View {
-        Button(model.importing ? "Einstellungen werden übernommen …" : model.importPreview.isPartial ? "Erneut prüfen und importieren" : "Unterstützte Einstellungen importieren") { model.importWispr() }.buttonStyle(.borderedProminent).disabled(!model.canImportWispr)
+        Button(model.importing ? L10n.text("import.importing") : model.importPreview.isPartial ? L10n.text("import.retry") : L10n.text("import.supported")) { model.importWispr() }.buttonStyle(.borderedProminent).disabled(!model.canImportWispr)
     }
     private var migrationRefreshButton: some View {
-        Button("Erneut prüfen") { model.refreshImportPreview() }.disabled(model.importRefreshing || model.importing)
+        Button(L10n.text("import.refresh")) { model.refreshImportPreview() }.disabled(model.importRefreshing || model.importing)
     }
     private var migrationSwitch: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Von Wispr Flow zu AInauten Voice wechseln").font(.system(size: 19, weight: .semibold))
+            Text(L10n.text("switch.title")).font(.system(size: 19, weight: .semibold))
             if model.wisprInstalled || model.wisprRunning {
-                Text("Der Wechsel versucht, den Autostart von Wispr Flow auszuschalten, sonst öffnet sich die passende Einstellung. Danach wird Wispr Flow regulär beendet und bleibt installiert. Bis zum Beenden reagieren die übernommenen Kürzel nur in Wispr Flow.").foregroundStyle(.secondary)
-                Button(model.switchingWispr ? "Wispr Flow wird beendet …" : "Wispr-Flow-Autostart ausschalten und Wispr Flow beenden") { model.switchFromWispr() }.disabled(model.switchingWispr)
+                Text(L10n.text("switch.help")).foregroundStyle(.secondary)
+                Button(model.switchingWispr ? L10n.text("switch.quitting") : L10n.text("switch.action")) { model.switchFromWispr() }.disabled(model.switchingWispr)
                 if !model.switchReceipt.isEmpty { Text(model.switchReceipt).textSelection(.enabled).foregroundStyle(.secondary) }
-                Label(model.wisprRunning ? "Wispr Flow läuft noch" : "Wispr Flow ist beendet", systemImage: model.wisprRunning ? "exclamationmark.circle" : "checkmark.circle")
+                Label(model.wisprRunning ? L10n.text("switch.running") : L10n.text("switch.stopped"), systemImage: model.wisprRunning ? "exclamationmark.circle" : "checkmark.circle")
             } else {
-                Label("Wispr Flow ist nicht installiert. Kein Wechsel nötig.", systemImage: "checkmark.circle").foregroundStyle(.secondary)
+                Label(L10n.text("switch.notInstalled"), systemImage: "checkmark.circle").foregroundStyle(.secondary)
             }
             if !model.document.settings.onboardingComplete, let missing = model.pendingSetupStep, missing != .switchover {
-                Text("Zum Abschluss fehlt noch: \(missing == .models ? "Modelle laden" : missing == .permissions ? "Mikrofon und Bedienungshilfen freigeben" : "ein erfolgreiches Probediktat").").foregroundStyle(.secondary)
-                Button(missing == .models ? "Zu den Modellen" : missing == .permissions ? "Zu den Freigaben" : "Probediktat starten") {
+                Text(L10n.text("setup.stillMissing", missing == .models ? L10n.text("setup.modelsMissing") : missing == .permissions ? L10n.text("setup.permissionsMissing") : L10n.text("setup.practiceMissing"))).foregroundStyle(.secondary)
+                Button(missing == .models ? L10n.text("setup.toModels") : missing == .permissions ? L10n.text("setup.toPermissions") : L10n.text("practice.start")) {
                     model.settingsNavigation = SettingsNavigation(section: .setup, setupStep: missing)
                 }
             }
-            Label("So diktierst du: \(model.document.settings.shortcut.spokenLabel) halten, sprechen, loslassen.", systemImage: "keyboard").fixedSize(horizontal: false, vertical: true)
-            Text("Rückwechsel jederzeit über das AInauten-Voice-Menü in der Menüleiste.").font(.system(size: 12)).foregroundStyle(.secondary)
+            Label(L10n.text("switch.howTo", model.document.settings.shortcut.spokenLabel), systemImage: "keyboard").fixedSize(horizontal: false, vertical: true)
+            Text(L10n.text("switch.returnHelp")).font(.system(size: 12)).foregroundStyle(.secondary)
         }
     }
     private var privacy: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Deine Stimme bleibt lokal").font(.system(size: 20, weight: .semibold))
-            Text("Audio wird nur im Speicher verarbeitet und nach dem Diktat freigegeben. Diagnosemeldungen enthalten keine Diktate.")
-            Toggle("Diktate lokal im Verlauf speichern", isOn: Binding(get: { model.historyEnabled }, set: { model.document.settings.historyEnabled = $0 }))
-            Text("Originaltext und aufbereiteter Text bleiben auf diesem Mac, auch nach einem Neustart. Abschalten gilt für neue Diktate; bestehende Texte bleiben verfügbar. Die Statistik berücksichtigt vollständige Diktate außerhalb des Papierkorbs.").font(.system(size: 12)).foregroundStyle(.secondary)
-            HStack { Button("Verlauf exportieren …") { model.exportHistory() }; Button("Verlauf zurücksetzen …") { model.resetHistory() }.disabled(model.state == .recording || model.state == .processing || model.isUIPreview) }
+            Text(L10n.text("privacy.title")).font(.system(size: 20, weight: .semibold))
+            Text(L10n.text("privacy.audio"))
+            Toggle(L10n.text("privacy.history"), isOn: Binding(get: { model.historyEnabled }, set: { model.document.settings.historyEnabled = $0 }))
+            Text(L10n.text("privacy.historyHelp")).font(.system(size: 12)).foregroundStyle(.secondary)
+            HStack { Button(L10n.text("privacy.exportHistory")) { model.exportHistory() }; Button(L10n.text("privacy.resetHistory")) { model.resetHistory() }.disabled(model.state == .recording || model.state == .processing || model.isUIPreview) }
             if !model.historyNotice.isEmpty { Text(model.historyNotice).font(.system(size: 12)).foregroundStyle(.secondary) }
-            Text("Die Zwischenablage wird beim Einfügen gesichert und wiederhergestellt. Eine neue Kopieraktion von dir hat immer Vorrang. Unklare Ergebnisse werden zur Kontrolle angezeigt und nicht automatisch erneut eingefügt.")
-            Text("Cloud-Optimierung ist optional und sendet nur Text an deine gewählte Schnittstelle. Zugangsdaten liegen im macOS-Schlüsselbund.")
-            Button("Lokale Daten im Finder zeigen") { NSWorkspace.shared.open(ModelPaths.support) }
-            Text("Open Source: FluidAudio (Apache 2.0), FreeFlow und llama.cpp (MIT). Modelllizenzen: Parakeet CC BY 4.0, Qwen Apache 2.0.").font(.system(size: 12)).foregroundStyle(.secondary)
+            Toggle(L10n.text("privacy.clipboard"), isOn: Binding(get: { model.document.settings.usesClipboardForInsertion }, set: { model.document.settings.clipboardCompatibility = $0 }))
+                .help(L10n.text("privacy.clipboardHelp"))
+            Text(L10n.text("privacy.clipboardDetail")).font(.system(size: 12)).foregroundStyle(.secondary)
+            Text(L10n.text("privacy.cloud"))
+            Button(L10n.text("privacy.showData")) { NSWorkspace.shared.open(ModelPaths.support) }
+            Text(L10n.text("privacy.licenses")).font(.system(size: 12)).foregroundStyle(.secondary)
         }
     }
     private func setCloudEnabled(_ enabled: Bool) {
         guard enabled else { model.document.settings.cloudEnabled = false; return }
         let endpoint = model.document.settings.cloudEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: endpoint), url.host != nil, url.scheme == "https" || (url.scheme == "http" && ["localhost", "127.0.0.1", "::1"].contains(url.host ?? "")) else {
-            model.errorMessage = "Bitte eine HTTPS-Adresse oder eine lokale Schnittstelle angeben."; return
+            model.errorMessage = L10n.text("cloud.invalidEndpoint"); return
         }
-        let alert = NSAlert(); alert.messageText = "Textoptimierung an dieser Adresse aktivieren?"
-        alert.informativeText = "\(endpoint)\n\nGesendet werden der aktuelle transkribierte Text, höchstens zwei vorherige Sätze und passende Wörterbucheinträge. Audio bleibt lokal."
-        alert.addButton(withTitle: "Für diese Adresse aktivieren"); alert.addButton(withTitle: "Abbrechen")
-        if alert.runModal() == .alertFirstButtonReturn { model.document.settings.cloudEndpoint = endpoint; model.document.settings.cloudEnabled = true }
+        let alert = NSAlert(); alert.messageText = L10n.text("cloud.confirm")
+        alert.informativeText = L10n.text("cloud.confirmDetail", endpoint)
+        alert.addButton(withTitle: L10n.text("cloud.approve")); alert.addButton(withTitle: L10n.text("common.cancel"))
+        if alert.runModal() == .alertFirstButtonReturn {
+            do { try CloudRecipient.approve(endpoint); model.document.settings.cloudEndpoint = endpoint; model.document.settings.cloudEnabled = true }
+            catch { model.errorMessage = L10n.text("cloud.approvalFailed") }
+        }
     }
     private func appName(for bundle: String) -> String {
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle) {
             return FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
         }
-        let knownNames = ["com.microsoft.Outlook": "Microsoft Outlook", "com.microsoft.teams2": "Microsoft Teams", "com.superhuman.desktop": "Superhuman", "com.apple.MobileSMS": "Nachrichten", "com.facebook.archon": "Messenger", "com.tencent.xinWeChat": "WeChat", "com.tinyspeck.slackmacgap": "Slack", "net.whatsapp.WhatsApp": "WhatsApp"]
-        return knownNames[bundle] ?? "Nicht installierte App"
+        let knownNames = ["com.microsoft.Outlook": "Microsoft Outlook", "com.microsoft.teams2": "Microsoft Teams", "com.superhuman.desktop": "Superhuman", "com.apple.MobileSMS": L10n.text("apps.messages"), "com.facebook.archon": "Messenger", "com.tencent.xinWeChat": "WeChat", "com.tinyspeck.slackmacgap": "Slack", "net.whatsapp.WhatsApp": "WhatsApp"]
+        return knownNames[bundle] ?? L10n.text("apps.notInstalled")
     }
     private func unsupportedLabel(_ label: String) -> String {
-        let names = ["unmappedApps": "Webseiten oder unbekannte Apps", "customUserStyles": "Eigene Schreibstile", "appTranscriptionFormats": "Weitere App-Schreibstile", "format": "Unbekanntes Textformat"]
-        return names.reduce(label) { text, item in text.replacingOccurrences(of: item.key, with: item.value) }
+        let names = ["unmappedApps": L10n.text("import.unsupportedApps"), "customUserStyles": L10n.text("import.unsupportedStyles"), "appTranscriptionFormats": L10n.text("import.unsupportedFormats"), "format": L10n.text("import.unknownFormat")]
+        return L10n.diagnostic(names.reduce(label) { text, item in text.replacingOccurrences(of: item.key, with: item.value) })
     }
     private func chooseApp() {
-        let panel = NSOpenPanel(); panel.title = "App für einen Schreibstil auswählen"; panel.allowedContentTypes = [.applicationBundle]; panel.directoryURL = URL(fileURLWithPath: "/Applications"); panel.allowsMultipleSelection = false
+        let panel = NSOpenPanel(); panel.title = L10n.text("formatting.appDialog"); panel.allowedContentTypes = [.applicationBundle]; panel.directoryURL = URL(fileURLWithPath: "/Applications"); panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url, let id = Bundle(url: url)?.bundleIdentifier { appBundle = id }
     }
     private var reportText: String {
-        guard let url = Bundle.main.resourceURL?.appendingPathComponent("verification-report.md"), let text = try? String(contentsOf: url, encoding: .utf8) else { return "Der Prüfbericht konnte nicht geladen werden. Bitte das vollständige App-Paket installieren. Die praktische Gesamtabnahme ist noch offen." }
-        let runtime = "## Aktueller Prozess\n\nMikrofon: \(model.microphoneGranted ? "erlaubt" : "offen") · Bedienungshilfen: \(model.accessibilityGranted ? "erlaubt" : "offen")\n\n" + (model.captureStartupMilliseconds.map { "Aufnahmestart nach Auslösen: \(Int($0.rounded())) ms\n" } ?? "Noch keine Aufnahme in diesem Prozess.\n")
+        guard let url = Bundle.main.resourceURL?.appendingPathComponent("verification-report.md"), let text = try? String(contentsOf: url, encoding: .utf8) else { return L10n.text("settings.report.unavailable") }
+        let runtime = L10n.text("settings.report.runtime", model.microphoneGranted ? L10n.text("settings.report.allowed") : L10n.text("settings.report.pending"), model.accessibilityGranted ? L10n.text("settings.report.allowed") : L10n.text("settings.report.pending")) + (model.captureStartupMilliseconds.map { L10n.text("settings.report.captureStart", String(Int($0.rounded()))) } ?? L10n.text("settings.report.noRecording"))
         return runtime + "\n" + text
     }
     private func shortcutRow(_ title: String, action: String, shortcuts: [Shortcut]) -> some View {
-        HStack(spacing: 8) { Text(title).fixedSize(horizontal: false, vertical: true); Spacer(minLength: 4); Button(model.shortcutCapture && captureAction == action ? "Jetzt drücken …" : shortcuts.isEmpty ? "Festlegen …" : shortcuts.map(\.label).joined(separator: " / ")) { beginShortcutCapture(action) }.frame(minWidth: 100).accessibilityLabel(title + ": " + (shortcuts.isEmpty ? "Festlegen" : shortcuts.map(\.spokenLabel).joined(separator: " oder "))) }.frame(minHeight: 28)
+        HStack(spacing: 8) { Text(title).fixedSize(horizontal: false, vertical: true); Spacer(minLength: 4); Button(model.shortcutCapture && captureAction == action ? L10n.text("shortcuts.capture") : shortcuts.isEmpty ? L10n.text("shortcuts.choose") : shortcuts.map(\.label).joined(separator: " / ")) { beginShortcutCapture(action) }.frame(minWidth: 100).accessibilityLabel(title + ": " + (shortcuts.isEmpty ? L10n.text("shortcuts.set") : shortcuts.map(\.spokenLabel).joined(separator: L10n.text("shortcuts.or")))) }.frame(minHeight: 28)
     }
     /// System shortcuts and lone ⌘/⇧ holds would break typing everywhere; one combination per action.
     private func shortcutProblem(_ shortcut: Shortcut) -> String? {
         let command: UInt64 = 1 << 20, shift: UInt64 = 1 << 17
         let systemKeys: Set<UInt16> = [0, 6, 7, 8, 9, 12, 13, 48, 49] // A Z X C V Q W Tab Space
-        if let key = shortcut.keyCode, shortcut.modifiers == command, systemKeys.contains(key) { return "\(shortcut.label) ist ein Systemkürzel und bleibt frei. Wähle eine andere Kombination." }
-        if shortcut.keyCode == nil, shortcut.modifiers == command || shortcut.modifiers == shift { return "Nur \(shortcut.label) würde bei jedem normalen Tippen auslösen. Nimm eine Kombination mit zwei Tasten oder Fn." }
+        if let key = shortcut.keyCode, shortcut.modifiers == command, systemKeys.contains(key) { return L10n.text("shortcuts.systemConflict", shortcut.label) }
+        if shortcut.keyCode == nil, shortcut.modifiers == command || shortcut.modifiers == shift { return L10n.text("shortcuts.typingConflict", shortcut.label) }
         let settings = model.document.settings, bindings = settings.shortcutBindings ?? ShortcutBindings()
         let used: [(String, [Shortcut])] = [("hold", [settings.shortcut] + bindings.holdExtras), ("handsFree", bindings.handsFree), ("cancel", bindings.cancel), ("copyLast", bindings.copyLast), ("pasteLast", bindings.pasteLast), ("lipReading", settings.lipReadingShortcut.map { [$0] } ?? [])]
-        if used.contains(where: { $0.0 != captureAction && $0.1.contains(shortcut) }) { return "\(shortcut.label) ist schon einer anderen Aktion zugeordnet." }
+        if used.contains(where: { $0.0 != captureAction && $0.1.contains(shortcut) }) { return L10n.text("shortcuts.actionConflict", shortcut.label) }
         return nil
     }
     private func storeShortcut(_ shortcut: Shortcut) {
@@ -571,22 +596,23 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Lippenlesen").font(.system(size: 20, weight: .semibold))
-                    Text("Lautlos diktieren, mit deiner Kamera.").foregroundStyle(.secondary)
+                    Text(L10n.text("beta.title")).font(.system(size: 20, weight: .semibold))
+                    Text(L10n.text("beta.subtitle")).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Toggle("Lippenlesen aktivieren", isOn: Binding(get: { model.lipEnabled }, set: { model.setLipEnabled($0) }))
-                    .labelsHidden().toggleStyle(.switch).accessibilityLabel("Lippenlesen-Beta aktivieren")
+                Toggle(L10n.text("beta.enable"), isOn: Binding(get: { model.lipEnabled }, set: { model.setLipEnabled($0) }))
+                    .labelsHidden().toggleStyle(.switch).disabled(!LipReadingRuntime.releaseAvailable).accessibilityLabel(L10n.text("beta.enableAX"))
             }
-            Text("Experimentell. Die Kamera läuft nur während deiner Aufnahme. Kein Ton, keine Cloud, keine gespeicherten Videos.")
+            Text(L10n.text("beta.privacy"))
                 .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if !LipReadingRuntime.releaseAvailable { Text(L10n.diagnostic(LipReadingRuntime.securityNotice)).font(.system(size: 12)).foregroundStyle(.secondary) }
             if model.lipEnabled {
                 Divider()
-                Picker("Sprache", selection: Binding(get: { model.lipLanguage }, set: { model.setLipLanguage($0) })) {
-                    ForEach(LipReadingLanguage.allCases) { language in Text(language.title).tag(language) }
+                Picker(L10n.text("beta.language"), selection: Binding(get: { model.lipLanguage }, set: { model.setLipLanguage($0) })) {
+                    ForEach(LipReadingLanguage.allCases) { language in Text(L10n.diagnostic(language.title)).tag(language) }
                 }.pickerStyle(.segmented).frame(maxWidth: 320).disabled(model.lipInstalling || model.lipSession)
-                shortcutRow("Halten zum Lippenlesen", action: "lipReading", shortcuts: [model.lipShortcut])
-                Text("In die Kamera schauen, Kürzel halten und lautlos einen kurzen Satz formen. Loslassen verarbeitet den Text. Esc bricht ab. Höchstens 30 Sekunden.")
+                shortcutRow(L10n.text("beta.hold"), action: "lipReading", shortcuts: [model.lipShortcut])
+                Text(L10n.text("beta.instructions"))
                     .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack(alignment: .top, spacing: 10) {
                     if model.lipPreparing { ProgressView().controlSize(.small) }
@@ -594,20 +620,20 @@ struct SettingsView: View {
                     Text(model.lipStatus).font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
                 }
                 if model.lipLanguage == .german {
-                    Label("Deutsch: Forschungsmodell, noch sehr ungenau. Ergebnisse vor dem Einfügen prüfen.", systemImage: "exclamationmark.triangle")
+                    Label(L10n.text("beta.germanWarning"), systemImage: "exclamationmark.triangle")
                         .font(.system(size: 12)).foregroundStyle(.secondary)
                 }
                 HStack(spacing: 12) {
                     if !model.lipReady {
-                        Button("Modell einrichten") { model.prepareLipReading(install: true) }.buttonStyle(.borderedProminent).disabled(model.lipPreparing)
-                        Button("Erneut laden") { model.prepareLipReading() }.disabled(model.lipPreparing)
+                        Button(L10n.text("beta.install")) { model.prepareLipReading(install: true) }.buttonStyle(.borderedProminent).disabled(model.lipPreparing)
+                        Button(L10n.text("beta.reload")) { model.prepareLipReading() }.disabled(model.lipPreparing)
                     }
-                    if !model.cameraGranted { Button("Kamera freigeben") { model.requestCamera() }.disabled(model.isUIPreview) }
-                    if !model.accessibilityGranted { Button("Bedienungshilfen freigeben") { model.requestAccessibility() }.disabled(model.isUIPreview) }
+                    if !model.cameraGranted { Button(L10n.text("permissions.camera.allow")) { model.requestCamera() }.disabled(model.isUIPreview) }
+                    if !model.accessibilityGranted { Button(L10n.text("permissions.accessibility.allow")) { model.requestAccessibility() }.disabled(model.isUIPreview) }
                 }
-                Text("Nur für nichtkommerzielle Forschung. Die Erkennung und Modelle werden separat lokal eingerichtet und gehören nicht zum allgemeinen Downloadpaket.")
+                Text(L10n.text("beta.research"))
                     .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    .help("Englisch: Lipflow / Auto-AVSR. Deutsch: MuAViC / AV-HuBERT. Deutsch wird direkt aus dem Video erkannt, ohne englische Zwischenübersetzung. Lippenlesen bleibt mehrdeutig und ist weniger zuverlässig als Spracherkennung.")
+                    .help(L10n.text("beta.modelsHelp"))
             }
         }.padding(20).background(Color.secondary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
     }

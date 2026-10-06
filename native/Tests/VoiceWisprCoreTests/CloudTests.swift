@@ -37,7 +37,15 @@ final class CloudTests: XCTestCase {
     private func formatter(body: String = "") -> CloudFormatter {
         Self.FixtureProtocol.body = body.isEmpty ? #"{"choices":[{"message":{"content":"Hallo, das ist ein Test."}}]}"# : body
         let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [Self.FixtureProtocol.self]
-        return CloudFormatter(endpoint: URL(string: "http://127.0.0.1/v1")!, model: "test", key: "local-test-key", sessionConfiguration: config)
+        return CloudFormatter(endpoint: URL(string: "http://127.0.0.1/v1")!, model: "test", key: "local-test-key", sessionConfiguration: config, recipientApproval: { _ in true })
+    }
+
+    func testUnapprovedRecipientMakesNoRequest() async throws {
+        Self.FixtureProtocol.requestCount = 0
+        let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [Self.FixtureProtocol.self]
+        let denied = CloudFormatter(endpoint: URL(string: "https://unapproved.invalid/v1")!, model: "test", key: "synthetic", sessionConfiguration: config, recipientApproval: { _ in false })
+        do { _ = try await denied.format("Privater Testsatz", style: .cleaned, context: "", vocabulary: []); XCTFail("Unapproved recipient accepted") } catch {}
+        XCTAssertEqual(Self.FixtureProtocol.requestCount, 0)
     }
 
     func testSuccessfulResponseIsTextOnlyAndPreservesMeaning() async throws {

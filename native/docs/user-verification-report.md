@@ -8,8 +8,12 @@ Diese Fassung wird mit der App ausgeliefert. Sie enthält keine Diktate, Namen o
 
 - Automatisierte Vertragsfälle für Spracherkennung, Textoptimierung, Wörterbuch, Wispr-Flow-Import, Zwischenablage, Kürzel und Verlauf.
 - Deutsch, Englisch und Sprachwechsel mit reproduzierbaren synthetischen Fällen und öffentlichen FLEURS-Sprachaufnahmen.
+- Deutsche und englische Oberfläche mit direktem Sprachwechsel, unveränderten Diktatsprachen und lokalisierten Menü- und Bedienelementen.
 - Native Oberfläche, lokale Modelle und einzelne Einfügeziele auf einem Apple-Silicon-Mac mit macOS 27.
-- App-Signatur, DMG-Integrität und Download.
+- Schnellere lokale Textoptimierung mit unveränderten Wortschutzregeln und identischen Ausgaben in elf Textfällen eines sechsfachen Vergleichs; kein allgemeiner Geschwindigkeitsnachweis.
+- App-Signatur, eingebettete App im DMG und Download.
+- Gebündelte deutsche und englische Sprachdateien ohne Zugriff auf einen Entwicklungsordner; kontrollierter Rückfall bei fehlenden Sprachdateien.
+- Geschützte Cloud-Empfängerfreigabe, Grenzen für Einstellungsdateien und Fehlermeldungen, sichere Entwicklungs-Dateinamen.
 
 ## Was lokal bleibt
 
@@ -26,5 +30,6 @@ Diese Fassung wird mit der App ausgeliefert. Sie enthält keine Diktate, Namen o
 - Keine vollständige praktische Abnahme für alle Mikrofone, Apps, langen Aufnahmen und macOS-Versionen.
 - macOS 14 ist das Build-Ziel, getestet wurde bisher auf neueren Versionen.
 - Namen und Fachbegriffe können Fehler enthalten. Die Optimierung ersetzt keine inhaltliche Prüfung.
-- Die App ist lokal signiert, aber noch nicht von Apple notarisiert.
-- Forschungsfunktionen wie Lippenlesen sind ausgeschaltet und nicht Teil der Abnahme.
+- Die App ist lokal signiert, aber noch nicht von Apple notarisiert. Die lokale Signatur benötigt weiterhin eine Ausnahme für Bibliotheksvalidierung. Eine Apple-Developer-ID-Signatur steht aus.
+- Kompatibles Einfügen verwendet kurz die systemweite Zwischenablage. Unter Datenschutz lässt es sich ausschalten; nicht unterstützte Textfelder werden dann nicht automatisch befüllt.
+- Lippenlesen ist im Release vorübergehend gesperrt, bis eine signierte und isolierte Laufzeit verfügbar ist. Mikrofondiktate sind davon nicht betroffen.

@@ -4,6 +4,16 @@ public enum TextStyle: String, Codable, CaseIterable, Sendable, Identifiable {
     case original, cleaned, email, chat
     public var id: String { rawValue }
     public var title: String { switch self { case .original: "Original"; case .cleaned: "Optimiert"; case .email: "E-Mail"; case .chat: "Chat" } }
+    /// Display label for native controls. `title` is retained for formatter
+    /// prompts and stored-profile compatibility.
+    public var interfaceTitle: String {
+        switch self {
+        case .original: L10n.text("style.original")
+        case .cleaned: L10n.text("style.optimized")
+        case .email: L10n.text("style.email")
+        case .chat: L10n.text("style.chat")
+        }
+    }
 }
 
 public struct Shortcut: Codable, Equatable, Sendable {
@@ -12,11 +22,11 @@ public struct Shortcut: Codable, Equatable, Sendable {
     public init(keyCode: UInt16? = 49, modifiers: UInt64 = (1 << 18) | (1 << 19)) { self.keyCode = keyCode; self.modifiers = modifiers }
     public var spokenLabel: String {
         var parts: [String] = []
-        if modifiers & (1 << 23) != 0 { parts.append("Fn") }
-        if modifiers & (1 << 18) != 0 { parts.append("Control") }
-        if modifiers & (1 << 19) != 0 { parts.append("Option") }
-        if modifiers & (1 << 17) != 0 { parts.append("Shift") }
-        if modifiers & (1 << 20) != 0 { parts.append("Command") }
+        if modifiers & (1 << 23) != 0 { parts.append(L10n.text("shortcut.fn")) }
+        if modifiers & (1 << 18) != 0 { parts.append(L10n.text("shortcut.control")) }
+        if modifiers & (1 << 19) != 0 { parts.append(L10n.text("shortcut.option")) }
+        if modifiers & (1 << 17) != 0 { parts.append(L10n.text("shortcut.shift")) }
+        if modifiers & (1 << 20) != 0 { parts.append(L10n.text("shortcut.command")) }
         if let keyCode { parts.append(Self.keyName(keyCode)) }
         return parts.joined(separator: " + ")
     }
@@ -30,7 +40,15 @@ public struct Shortcut: Codable, Equatable, Sendable {
         return (s + (keyCode.map(Self.keyName) ?? "")).trimmingCharacters(in: .whitespaces)
     }
     private static func keyName(_ code: UInt16) -> String {
-        [0:"A", 1:"S", 2:"D", 3:"F", 4:"H", 5:"G", 6:"Z", 7:"X", 8:"C", 9:"V", 11:"B", 12:"Q", 13:"W", 14:"E", 15:"R", 16:"Y", 17:"T", 31:"O", 32:"U", 34:"I", 35:"P", 37:"L", 38:"J", 40:"K", 45:"N", 46:"M", 49:"Leertaste", 53:"Esc", 36:"Return", 48:"Tab" ][code] ?? "Taste \(code)"
+        let key: String
+        switch code {
+        case 49: key = L10n.text("shortcut.space")
+        case 53: key = L10n.text("shortcut.escape")
+        case 36: key = L10n.text("shortcut.return")
+        case 48: key = L10n.text("shortcut.tab")
+        default: key = [0:"A", 1:"S", 2:"D", 3:"F", 4:"H", 5:"G", 6:"Z", 7:"X", 8:"C", 9:"V", 11:"B", 12:"Q", 13:"W", 14:"E", 15:"R", 16:"Y", 17:"T", 31:"O", 32:"U", 34:"I", 35:"P", 37:"L", 38:"J", 40:"K", 45:"N", 46:"M" ][code] ?? L10n.format("shortcut.key", arguments: [String(code)])
+        }
+        return key
     }
 }
 
@@ -46,6 +64,7 @@ public struct ShortcutBindings: Codable, Equatable, Sendable {
 }
 
 public struct DictionaryEntry: Codable, Identifiable, Equatable, Sendable {
+    public static let maximumReplacementBytes = 16_384
     public var id: String
     public var phrase: String
     public var replacement: String?
@@ -64,6 +83,9 @@ public struct Settings: Codable, Equatable, Sendable {
     public var defaultStyle: TextStyle = .cleaned
     public var manualStyle: TextStyle?
     public var appStyles: [String: TextStyle] = [:]
+    /// Only an explicit opt-in may expose automatic dictation to the system clipboard.
+    public var clipboardCompatibility: Bool?
+    public var usesClipboardForInsertion: Bool { clipboardCompatibility == true }
     public var cloudEnabled = false
     public var cloudEndpoint = "https://api.openai.com/v1"
     public var cloudModel = "gpt-4.1-mini"

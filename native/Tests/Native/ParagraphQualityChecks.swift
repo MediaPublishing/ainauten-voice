@@ -39,9 +39,15 @@ import VoiceWisprCore
     if !passed { failures += 1 }
     let row:[String:Any]=["passed":passed,"id":id,"input":input,"output":output,"needsModel":LocalFormatter.needsModel(input,style:.cleaned),"seconds":ProcessInfo.processInfo.systemUptime-start]
     print(String(decoding:try JSONSerialization.data(withJSONObject:row,options:[.sortedKeys]),as:UTF8.self));fflush(stdout)
-   } catch { failures += 1; print("CASE_ERROR \(id) \(error)");fflush(stdout) }
+   } catch {
+    failures += 1
+    let row:[String:Any]=["passed":false,"id":id,"error":String(describing:error),"needsModel":LocalFormatter.needsModel(input,style:.cleaned),"seconds":ProcessInfo.processInfo.systemUptime-start]
+    print(String(decoding:try JSONSerialization.data(withJSONObject:row,options:[.sortedKeys]),as:UTF8.self))
+    print("CASE_ERROR \(id) \(error)");fflush(stdout)
+   }
   }
-  assert(try! Data(contentsOf:url)==before)
+  // This check must remain active in the optimized native test binary.
+  guard try Data(contentsOf:url)==before else { throw VoiceError.message("Settings changed during paragraph checks") }
   await formatter.shutdown()
   print("PARAGRAPH_NATIVE_RESULT cases=\(cases.count) failures=\(failures) settingsUnchanged=true microphone=false actualASR=false cloud=false")
   if failures>0 {exit(1)}

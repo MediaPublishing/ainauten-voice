@@ -1,0 +1,14 @@
+"style.original" = "Original";
+"style.optimized" = "Optimized";
+"style.email" = "Email";
+"style.chat" = "Chat";
+"shortcut.fn" = "Fn";
+"shortcut.control" = "Control";
+"shortcut.option" = "Option";
+"shortcut.shift" = "Shift";
+"shortcut.command" = "Command";
+"shortcut.space" = "Space";
+"shortcut.escape" = "Escape";
+"shortcut.return" = "Return";
+"shortcut.tab" = "Tab";
+"shortcut.key" = "Key %@";

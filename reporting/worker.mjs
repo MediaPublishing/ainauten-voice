@@ -5,6 +5,9 @@ const TTL = 30 * 86400000;
 const HOUR = 3600000;
 // Global budget for new GitHub issue attempts per UTC hour, across all clients.
 const ISSUE_CAP = 20;
+const SOURCE_NEW_GROUPS_PER_DAY = 3;
+const SOURCE_REPORTS_PER_DAY = 5;
+const RELEASED_BUILDS = new Set(['0.1.1:2','0.1.1:3','0.1.1:4','0.1.2:5','0.1.3:6','0.1.3:7','0.1.4:8','0.1.5:9','0.1.6:10','0.1.7:11','0.1.8:12','0.1.9:13','0.1.10:14']);
 // Groups whose reports still wait for their single issue attempt.
 const PENDING = 'attempted=0 AND EXISTS(SELECT 1 FROM reports r WHERE r.fingerprint=groups.fingerprint)';
 const utcDay = now => new Date(now).toISOString().slice(0, 10);
@@ -28,7 +31,7 @@ export default {
     // Browser requests are same-origin only; native requests have no Origin.
     const origin = request.headers.get('Origin');
     if (origin && origin !== 'https://voice.ainauten.com') return json({ error: 'origin' }, 403);
-    const operatorPath = /^\/api\/operator\/reports\/[0-9a-f-]{36}$/.test(url.pathname);
+    const operatorPath = /^\/api\/operator\/reports(?:\/[0-9a-f-]{36}|\/)?$/.test(url.pathname);
     if (!operatorPath && !/^\/api\/reports(?:\/[0-9a-f-]{36})?$/.test(url.pathname)) return json({ error: 'not_found' }, 404);
     // No public status enumeration or automation endpoint. Clients retain their receipt.
     if (request.method === 'GET' && !await operatorAuthorized(request, env)) return json({ error: 'unauthorized' }, 401);
@@ -56,12 +59,18 @@ export class ReportInbox {
   async fetch(request) {
     const path = new URL(request.url).pathname, now = Date.now(), id = path.split('/').at(-1);
     this.prune(now);
-    // IP is used in memory for a one-hour rate key with a daily salt only, never a report field.
-    const address = request.headers.get('CF-Connecting-IP') || 'local';
-    const key = await fingerprint({version: this.dailySalt(now), build: String(Math.floor(now / HOUR)), architecture: '', component: address, code: '', frames: []});
-    const limit = this.sql.exec('SELECT count FROM limits WHERE key = ?', key).toArray()[0]?.count || 0;
-    if (limit >= 30) return json({ error: 'rate_limit' }, 429);
-    this.sql.exec('INSERT INTO limits VALUES(?, 1, ?) ON CONFLICT(key) DO UPDATE SET count = count + 1', key, now + 3600000);
+    if (request.method === 'GET' && (path === '/api/operator/reports' || path === '/api/operator/reports/')) {
+      const cursor = new URL(request.url).searchParams.get('cursor');
+      if (cursor && !/^[0-9]{1,16}_[0-9a-f-]{36}$/.test(cursor)) return json({error:'invalid_cursor'},400);
+      const [stamp, lastID] = cursor ? cursor.split('_') : [String(now + 1), ''];
+      const before = Number(stamp);
+      if (!Number.isSafeInteger(before) || before <= 0) return json({error:'invalid_cursor'},400);
+      const rows = this.sql.exec('SELECT r.id, r.created, r.payload, g.state, g.reason FROM reports r JOIN groups g ON g.fingerprint=r.fingerprint WHERE r.created < ? OR (r.created = ? AND r.id < ?) ORDER BY r.created DESC, r.id DESC LIMIT 101', before, before, lastID).toArray();
+      return json({reports: rows.slice(0,100).map(row => {
+        const r = validateReport(JSON.parse(row.payload));
+        return {reportID:row.id,createdAt:row.created,state:row.state,...(row.reason?{reason:row.reason}:{}),version:r.version,build:r.build,component:r.component,code:r.code};
+      }), nextCursor: rows.length > 100 ? rows[99].created + "_" + rows[99].id : null});
+    }
     if (request.method === 'GET') {
       if (path.startsWith('/api/operator/reports/')) {
         // The team can inspect the voluntary description here; never in public tickets or AI input.
@@ -72,6 +81,12 @@ export class ReportInbox {
       // The operator also sees a content-free reason code, e.g. a deferred issue.
       return row ? json({ reportID: id, accepted: true, state: row.state, ...(row.reason ? {reason: row.reason} : {}) }) : json({ error: 'not_found' }, 404);
     }
+    // IP is used in memory for a one-hour rate key with a daily salt only, never a report field.
+    const address = request.headers.get('CF-Connecting-IP') || 'local';
+    const key = await fingerprint({version: this.dailySalt(now), build: String(Math.floor(now / HOUR)), architecture: '', component: address, code: '', frames: []});
+    const limit = this.sql.exec('SELECT count FROM limits WHERE key = ?', key).toArray()[0]?.count || 0;
+    if (limit >= 30) return json({ error: 'rate_limit' }, 429);
+    this.sql.exec('INSERT INTO limits VALUES(?, 1, ?) ON CONFLICT(key) DO UPDATE SET count = count + 1', key, now + 3600000);
     if (Number(request.headers.get('Content-Length') || 0) > 16384) return json({ error: 'too_large' }, 413);
     // Read a bounded stream even when Content-Length is absent or forged.
     const reader = request.body?.getReader(); let size = 0, chunks = [];
@@ -85,12 +100,21 @@ export class ReportInbox {
     for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
     let report;
     try { report = validateReport(JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(bytes))); } catch { return json({ error: 'invalid_report' }, 400); }
+    const source = await fingerprint({version:this.dailySalt(now),build:utcDay(now),architecture:'',component:address,code:'',frames:[]});
     const fp = await fingerprint(report);
     const existing = this.sql.exec('SELECT fingerprint, payload FROM reports WHERE id=?', report.reportID).toArray()[0];
     if (existing && (existing.fingerprint !== fp || canonical(JSON.parse(existing.payload)) !== canonical(report))) return json({ error: 'id_conflict' }, 409);
     if (!existing) {
+      if (!RELEASED_BUILDS.has(report.version + ':' + report.build)) return json({error:'unknown_release'},400);
+      const retainedBudget = 'retained:' + source, groupBudget = 'novel:' + source;
+      const used = budget => this.sql.exec('SELECT count FROM limits WHERE key=?', budget).toArray()[0]?.count || 0;
+      const isNewGroup = !this.sql.exec('SELECT fingerprint FROM groups WHERE fingerprint=?', fp).toArray().length;
+      if (used(retainedBudget) >= SOURCE_REPORTS_PER_DAY || (isNewGroup && used(groupBudget) >= SOURCE_NEW_GROUPS_PER_DAY)) return json({error:'source_quota'},429);
       if (this.sql.exec('SELECT COUNT(*) AS n FROM reports').toArray()[0].n >= 5000) return json({ error: 'queue_full' }, 503);
       if (!this.sql.exec('SELECT fingerprint FROM groups WHERE fingerprint=?', fp).toArray().length && this.sql.exec('SELECT COUNT(*) AS n FROM groups').toArray()[0].n >= 50000) return json({ error: 'queue_full' }, 503);
+      const expires = Date.parse(utcDay(now) + 'T00:00:00Z') + 86400000;
+      this.sql.exec('INSERT INTO limits VALUES(?, 1, ?) ON CONFLICT(key) DO UPDATE SET count=count+1', retainedBudget, expires);
+      if (isNewGroup) this.sql.exec('INSERT INTO limits VALUES(?, 1, ?) ON CONFLICT(key) DO UPDATE SET count=count+1', groupBudget, expires);
       this.sql.exec('INSERT INTO reports VALUES(?,?,?,?)', report.reportID, fp, JSON.stringify(report), now);
       this.sql.exec("INSERT INTO groups(fingerprint, issue, attempted, state, seen) VALUES(?, NULL, 0, 'received', ?) ON CONFLICT(fingerprint) DO UPDATE SET seen=excluded.seen", fp, now);
     }

@@ -2,6 +2,8 @@ import SwiftUI
 import AppKit
 import VoiceWisprCore
 
+private func p(_ key: String, _ args: String... ) -> String { L10n.format(key, arguments: args) }
+
 enum PillState: String { case ready, recording, processing, success, error, paused, loading, needsSetup, conflict }
 
 /// SwiftUI's plain button can demand activation inside a non-key NSPanel.
@@ -42,6 +44,7 @@ private struct PillButton: NSViewRepresentable {
 
 struct PillView: View {
     @ObservedObject var model: AppModel
+    @ObservedObject private var interfaceLanguage = InterfaceLanguageStore.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         Group {
@@ -67,7 +70,7 @@ struct PillView: View {
             if model.state == .recording {
                 if model.lipSession {
                     Image(systemName: "camera.fill").frame(width: 40, height: 20)
-                        .accessibilityLabel("Lippenaufnahme läuft, " + model.durationLabel)
+                        .accessibilityLabel(p("pill.lipRecording", model.durationLabel))
                 } else {
                 HStack(spacing: 2) {
                     ForEach(0..<9, id: \.self) { i in
@@ -76,15 +79,15 @@ struct PillView: View {
                     }
                 }.frame(width: 40, height: 20)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Aufnahme läuft, " + model.durationLabel)
+                    .accessibilityLabel(p("pill.recording", model.durationLabel))
                 }
-                PillButton(symbol: "stop.fill", label: "Aufnahme stoppen", pointSize: 9) { model.stop() }.frame(width: 22, height: 24)
-                PillButton(symbol: "xmark", label: "Aufnahme verwerfen", pointSize: 10) { model.cancel() }.frame(width: 22, height: 24)
+                PillButton(symbol: "stop.fill", label: p("pill.stop"), pointSize: 9) { model.stop() }.frame(width: 22, height: 24)
+                PillButton(symbol: "xmark", label: p("pill.discard"), pointSize: 10) { model.cancel() }.frame(width: 22, height: 24)
             } else if model.state == .processing {
                 ProgressView().controlSize(.mini).tint(.white).frame(width: 20)
-                    .accessibilityLabel(model.status)
-                PillButton(symbol: "text.alignleft", label: "Originaltext verwenden") { model.useOriginal() }.frame(width: 22, height: 24)
-                PillButton(symbol: "xmark", label: "Verarbeitung abbrechen", pointSize: 10) { model.cancel() }.frame(width: 22, height: 24)
+                    .accessibilityLabel(L10n.diagnostic(model.status))
+                PillButton(symbol: "text.alignleft", label: p("pill.useOriginal")) { model.useOriginal() }.frame(width: 22, height: 24)
+                PillButton(symbol: "xmark", label: p("pill.cancelProcessing"), pointSize: 10) { model.cancel() }.frame(width: 22, height: 24)
             } else {
                 PillButton(symbol: icon, label: model.pillActionLabel) { model.openFromPill() }
                     .frame(width: 52, height: 24)
@@ -104,7 +107,7 @@ struct PillView: View {
         let magnitude = 5.0 + 10.0 * abs(sin(Double(index) * 1.3))
         return CGFloat(4.0 + Double(model.level) * magnitude)
     }
-    private var recordingWarning: Bool { model.state == .recording && (model.elapsed >= 1140 || model.status.contains("verzögert")) }
+    private var recordingWarning: Bool { model.state == .recording && (model.elapsed >= 1140 || model.recordingDelayed) }
     private var icon: String { if recordingWarning { return "exclamationmark.triangle.fill" }; switch model.state { case .success: return "checkmark"; case .error, .conflict: return "exclamationmark.circle"; case .needsSetup: return "gearshape"; case .loading: return "hourglass"; case .paused: return "mic.slash"; default: return "mic.fill" } }
 }
 
@@ -153,6 +156,7 @@ final class RecoveryPanel: NSPanel {
 
 struct RecoveryView: View {
     @ObservedObject var model: AppModel
+    @ObservedObject private var interfaceLanguage = InterfaceLanguageStore.shared
     private var selectedResult: DictationResult? { model.recoveryResult }
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -169,8 +173,8 @@ struct RecoveryView: View {
                         .font(.system(size: 15)).frame(width: 24, height: 26).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).disabled(selectedResult == nil)
-                .accessibilityLabel("Diktat in die Zwischenablage kopieren")
-                .help(model.recoveryHasCopy ? "Text ist kopiert. Mit ⌘V einfügen." : "Diktat in die Zwischenablage kopieren")
+                .accessibilityLabel(L10n.text("recovery.copyAX"))
+                .help(model.recoveryHasCopy ? L10n.text("recovery.copiedHelp") : L10n.text("recovery.copyAX"))
                 .keyboardShortcut("c", modifiers: .command).pointerAwareFocus()
                 }
                 Text(model.recoveryTitle).font(.system(size: 13, weight: .semibold))
@@ -180,19 +184,19 @@ struct RecoveryView: View {
                 if model.recoveryFailureTitle == nil && !model.recoveryTransient && model.results.count > 1 {
                     Menu {
                         ForEach(Array(model.results.enumerated()), id: \.element.id) { index, result in
-                            Button("\(index + 1). Ergebnis") { model.showRecovery(activate: false, resultID: result.id) }
+                            Button(L10n.text("recovery.result", String(index + 1))) { model.showRecovery(activate: false, resultID: result.id) }
                         }
                     } label: {
                         Image(systemName: "clock.arrow.circlepath").font(.system(size: 13)).frame(width: 26, height: 26)
                     }.menuStyle(.borderlessButton).menuIndicator(.hidden)
-                        .accessibilityLabel("Letzte Ergebnisse").help("Die letzten fünf Ergebnisse dieser Sitzung. Den gespeicherten Verlauf findest du unter Diktatverlauf.")
+                        .accessibilityLabel(L10n.text("recovery.recent")).help(L10n.text("recovery.recentHelp"))
                 }
                 if model.recoveryCanUndo {
                     Button { model.undoRecoveryCopy() } label: {
                         Image(systemName: "arrow.uturn.backward").font(.system(size: 13)).frame(width: 26, height: 26).contentShape(Rectangle())
                     }.buttonStyle(.plain).foregroundStyle(.secondary)
-                        .accessibilityLabel("Vorherige Zwischenablage wiederherstellen")
-                        .help("Rückgängig: vorherige Zwischenablage wiederherstellen")
+                        .accessibilityLabel(L10n.text("recovery.undoAX"))
+                        .help(L10n.text("recovery.undoHelp"))
                         .keyboardShortcut("z", modifiers: .command).pointerAwareFocus()
                 }
                 FeedbackCloseButton(remaining: model.recoveryCountdownRemaining, paused: model.recoveryCountdownPaused) { model.closeRecovery() }
@@ -239,9 +243,9 @@ private struct FeedbackCloseButton: View {
             }.frame(width: 20, height: 20).frame(width: 26, height: 26).contentShape(Rectangle())
         }.buttonStyle(.plain).foregroundStyle(.secondary)
             .onHover { hovered = $0 }
-            .accessibilityLabel("Ergebnis schließen")
-            .accessibilityValue(paused ? "Countdown pausiert" : "Schließt in \(seconds) Sekunden")
-            .help(paused ? "Schließen. Der Countdown pausiert beim Lesen." : "Schließen. Automatisch in \(seconds) Sekunden.")
+            .accessibilityLabel(L10n.text("recovery.closeAX"))
+            .accessibilityValue(paused ? L10n.text("recovery.timerPaused") : L10n.plural("recovery.secondsAX", count: seconds))
+            .help(paused ? L10n.text("recovery.closePausedHelp") : L10n.plural("recovery.secondsHelp", count: seconds))
             .keyboardShortcut("w", modifiers: .command).pointerAwareFocus()
     }
 }

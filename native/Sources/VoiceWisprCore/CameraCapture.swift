@@ -26,6 +26,7 @@ public final class CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffer
     private var lastTimestamp = -40
     private var limitReported = false
     private var onError: (@Sendable (String) -> Void)?
+    private var onLimit: (@Sendable () -> Void)?
     private var observer: NSObjectProtocol?
     private var interruptionObserver: NSObjectProtocol?
     public override init() { super.init() }
@@ -34,11 +35,11 @@ public final class CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffer
         if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
     }
 
-    public func start(sessionID: UUID, onError: @escaping @Sendable (String) -> Void) async throws {
+    public func start(sessionID: UUID, onError: @escaping @Sendable (String) -> Void, onLimit: (@Sendable () -> Void)? = nil) async throws {
         guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { throw VoiceError.message("Bitte erlaube die Kamera für die Lippenlesen-Beta.") }
         try lock.withLock {
             guard generation == nil else { throw VoiceError.message("Eine Kameraaufnahme läuft bereits.") }
-            generation = sessionID; frames = []; bytes = 0; origin = nil; lastTimestamp = -40; limitReported = false; self.onError = onError
+            generation = sessionID; frames = []; bytes = 0; origin = nil; lastTimestamp = -40; limitReported = false; self.onError = onError; self.onLimit = onLimit
         }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             sessionQueue.async {
@@ -78,7 +79,7 @@ public final class CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffer
         let (snapshot, owned) = lock.withLock {
             let owned = generation == sessionID
             let value = generation == sessionID ? frames : []
-            if generation == sessionID { generation = nil; frames = []; bytes = 0; onError = nil }
+            if generation == sessionID { generation = nil; frames = []; bytes = 0; onError = nil; onLimit = nil }
             return (value, owned)
         }
         guard owned else { return [] }
@@ -92,7 +93,7 @@ public final class CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffer
         return snapshot
     }
     public func cancel() {
-        lock.lock(); generation = nil; frames = []; bytes = 0; onError = nil; lock.unlock()
+        lock.lock(); generation = nil; frames = []; bytes = 0; onError = nil; onLimit = nil; lock.unlock()
         sessionQueue.async { if self.lock.withLock({ self.generation == nil }) { self.session.stopRunning() } }
     }
     public var isRunning: Bool { lock.lock(); defer { lock.unlock() }; return generation != nil }
@@ -116,8 +117,10 @@ public final class CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffer
         lock.lock()
         guard generation == id else { lock.unlock(); return }
         guard timestamp <= 30_000, frames.count < Self.maximumFrames, bytes + data.count <= Self.maximumBytes else {
-            let notify = !limitReported; limitReported = true; let callback = onError; lock.unlock()
-            if notify { callback?("Die Beta-Aufnahme wird nach 30 Sekunden oder an der Speichergrenze abgeschlossen.") }
+            let notify = !limitReported; limitReported = true; let callback = onError; let completion = onLimit; lock.unlock()
+            if notify {
+                if let completion { completion() } else { callback?("Die Beta-Aufnahme wird nach 30 Sekunden oder an der Speichergrenze abgeschlossen.") }
+            }
             return
         }
         frames.append(LipReadingFrame(milliseconds: timestamp, jpeg: data)); bytes += data.count

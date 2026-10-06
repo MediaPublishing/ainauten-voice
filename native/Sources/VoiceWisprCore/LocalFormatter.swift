@@ -74,7 +74,7 @@ public actor LocalFormatter: TextFormatting {
             }.joined(separator: " ")
         }.joined(separator: "\n")
         let user = reconstruct ? "Wortschatzhinweise (keine zwingenden Großschreibungsregeln): \(vocabulary.prefix(32).joined(separator: ", "))\nBeachte die deutsche Groß-/Kleinschreibung: Satzanfänge, Nomen und tatsächliche Eigennamen groß; gewöhnliche Bindewörter, Pronomen, Adjektive und Adverbien im Satz klein. Schreibe die persönliche Anrede du, dir, dich und dein im Satz immer klein; keine Brief-Großschreibung von Du. Erhalte die Höflichkeitsanrede Sie. Entscheide nach dem Satzkontext, nicht allein nach der Schreibweise eines Hinweises. Satzzeichen der Erkennung können bloße Sprechpausen sein: verbinde grammatisch zusammengehörige Satzfragmente, entferne dafür falsche Punkte und setze passende Kommas. Erhalte echte vollständige Sätze und Fragen. Ein Nebensatz mit indem, was, weil oder wenn gehört zum Hauptsatz; keine alleinstehenden Satzfragmente. Trenne aufgezählte Tätigkeiten oder Begriffe mit Kommas, beispielsweise Design, Veröffentlichung und Test; klebe getrennte Begriffe nicht zu einem neuen Namen zusammen. Setze bei einem Themenwechsel einen Absatz, in längeren Erklärungen etwa nach drei bis vier vollständigen Sätzen. Ein Abschnittsende ist nicht automatisch ein Satzende.\nVorherige zwei Sätze (nur Kontext): \(Self.lastTwoSentences(previous))\nAktueller Abschnitt (Sprechpausen wurden entfernt; Satzzeichen neu setzen):\n\(current)" : "Wortschatzhinweise (keine zwingenden Großschreibungsregeln): \(vocabulary.prefix(32).joined(separator: ", "))\nBeachte die deutsche Groß-/Kleinschreibung: Satzanfänge, Nomen und tatsächliche Eigennamen groß; gewöhnliche Bindewörter, Pronomen, Adjektive und Adverbien im Satz klein. Schreibe die persönliche Anrede du, dir, dich und dein im Satz immer klein; keine Brief-Großschreibung von Du. Erhalte die Höflichkeitsanrede Sie. Entscheide nach dem Satzkontext, nicht allein nach der Schreibweise eines Hinweises. Satzzeichen der Erkennung können bloße Sprechpausen sein: verbinde grammatisch zusammengehörige Satzfragmente, entferne dafür falsche Punkte und setze passende Kommas. Erhalte echte vollständige Sätze und Fragen.\nVorherige zwei Sätze (nur Kontext): \(Self.lastTwoSentences(previous))\nAktueller Abschnitt:\n\(text)"
-        let casingHint = "\nGrammatikbeispiele, keine zusätzlichen Ausgabewörter: einen Neuen Mac → einen neuen Mac; Über Nacht auf Am Laufen → über Nacht auf am Laufen. Adjektive vor einem Nomen und Präpositionen im Satz klein schreiben. Substantivierte Verben und Adjektive bleiben groß: am Laufen, das Schöne. Tatsächliche Eigennamen bleiben erhalten: Frau Klein, OpenAI, MIT."
+        let casingHint = "\nGrammatikbeispiele, keine zusätzlichen Ausgabewörter: einen Neuen Mac → einen neuen Mac; Über Nacht auf Am Laufen → über Nacht auf am Laufen. Adjektive vor einem Nomen und Präpositionen im Satz klein schreiben. Substantivierte Verben und Adjektive bleiben groß: am Laufen, das Schöne. Tatsächliche Eigennamen bleiben erhalten: Frau Klein, OpenAI, die Institution MIT in am MIT. Die Präposition mit bleibt im Satz klein, auch wenn MIT im Wortschatz steht: MIT dem Team → mit dem Team; MIT dem Bericht → mit dem Bericht."
         let prompt = try chatPrompt(system: instruction, user: user + casingHint)
         let grammar = try FormattingGrammar.make(text, vocabulary: vocabulary)
         let deadline = GenerationDeadline()
@@ -111,18 +111,50 @@ public actor LocalFormatter: TextFormatting {
         }
         guard let sampler = llama_sampler_chain_init(llama_sampler_chain_default_params()) else { throw VoiceError.message("Sampler konnte nicht erstellt werden") }
         defer { llama_sampler_free(sampler) }
+        var grammarSampler: UnsafeMutablePointer<llama_sampler>?
         if let grammar {
             guard let constraint = grammar.withCString({ llama_sampler_init_grammar(vocab, $0, "root") }) else {
                 throw VoiceError.message("Wortlautbegrenzung konnte nicht erstellt werden")
             }
             llama_sampler_chain_add(sampler, constraint)
+            grammarSampler = constraint
         }
         guard let greedy = llama_sampler_init_greedy() else { throw VoiceError.message("Greedy-Sampler konnte nicht erstellt werden") }
         llama_sampler_chain_add(sampler, greedy)
+        // The pinned runtime supports checking the greedy token against the
+        // grammar first. If it is rejected, use the unchanged full sampler.
+        // Both paths accept once; the chain owns the grammar and greedy aliases.
+        var candidates = grammarSampler == nil ? [] : [llama_token_data](repeating: .init(id: 0, logit: 0, p: 0), count: Int(llama_vocab_n_tokens(vocab)))
         var output = [UInt8]()
         for _ in 0..<maxTokens {
             try Task.checkCancellation(); guard !deadline.expired else { throw VoiceError.message("Lokale Formatierung hat das Zeitlimit erreicht") }
-            var token = llama_sampler_sample(sampler, context, -1)
+            var token: llama_token
+            if let grammarSampler, let logits = llama_get_logits_ith(context, -1), !candidates.isEmpty {
+                for index in candidates.indices { candidates[index] = .init(id: llama_token(index), logit: logits[index], p: 0) }
+                let selected: llama_token? = candidates.withUnsafeMutableBufferPointer { buffer in
+                    var array = llama_token_data_array(data: buffer.baseAddress, size: buffer.count, selected: -1, sorted: false)
+                    llama_sampler_apply(greedy, &array)
+                    guard array.selected >= 0, array.selected < array.size, let data = array.data else { return nil }
+                    return data[Int(array.selected)].id
+                }
+                var valid = false
+                if let selected {
+                    var single = llama_token_data(id: selected, logit: 1, p: 0)
+                    valid = withUnsafeMutablePointer(to: &single) { pointer in
+                        var array = llama_token_data_array(data: pointer, size: 1, selected: -1, sorted: false)
+                        llama_sampler_apply(grammarSampler, &array)
+                        return pointer.pointee.logit != -Float.infinity
+                    }
+                }
+                if let selected, valid {
+                    token = selected
+                    llama_sampler_accept(sampler, token)
+                } else {
+                    token = llama_sampler_sample(sampler, context, -1)
+                }
+            } else {
+                token = llama_sampler_sample(sampler, context, -1)
+            }
             if llama_vocab_is_eog(vocab, token) { return String(decoding: output, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines) }
             var bytes = [CChar](repeating: 0, count: 256)
             var length = bytes.withUnsafeMutableBufferPointer { llama_token_to_piece(vocab, token, $0.baseAddress, Int32($0.count), 0, false) }
@@ -173,13 +205,24 @@ public actor LocalFormatter: TextFormatting {
         let normallyLowercase: Set<NLTag> = [.verb, .adjective, .adverb, .pronoun, .determiner, .particle, .preposition, .conjunction]
         let source = text as NSString
         var previousEnd = 0
+        var previousWord = ""
         for match in casingWords.matches(in: text, range: NSRange(location: 0, length: source.length)) {
             let word = source.substring(with: match.range)
+            let precedingWord = previousWord
+            previousWord = word.lowercased()
             let gap = source.substring(with: NSRange(location: previousEnd, length: match.range.location - previousEnd))
             let startsSentence = previousEnd == 0 || gap.rangeOfCharacter(from: CharacterSet(charactersIn: ".!?:\n\"„“")) != nil
             previousEnd = NSMaxRange(match.range)
-            guard !startsSentence,
-                  word.first?.isUppercase == true,
+            guard !startsSentence, word.first?.isUppercase == true else { continue }
+            // All-caps ASR function words need the same contextual correction
+            // as title-case ones. Keep the institution MIT after nominal
+            // introducers; ordinary prepositional MIT still goes to the model.
+            if word.count > 1, word == word.uppercased(), functionWords.contains(word.lowercased()) {
+                let nominalIntroducers: Set<String> = ["am", "vom", "ans", "beim", "das", "die", "der", "den", "dem", "des", "zum"]
+                if word != "MIT" || !nominalIntroducers.contains(precedingWord) { return true }
+                continue
+            }
+            guard
                   word == word.prefix(1).uppercased() + word.dropFirst().lowercased() else { continue }
             if functionWords.contains(word.lowercased()) { return true }
             guard german else { continue }

@@ -11,7 +11,8 @@ private final class NoReportRedirects: NSObject, URLSessionTaskDelegate {
     @Published var automatic = false
     @Published var entries: [ErrorReportStore.Entry] = []
     @Published var draft: ErrorReport
-    @Published var message = ""
+    @Published private var messageValue: LocalizedMessage = .literal("")
+    var message: String { get { messageValue.text } set { messageValue = L10n.message(newValue) } }
     @Published var sending = false
     @Published var crashAvailable = false
     private var store: ErrorReportStore?
@@ -64,10 +65,10 @@ private final class NoReportRedirects: NSObject, URLSessionTaskDelegate {
     func refresh() async {
         guard let store else { return }
         do { let saved = try await store.automatic(); automatic = automaticChoice ?? saved; entries = try await store.entries() }
-        catch { message = "Der lokale Meldeverlauf konnte nicht gelesen werden. Es wurde nichts gesendet." }
+        catch { message = L10n.text("reports.readFailed") }
     }
     func setAutomatic(_ value: Bool) {
-        guard !value || deliveryAvailable else { message = "Direkter Versand ist noch nicht verfügbar. Du kannst den Bericht lokal speichern."; return }
+        guard !value || deliveryAvailable else { message = L10n.text("reports.deliveryUnavailable") ; return }
         automaticChoice = value; automatic = value
         if !value { automaticTask?.cancel() }
         guard let store else { return }
@@ -75,7 +76,7 @@ private final class NoReportRedirects: NSObject, URLSessionTaskDelegate {
         preferenceTask = Task {
             await previous?.value
             do { try await store.setAutomatic(value); await refresh(); if value && automaticChoice == value { scheduleAutomatic() } }
-            catch { if automaticChoice == value { automaticChoice = false; automatic = false; message = "Die Auswahl konnte nicht gespeichert werden." } }
+            catch { if automaticChoice == value { automaticChoice = false; automatic = false; message = L10n.text("reports.preferenceSaveFailed") } }
         }
     }
     func beginReport() {
@@ -92,7 +93,7 @@ private final class NoReportRedirects: NSObject, URLSessionTaskDelegate {
         guard automatic, let store else { return }
         Task {
             do { try await store.enqueue(report, automatic: true); await refresh(); scheduleAutomatic() }
-            catch { message = "Der Fehler bleibt lokal. Die Meldung konnte nicht vorbereitet werden." }
+            catch { message = L10n.text("reports.queueFailed") }
         }
     }
     private func scheduleAutomatic() {
@@ -104,10 +105,10 @@ private final class NoReportRedirects: NSObject, URLSessionTaskDelegate {
         sending = true; defer { sending = false }
         do { try await store.sendPending(transport: sender); await refresh() }
         catch is CancellationError { await refresh() }
-        catch { message = "Empfang noch nicht bestätigt. Du kannst die Meldung prüfen oder lokal speichern."; await refresh() }
+        catch { message = L10n.text("reports.deliveryUnconfirmed"); await refresh() }
     }
     func send() {
-        guard deliveryAvailable else { message = "Direkter Versand ist noch nicht verfügbar. Du kannst den Bericht lokal speichern."; return }
+        guard deliveryAvailable else { message = L10n.text("reports.deliveryUnavailable"); return }
         guard !sending, (try? draft.validatedData()) != nil else { return }
         if preview { message = "Vorschau: kein Versand und keine Nutzerdaten."; return }
         guard let store else { return }
@@ -120,11 +121,11 @@ private final class NoReportRedirects: NSObject, URLSessionTaskDelegate {
                 try await store.enqueue(report, automatic: false)
                 try await store.sendPending(manualID: report.reportID, transport: sender)
                 guard !Task.isCancelled, draft.reportID == report.reportID else { return }
-                message = "Empfangen · Bericht \(report.reportID.prefix(8))"; crashAvailable = false
+                message = L10n.format("reports.received", arguments: [String(report.reportID.prefix(8))]); crashAvailable = false
             } catch is CancellationError { return }
             catch {
                 guard !Task.isCancelled, draft.reportID == report.reportID else { return }
-                message = "Empfang nicht bestätigt. Bitte später erneut versuchen oder den Bericht lokal speichern."
+                message = L10n.text("reports.notConfirmed")
             }
             await refresh()
         }
@@ -136,15 +137,15 @@ private final class NoReportRedirects: NSObject, URLSessionTaskDelegate {
         let id = draft.reportID
         if let store { cleanupTask = Task { if (try? await store.entries().first(where: { $0.report.reportID == id })?.sent) != true { try? await store.remove(id) }; await refresh() } }
         draft = Self.makeReport(); crashAvailable = false
-        message = started ? "Abgebrochen. Ein bereits gestarteter Bericht kann trotzdem angekommen sein." : "Abgebrochen. Es wurde nichts gesendet."
+        message = started ? L10n.text("reports.cancelledAfterStart") : L10n.text("reports.cancelled")
     }
-    func use(_ entry: ErrorReportStore.Entry) { draft = entry.report; message = entry.sent ? "Bereits empfangen · \(entry.report.reportID.prefix(8))" : "Lokal gespeichert; noch nicht gesendet." }
+    func use(_ entry: ErrorReportStore.Entry) { draft = entry.report; message = entry.sent ? L10n.format("reports.alreadyReceived", arguments: [String(entry.report.reportID.prefix(8))]) : L10n.text("reports.savedLocally") }
     func export() {
-        guard let data = try? draft.validatedData() else { message = "Bitte prüfe Beschreibung und Kontaktadresse."; return }
+        guard let data = try? draft.validatedData() else { message = L10n.text("reports.invalid"); return }
         let panel = NSSavePanel(); panel.nameFieldStringValue = "AInauten-Voice-Fehler-\(draft.reportID.prefix(8)).json"
         if panel.runModal() == .OK, let url = panel.url {
-            do { try data.write(to: url, options: .atomic); message = "Bericht lokal gespeichert. Es wurde nichts gesendet." }
-            catch { message = "Der Bericht konnte nicht gespeichert werden." }
+            do { try data.write(to: url, options: .atomic); message = L10n.text("reports.exported") }
+            catch { message = L10n.text("reports.exportFailed") }
         }
     }
     static func transport(_ endpoint: URL) -> @Sendable (Data) async throws -> ReportReceipt {

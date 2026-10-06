@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {DatabaseSync} from 'node:sqlite';
+import {readFileSync} from 'node:fs';
 import worker, {ReportInbox} from './worker.mjs';
 import {validateReport, projectAppleDiagnostic, fingerprint} from '../site/report-schema.mjs';
 import pages from '../site/pages-worker.mjs';
@@ -36,6 +37,27 @@ test('Apple IPS projection excludes all raw text, paths, memory and non-app fram
   input.bundleInfo.CFBundleIdentifier='other.app';assert.throws(()=>projectAppleDiagnostic(JSON.stringify(input)));
 });
 test('disabled collector makes no provider calls',async()=>{const f=fixture();f.env.REPORTING_ENABLED='false';assert.equal((await f.send(report())).status,503);assert.equal(f.calls.length,0);});
+test('current packaged release and published retained releases can submit reports',async()=>{
+  const plist=readFileSync(new URL('../native/Resources/Info.plist',import.meta.url),'utf8');
+  const value=key=>{
+    const match=plist.match(new RegExp(`<key>${key}</key>\\s*<string>([^<]+)</string>`));
+    assert(match,`Missing packaged release metadata: ${key}`);return match[1];
+  };
+  const current=[value('CFBundleShortVersionString'),value('CFBundleVersion')];
+  for(const [version,build] of [['0.1.7','11'],['0.1.8','12'],['0.1.9','13'],current]){
+    const f=fixture();const response=await f.send({...report(),version,build});
+    assert.equal(response.status,202,`Published release rejected: ${version} (${build})`);
+    assert.equal(f.db.prepare('SELECT count(*) AS n FROM reports').get().n,1);
+  }
+});
+test('future and mismatched release pairs are rejected without storage or provider calls',async()=>{
+  for(const [version,build] of [['99.0.0','999'],['0.1.9','999'],['0.1.8','13']]){
+    const f=fixture();const response=await f.send({...report(),version,build});
+    assert.equal(response.status,400);assert.equal((await response.json()).error,'unknown_release');
+    assert.equal(f.db.prepare('SELECT count(*) AS n FROM reports').get().n,0);
+    assert.equal(f.calls.length,0);
+  }
+});
 test('strict server validation and streamed body limit',async()=>{
   const f=fixture();assert.equal((await f.send({...report(),transcript:'PRIVATE'})).status,400);
   assert.equal((await f.send({...report(),userInput:{description:'x'.repeat(20000),contact:''}})).status,413);
@@ -111,7 +133,7 @@ test('only the authorized team can inspect voluntary text; public and AI issue p
   assert.equal((await get(f.env.REPORTING_OPERATOR_TOKEN)).status,404);
 });
 test('rate limit, bounded queue and 30-day retention',async()=>{
-  const f=fixture();for(let n=0;n<30;n++)assert.equal((await f.send(report())).status,202);assert.equal((await f.send(report())).status,429);
+  const f=fixture();for(let n=0;n<5;n++)assert.equal((await f.send(report())).status,202);assert.equal((await f.send(report())).status,429);
   f.db.prepare('UPDATE reports SET created=?').run(Date.now()-31*86400000);f.inbox.prune(Date.now());assert.equal(f.db.prepare('SELECT count(*) AS n FROM reports').get().n,0);
   assert.equal(f.db.prepare('SELECT count(*) AS n FROM groups').get().n,1);
 });
@@ -122,8 +144,8 @@ test('expired unsent groups do not create a permanent minute alarm; cleanup foll
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM reports').get().n,0);
 });
 test('global hourly issue cap defers new groups with a content-free reason',async()=>{
-  const f=fixture(),reports=Array.from({length:25},(_,n)=>({...report(),build:String(100+n)}));
-  for(const r of reports)assert.equal((await f.send(r)).status,202);
+  const f=fixture(),reports=Array.from({length:25},(_,n)=>({...report(),frames:[{binaryUUID:crypto.randomUUID(),offset:n}]}));
+  for(const [i,r] of reports.entries())assert.equal((await f.send(r,{"CF-Connecting-IP":"198.51.100."+i})).status,202);
   for(let n=0;n<3;n++)await f.inbox.alarm();
   const posts=()=>f.calls.filter(c=>c.options.method==='POST').length;
   assert.equal(posts(),20);
@@ -158,7 +180,7 @@ test('rate-limit salt rotates per UTC day; addresses are never stored',async()=>
   const second=f.db.prepare('SELECT day, salt FROM salts').all();
   assert.equal(second.length,1);assert.notEqual(second[0].salt,first[0].salt);
   // Same address in the same hour, but a new day salt: the two rate keys are unlinkable.
-  assert.equal(f.db.prepare("SELECT count(*) AS n FROM limits WHERE key NOT LIKE 'issues:%'").get().n,2);
+  assert.equal(f.db.prepare("SELECT count(*) AS n FROM limits WHERE key NOT LIKE 'issues:%' AND key NOT LIKE 'retained:%' AND key NOT LIKE 'novel:%'").get().n,2);
   for(const table of ['reports','groups','limits','salts'])assert(!JSON.stringify(f.db.prepare(`SELECT * FROM ${table}`).all()).includes(address));
 });
 test('content-free tombstones are deleted 30 days after their last report expired',async()=>{
@@ -192,4 +214,37 @@ test('Pages retires the old installer using current verified release metadata',a
  assert.equal(response.status,302);assert.equal(response.headers.get('Location'),'https://voice.ainauten.com/downloads/AInauten-Voice-0.1.3-arm64.dmg');assert.equal(response.headers.get('Cache-Control'),'no-store');
  env.ASSETS.fetch=async()=>Response.json({filename:'AInauten-Voice-0.1.1-arm64.dmg'});
  assert.equal((await pages.fetch(new Request('https://voice.ainauten.com/downloads/AInauten-Voice-0.1.1-arm64.dmg'),env)).status,410);
+});
+
+test('one anonymous source cannot consume the global issue budget',async()=>{
+  const f=fixture();
+  for(let n=0;n<20;n++) {
+    const r={...report(),frames:[{binaryUUID:crypto.randomUUID(),offset:n}]};
+    assert.equal((await f.send(r,{'CF-Connecting-IP':'198.51.100.1'})).status,n<3?202:429);
+  }
+  await f.inbox.alarm();assert.equal(f.calls.filter(c=>c.options.method==='POST').length,3);
+  assert.equal((await f.send({...report(),code:'model_load_failed'},{'CF-Connecting-IP':'198.51.100.2'})).status,202);
+  await f.inbox.alarm();assert.equal(f.calls.filter(c=>c.options.method==='POST').length,4);
+  assert.equal((await f.send({...report(),version:'9.9.9',build:'999'},{'CF-Connecting-IP':'198.51.100.3'})).status,400);
+});
+test('retained report quota limits one source to five rows per UTC day and preserves receipts',async()=>{
+  const f=fixture(),r=report();
+  for(let n=0;n<40;n++) assert.equal((await f.send({...r,reportID:crypto.randomUUID()})).status,n<5?202:429);
+  assert.equal(f.db.prepare('SELECT count(*) AS n FROM reports').get().n,5);
+  const first=JSON.parse(f.db.prepare('SELECT payload FROM reports LIMIT 1').get().payload);
+  f.db.prepare("DELETE FROM limits WHERE key NOT LIKE 'retained:%' AND key NOT LIKE 'novel:%'").run();
+  assert.equal((await f.send(first)).status,202);
+  assert.equal((await f.send(report(),{'CF-Connecting-IP':'198.51.100.2'})).status,202);
+});
+test('operator index is authenticated, omits voluntary text and pages tied timestamps without duplicates',async()=>{
+  const f=fixture();f.env.REPORTING_OPERATOR_TOKEN='synthetic-operator-token-with-40-random-characters';
+  assert.equal((await worker.fetch(new Request('https://voice.ainauten.com/api/operator/reports'),f.env)).status,401);
+  for(let n=0;n<105;n++) assert.equal((await f.send({...report(),userInput:{description:'PRIVATE_TEXT',contact:'private@example.com'}},{'CF-Connecting-IP':'198.51.100.'+n})).status,202);
+  f.db.prepare('UPDATE reports SET created=?').run(Date.now()-1000);
+  const read=path=>worker.fetch(new Request('https://voice.ainauten.com/api/operator/reports'+path,{headers:{Authorization:'Bearer '+f.env.REPORTING_OPERATOR_TOKEN}}),f.env);
+  const first=await(await read('')).json(),second=await(await read('?cursor='+first.nextCursor)).json();
+  assert.equal(first.reports.length,100);assert.equal(second.reports.length,5);assert.equal(second.nextCursor,null);
+  assert.equal(new Set([...first.reports,...second.reports].map(x=>x.reportID)).size,105);
+  assert(!JSON.stringify(first).includes('PRIVATE_TEXT'));assert(!JSON.stringify(first).includes('private@example.com'));
+  assert.equal((await read('?cursor=bad')).status,400);
 });

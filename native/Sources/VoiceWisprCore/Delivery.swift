@@ -79,7 +79,12 @@ public enum DeliveryVerification {
         let subrole = AXAccess.string(field, kAXSubroleAttribute) ?? ""
         let role = AXAccess.string(field, kAXRoleAttribute) ?? ""
         let secure = subrole == kAXSecureTextFieldSubrole || role == kAXSecureTextFieldSubrole || IsSecureEventInputEnabled()
-        guard !secure, let baseline = AXAccess.string(field, kAXValueAttribute) ?? AXAccess.fullRangeText(field), let range = AXAccess.range(field),
+        // Selection and readable value alone do not make a control editable:
+        // Chromium also advertises both for buttons and read-only text fields.
+        guard !secure, [kAXTextFieldRole, kAXTextAreaRole, kAXComboBoxRole].contains(role),
+              (AXAccess.value(field, kAXEnabledAttribute) as? Bool) != false,
+              AXAccess.settable(field, kAXValueAttribute) || AXAccess.settable(field, kAXSelectedTextAttribute),
+              let baseline = AXAccess.string(field, kAXValueAttribute) ?? AXAccess.fullRangeText(field), let range = AXAccess.range(field),
               DeliveryVerification.expectedValue(baseline: baseline, selection: range, insertion: "") != nil else { return nil }
         return FocusSnapshot(pid: app.processIdentifier, bundleID: app.bundleIdentifier, window: window, element: field, selectedRange: range, baseline: baseline, secure: secure)
     }
@@ -111,6 +116,23 @@ public enum DeliveryVerification {
             if let text = result as? NSAttributedString { return text.string }
         }
         return nil
+    }
+    /// Chromium may cap AXValue/AXNumberOfCharacters, while a field's complete
+    /// text-marker range remains available. Never infer completeness from a
+    /// caret or from an unavailable tail read.
+    static func fullMarkerText(_ element: AXUIElement) -> String? {
+        var rawNames: CFArray?
+        guard AXUIElementCopyParameterizedAttributeNames(element, &rawNames) == .success,
+              let names = rawNames as? [String],
+              ["AXTextMarkerRangeForUIElement", "AXLengthForTextMarkerRange", "AXStringForTextMarkerRange"].allSatisfy(names.contains) else { return nil }
+        var range: CFTypeRef?, rawLength: CFTypeRef?, rawText: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(element, "AXTextMarkerRangeForUIElement" as CFString, element, &range) == .success,
+              let range,
+              AXUIElementCopyParameterizedAttributeValue(element, "AXLengthForTextMarkerRange" as CFString, range, &rawLength) == .success,
+              let length = rawLength as? NSNumber, length.intValue >= 0, length.intValue <= 4_000_000,
+              AXUIElementCopyParameterizedAttributeValue(element, "AXStringForTextMarkerRange" as CFString, range, &rawText) == .success,
+              let text = rawText as? String, (text as NSString).length == length.intValue else { return nil }
+        return text
     }
     static func element(_ element: AXUIElement, _ name: String) -> AXUIElement? {
         guard let result = value(element, name), CFGetTypeID(result) == AXUIElementGetTypeID() else { return nil }
@@ -164,6 +186,17 @@ public enum TransientPasteboard {
         guard before == board.changeCount else { return nil }
         return ClipboardSnapshot(items: items, changeCount: before)
     }
+    /// Check all original bytes without logging them or writing again. AppKit
+    /// may add a synthesized representation, but may not drop or alter any
+    /// captured representation, item, or item order. A newer copy wins even
+    /// when its visible text happens to be identical.
+    func verifiesRestoration(_ board: NSPasteboard, writtenAt: Int) -> Bool {
+        guard board.changeCount == writtenAt, let observed = Self.capture(board),
+              observed.changeCount == writtenAt, observed.items.count == items.count else { return false }
+        return zip(items, observed.items).allSatisfy { saved, current in
+            saved.allSatisfy { type, data in current[type] == data }
+        }
+    }
     @discardableResult func restore(_ board: NSPasteboard, ownership: ClipboardOwnership) -> Bool {
         let nonce = board.string(forType: Self.nonceType).flatMap(UUID.init(uuidString:))
         guard ownership.owns(changeCount: board.changeCount, nonce: nonce) else { return false }
@@ -176,7 +209,9 @@ public enum TransientPasteboard {
         guard ownership.owns(changeCount: board.changeCount, nonce: board.string(forType: Self.nonceType).flatMap(UUID.init(uuidString:))) else { return false }
         let clearedAt = board.clearContents()
         guard board.changeCount == clearedAt else { return false }
-        if restored.isEmpty || board.writeObjects(restored) { return true }
+        if restored.isEmpty || board.writeObjects(restored) {
+            return verifiesRestoration(board, writtenAt: board.changeCount)
+        }
         current?.restoreAfterFailedWrite(board, clearedAt: clearedAt, nonce: ownership.nonce)
         return false
     }
@@ -249,7 +284,7 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         guard targetReadable && !secure && focusUnchanged else { return DeliveryOutcome(.notAttempted, reason: "Ziel nicht sicher verifizierbar; Text steht zur Wiederherstellung bereit.") }
         return DeliveryOutcome(.uncertain, reason: "Ziel geprüft; Zustellung muss noch bestätigt werden.")
     }
-    public func deliver(text: String, to target: FocusSnapshot?) async -> DeliveryOutcome {
+    public func deliver(text: String, to target: FocusSnapshot?, allowClipboard: Bool = false) async -> DeliveryOutcome {
         guard !Task.isCancelled else { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
         guard !text.isEmpty, let target, target.isUnchanged() else {
             return DeliveryOutcome(.notAttempted, reason: "Fokus, Auswahl oder Textfeld haben sich verändert. Text aus dem Wiederherstellungsfenster verwenden.")
@@ -271,6 +306,7 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         #if DEBUG
         if CommandLine.arguments.contains("--test-delivery") { print("DELIVERY_TEST_METHOD paste"); fflush(stdout) }
         #endif
+        guard allowClipboard else { return DeliveryOutcome(.notAttempted, reason: "Dieses Textfeld unterstützt kein direktes Einfügen. Text bleibt in der App; die Zwischenablage bleibt unverändert.") }
         let board = NSPasteboard.general
         let releaseDeadline = ContinuousClock.now.advanced(by: .milliseconds(1500))
         let physicalModifiers: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift]
@@ -293,7 +329,7 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         }
         let ownership = ClipboardOwnership(nonce: nonce, changeCount: board.changeCount)
         guard !Task.isCancelled, target.isUnchanged() else { saved.restore(board, ownership: ownership); return DeliveryOutcome(.notAttempted, reason: "Ziel verändert oder Diktat verworfen") }
-        down.flags = .maskCommand; up.flags = .maskCommand
+        down.flags = .maskCommand; up.flags = []
         down.post(tap: .cghidEventTap); up.post(tap: .cghidEventTap)
         let outcome = await verify(text: text, target: target)
         saved.restore(board, ownership: ownership)
@@ -322,6 +358,20 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
                                let ranged = AXAccess.fullRangeText(field),
                                DeliveryVerification.confirmed(baseline: target.baseline, selection: target.selectedRange, insertion: text, observed: ranged, caret: caret) {
                                 return DeliveryOutcome(.confirmed, reason: "Vollständiger Text über den ursprünglichen Textbereich bestätigt.", inputWasSubmitted: true)
+                            }
+                            if ContinuousClock.now < deadline,
+                               let marked = AXAccess.fullMarkerText(field),
+                               DeliveryVerification.confirmed(baseline: target.baseline, selection: target.selectedRange, insertion: text, observed: marked, caret: caret),
+                               ContinuousClock.now < deadline,
+                               NSWorkspace.shared.frontmostApplication?.processIdentifier == target.pid,
+                               !IsSecureEventInputEnabled(),
+                               let finalWindow = AXAccess.element(application, kAXFocusedWindowAttribute),
+                               let finalField = AXAccess.element(application, kAXFocusedUIElementAttribute),
+                               CFEqual(finalWindow, target.window), CFEqual(finalField, target.element),
+                               ContinuousClock.now < deadline,
+                               NSWorkspace.shared.frontmostApplication?.processIdentifier == target.pid,
+                               !IsSecureEventInputEnabled() {
+                                return DeliveryOutcome(.confirmed, reason: "Vollständiger Text über den gesamten ursprünglichen Textmarkerbereich bestätigt.", inputWasSubmitted: true)
                             }
                         }
                     }
