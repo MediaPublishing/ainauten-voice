@@ -7,7 +7,7 @@ const HOUR = 3600000;
 const ISSUE_CAP = 20;
 const SOURCE_NEW_GROUPS_PER_DAY = 3;
 const SOURCE_REPORTS_PER_DAY = 5;
-const RELEASED_BUILDS = new Set(['0.1.1:2','0.1.1:3','0.1.1:4','0.1.2:5','0.1.3:6','0.1.3:7','0.1.4:8','0.1.5:9','0.1.6:10','0.1.7:11','0.1.8:12','0.1.9:13']);
+const RELEASED_BUILDS = new Set(['0.1.1:2','0.1.1:3','0.1.1:4','0.1.2:5','0.1.3:6','0.1.3:7','0.1.4:8','0.1.5:9','0.1.6:10','0.1.7:11','0.1.8:12','0.1.9:13','0.1.10:14']);
 // Groups whose reports still wait for their single issue attempt.
 const PENDING = 'attempted=0 AND EXISTS(SELECT 1 FROM reports r WHERE r.fingerprint=groups.fingerprint)';
 const utcDay = now => new Date(now).toISOString().slice(0, 10);

@@ -1,18 +1,20 @@
 # AInauten Voice: Prüfbericht
 
-Stand: 5. Oktober 2026. **Beta, praktische Gesamtabnahme teilweise offen.**
+Stand: 6. Oktober 2026. **Beta, praktische Gesamtabnahme teilweise offen.**
 
 ## Öffentlicher Download
 
-Version **0.1.9, Build 13** für Apple Silicon, macOS 14 als Build-Ziel. Die App ist lokal signiert und nutzt Hardened Runtime, ist jedoch noch nicht Apple-notarisiert. Die Signatur benötigt derzeit eine Ausnahme für Bibliotheksvalidierung.
+Version **0.1.10, Build 14** für Apple Silicon, macOS 14 als Build-Ziel. Die App ist lokal signiert und nutzt Hardened Runtime, ist jedoch noch nicht Apple-notarisiert. Die Signatur benötigt derzeit eine Ausnahme für Bibliotheksvalidierung.
 
 Der Download enthält den separat signierten Sparkle-Updater, Hilfe, einen aktivierten privaten Fehlerempfang sowie eine deutsche und englische Oberfläche. Automatische Updates sind standardmäßig aktiv; eine ausdrücklich gespeicherte Abschaltung bleibt erhalten. Fehlerberichte werden nur mit Zustimmung gesendet, automatische Fehlerübermittlung bleibt standardmäßig aus. Automatische AI-Reparaturen sind nicht aktiviert.
 
 ## Nachweise
 
-- Die aktuelle Aufnahme-Anzeige und Startdiagnose warten auf den ersten echten Audioblock. Zehn gezielte native App-Zustandsprüfungen bestanden ohne Fehler; verspätete oder alte Callback-Ereignisse ersetzen die erste Messung nicht. Der Wert misst die interne Startanfrage bis zum ersten empfangenen Audio, keinen Tastendruck, Bildaufbau oder p95. Diese Änderung ist noch nicht im Download enthalten.
-- Der aktuelle Quellstand sperrt auch den direkten Lippenlese-Installer im Release. Drei gezielte native Release-Prüfungen bestanden; der alte Installer scheitert nachweislich am neuen Test. Die ungeprüften Forschungs-Abhängigkeiten sind damit nicht aktualisiert oder sicherheitsqualifiziert. Der Fix ist noch nicht im Download enthalten.
-- Im aktuellen Quellstand bestätigt die Zwischenablage-Wiederherstellung erst eine zusätzliche Prüfung aller ursprünglichen Datenformate und Einträge. **20 gezielte native Vertragsfälle ohne Fehler**, mit separaten AppKit-Testzwischenablagen und unabhängiger Gegenprüfung. Dieser Fix ist noch nicht im Download 0.1.9, Build 13 enthalten; keine Mikrofon- oder vollständige App-Abnahme daraus abgeleitet.
+- Die Textoptimierung bewahrt Satzzeichen und Sprachgrenzen in den zusätzlich geprüften Revisionsfällen. Die akustische Erkennung verwendet weiterhin dasselbe Modell; allgemeine Qualitätsgrenzen bleiben offen.
+
+- Die aktuelle Aufnahme-Anzeige und Startdiagnose warten auf den ersten echten Audioblock. Zehn gezielte native App-Zustandsprüfungen bestanden ohne Fehler; verspätete oder alte Callback-Ereignisse ersetzen die erste Messung nicht. Der Wert misst die interne Startanfrage bis zum ersten empfangenen Audio, keinen Tastendruck, Bildaufbau oder p95. Diese Änderung ist in 0.1.10, Build 14 enthalten.
+- Der aktuelle Quellstand sperrt auch den direkten Lippenlese-Installer im Release. Drei gezielte native Release-Prüfungen bestanden; der alte Installer scheitert nachweislich am neuen Test. Die ungeprüften Forschungs-Abhängigkeiten sind damit nicht aktualisiert oder sicherheitsqualifiziert. Der Fix ist in 0.1.10, Build 14 enthalten.
+- Im aktuellen Quellstand bestätigt die Zwischenablage-Wiederherstellung erst eine zusätzliche Prüfung aller ursprünglichen Datenformate und Einträge. **20 gezielte native Vertragsfälle ohne Fehler**, mit separaten AppKit-Testzwischenablagen und unabhängiger Gegenprüfung. Dieser Fix ist in 0.1.10, Build 14 enthalten; keine Mikrofon- oder vollständige App-Abnahme daraus abgeleitet.
 - Für die letzte Oberflächenänderung wurden **97 gezielt ausgewählte portable Vertragsfälle ohne Fehler** ausgeführt. Das sind ausgewählte Prüfungen, kein vollständiger Apple-XCTest-Lauf und keine Gesamtabnahme.
 - Der native Release-Build, die eingebetteten Sprachressourcen, der direkte Oberflächensprachwechsel und die Speicherung der Sprachwahl über einen Neustart wurden geprüft. Diktatsprachen und vorhandene Einstellungen blieben erhalten.
 - Native Oberfläche, Modellverarbeitung, Textoptimierung, Wörterbuch, Migration, Zwischenablage und einzelne Einfügeziele wurden in früheren Prüfungen lokal geprüft. Diese Nachweise decken jeweils ihren konkreten Testumfang ab.
@@ -22,7 +24,7 @@ Der Download enthält den separat signierten Sparkle-Updater, Hilfe, einen aktiv
 - Für die Auswahländerung bestanden **83 gezielte Vertragsfälle** und ein weiterer tatsächlicher Lauf aller elf Textfälle sowie beider Pipelineprüfungen.
 - Ein isolierter Vergleich der Auswahl im Textmodell umfasste sechs vollständige Läufe und alle elf bisherigen Textfälle. Die Ausgaben blieben identisch. Der Median der gepaarten Fallquotienten sank um rund 15 %; dies ist ein begrenzter Modellzeitvergleich, keine Messung bis zur Einfügung in eine andere App. [Details und Grenzen](formatter-selection-2026-10-05.md).
 - Screenshots und Promo-Material zeigen ausschließlich ausdrücklich gekennzeichnete Beispieldaten.
-- App-Signatur, DMG-Integrität, öffentlicher Download und signierter Updatekanal wurden für 0.1.9, Build 13 geprüft. Die Offline-Installationsanleitung liegt im DMG.
+- App-Signatur, DMG-Integrität, öffentlicher Download und signierter Updatekanal werden für 0.1.10, Build 14 vor der Veröffentlichung erneut geprüft. Die Offline-Installationsanleitung liegt im DMG.
 
 ## Sprachrückmeldung und unpersönlicher Probetest
 
