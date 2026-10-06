@@ -156,9 +156,9 @@
 "readiness.pendingAX" = "%@: pending";
 "readiness.readyAX" = "%@: ready";
 "settings.report.allowed" = "allowed";
-"settings.report.captureStart" = "Recording started %@ ms after trigger\n";
+"settings.report.captureStart" = "First audio received %@ ms after the start request\n";
 "settings.report.close" = "Close verification report";
-"settings.report.noRecording" = "No recording in this process yet.";
+"settings.report.noRecording" = "No microphone audio received for this recording yet.";
 "settings.report.pending" = "pending";
 "settings.report.runtime" = "## Current process\n\nMicrophone: %@ · Accessibility: %@\n\n";
 "report.show" = "Show verification report";

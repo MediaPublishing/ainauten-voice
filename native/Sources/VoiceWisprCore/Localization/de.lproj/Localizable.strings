@@ -156,9 +156,9 @@
 "readiness.pendingAX" = "%@: offen";
 "readiness.readyAX" = "%@: bereit";
 "settings.report.allowed" = "erlaubt";
-"settings.report.captureStart" = "Aufnahmestart nach Auslösen: %@ ms\n";
+"settings.report.captureStart" = "Erste Audiodaten nach Startanfrage: %@ ms\n";
 "settings.report.close" = "Prüfbericht schließen";
-"settings.report.noRecording" = "Noch keine Aufnahme in diesem Prozess.";
+"settings.report.noRecording" = "Noch keine Mikrofon-Daten für diese Aufnahme empfangen.";
 "settings.report.pending" = "offen";
 "settings.report.runtime" = "## Aktueller Prozess\n\nMikrofon: %@ · Bedienungshilfen: %@\n\n";
 "report.show" = "Prüfbericht anzeigen";

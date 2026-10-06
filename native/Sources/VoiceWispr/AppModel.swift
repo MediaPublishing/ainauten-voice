@@ -199,6 +199,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     private var statusRevision: UInt64 = 0
     @Published var level: Float = 0
     @Published var captureReady = false
+    /// Start request to the first normalized microphone block, not keydown or UI rendering.
     @Published var captureStartupMilliseconds: Double?
     /// Stable UI state for a delayed recording pipeline; views must not parse
     /// the localized status string.
@@ -828,7 +829,13 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         updateHotkey()
     }
     func startPractice() { start(practice: true) }
+    private func receivedCaptureAudio(session id: UUID, offset: Int, count: Int, receivedAt: TimeInterval, requestedAt: TimeInterval) {
+        guard sessionID == id, state == .recording, !captureReady, offset == 0, count > 0 else { return }
+        captureReady = true
+        captureStartupMilliseconds = max(0, receivedAt - requestedAt) * 1000
+    }
     func start(practice: Bool = false) {
+        let requestedAt = ProcessInfo.processInfo.systemUptime
         guard !quitting else { return }
         guard sessionID == nil else { return }
         guard !preparing, modelsReady, microphoneGranted else {
@@ -852,7 +859,6 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         focus = practice ? nil : FocusSnapshot.capture(); pill?.position()
         state = .recording; hotkey.cancellationEnabled = !practice && accessibilityGranted; level = 0; elapsed = 0; captureReady = false; captureStartupMilliseconds = nil
         updateLipHotkey()
-        let requestedAt = ProcessInfo.processInfo.systemUptime
         #if DEBUG
         if previewMode && CommandLine.arguments.contains("--preview-ui=continuity") {
             captureReady = true; status = "Kürzelprüfung ohne Mikrofon"
@@ -882,8 +888,11 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 #endif
                 let offsets = CaptureSampleOffsets()
                 try capture.start(onSamples: { [weak self] samples, level in
+                    // Capture the clock on the audio callback, before actor scheduling.
+                    let receivedAt = ProcessInfo.processInfo.systemUptime
                     let offset = offsets.reserve(samples.count)
                     Task { @MainActor in guard let self, self.sessionID == id, self.state == .recording else { return }; self.level = level
+                        self.receivedCaptureAudio(session: id, offset: offset, count: samples.count, receivedAt: receivedAt, requestedAt: requestedAt)
                         self.pendingSamples[offset] = samples
                         while let contiguous = self.pendingSamples.removeValue(forKey: self.acceptedSamples) {
                             self.acceptedSamples += contiguous.count
@@ -900,8 +909,6 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                         }
                     }
                 }, onError: { [weak self] message in Task { @MainActor in if self?.sessionID == id { self?.fail(message) } } }, onCompletion: { [weak self] in Task { @MainActor in guard let self, self.sessionID == id else { return }; self.stop() } })
-                captureReady = true
-                captureStartupMilliseconds = (ProcessInfo.processInfo.systemUptime - requestedAt) * 1000
                 startedAt = ProcessInfo.processInfo.systemUptime
                 clock = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in Task { @MainActor in guard let self, self.sessionID == id, self.state == .recording else { return }; self.elapsed = ProcessInfo.processInfo.systemUptime - self.startedAt
                     if self.practiceSession && self.practiceStopper.shouldStop(level: self.level, elapsed: self.elapsed) { self.stop(); return }

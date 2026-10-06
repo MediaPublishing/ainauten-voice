@@ -10,6 +10,7 @@ Der Download enthält den separat signierten Sparkle-Updater, Hilfe, einen aktiv
 
 ## Nachweise
 
+- Die aktuelle Aufnahme-Anzeige und Startdiagnose warten auf den ersten echten Audioblock. Zehn gezielte native App-Zustandsprüfungen bestanden ohne Fehler; verspätete oder alte Callback-Ereignisse ersetzen die erste Messung nicht. Der Wert misst die interne Startanfrage bis zum ersten empfangenen Audio, keinen Tastendruck, Bildaufbau oder p95. Diese Änderung ist noch nicht im Download enthalten.
 - Der aktuelle Quellstand sperrt auch den direkten Lippenlese-Installer im Release. Drei gezielte native Release-Prüfungen bestanden; der alte Installer scheitert nachweislich am neuen Test. Die ungeprüften Forschungs-Abhängigkeiten sind damit nicht aktualisiert oder sicherheitsqualifiziert. Der Fix ist noch nicht im Download enthalten.
 - Im aktuellen Quellstand bestätigt die Zwischenablage-Wiederherstellung erst eine zusätzliche Prüfung aller ursprünglichen Datenformate und Einträge. **20 gezielte native Vertragsfälle ohne Fehler**, mit separaten AppKit-Testzwischenablagen und unabhängiger Gegenprüfung. Dieser Fix ist noch nicht im Download 0.1.9, Build 13 enthalten; keine Mikrofon- oder vollständige App-Abnahme daraus abgeleitet.
 - Für die letzte Oberflächenänderung wurden **97 gezielt ausgewählte portable Vertragsfälle ohne Fehler** ausgeführt. Das sind ausgewählte Prüfungen, kein vollständiger Apple-XCTest-Lauf und keine Gesamtabnahme.
