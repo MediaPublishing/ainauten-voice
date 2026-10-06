@@ -186,6 +186,17 @@ public enum TransientPasteboard {
         guard before == board.changeCount else { return nil }
         return ClipboardSnapshot(items: items, changeCount: before)
     }
+    /// Check all original bytes without logging them or writing again. AppKit
+    /// may add a synthesized representation, but may not drop or alter any
+    /// captured representation, item, or item order. A newer copy wins even
+    /// when its visible text happens to be identical.
+    func verifiesRestoration(_ board: NSPasteboard, writtenAt: Int) -> Bool {
+        guard board.changeCount == writtenAt, let observed = Self.capture(board),
+              observed.changeCount == writtenAt, observed.items.count == items.count else { return false }
+        return zip(items, observed.items).allSatisfy { saved, current in
+            saved.allSatisfy { type, data in current[type] == data }
+        }
+    }
     @discardableResult func restore(_ board: NSPasteboard, ownership: ClipboardOwnership) -> Bool {
         let nonce = board.string(forType: Self.nonceType).flatMap(UUID.init(uuidString:))
         guard ownership.owns(changeCount: board.changeCount, nonce: nonce) else { return false }
@@ -198,7 +209,9 @@ public enum TransientPasteboard {
         guard ownership.owns(changeCount: board.changeCount, nonce: board.string(forType: Self.nonceType).flatMap(UUID.init(uuidString:))) else { return false }
         let clearedAt = board.clearContents()
         guard board.changeCount == clearedAt else { return false }
-        if restored.isEmpty || board.writeObjects(restored) { return true }
+        if restored.isEmpty || board.writeObjects(restored) {
+            return verifiesRestoration(board, writtenAt: board.changeCount)
+        }
         current?.restoreAfterFailedWrite(board, clearedAt: clearedAt, nonce: ownership.nonce)
         return false
     }
