@@ -611,6 +611,10 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         updateItem.target = self; appMenu.addItem(updateItem)
         let reportItem = NSMenuItem(title: L10n.text("menu.report"), action: #selector(openReportHelp), keyEquivalent: "")
         reportItem.target = self; appMenu.addItem(reportItem)
+        appMenu.addItem(.separator())
+        let hideItem = NSMenuItem(title: L10n.text("menu.hide"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        hideItem.target = NSApplication.shared; appMenu.addItem(hideItem)
+        appMenu.addItem(.separator())
         let quitItem = NSMenuItem(title: L10n.text("menu.quit"), action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self; appMenu.addItem(quitItem); appItem.submenu = appMenu
         mainMenu.addItem(appItem)
@@ -619,7 +623,11 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         fileItem.submenu = fileMenu; mainMenu.addItem(fileItem)
         let editItem = NSMenuItem(title: L10n.text("menu.edit"), action: nil, keyEquivalent: ""), editMenu = NSMenu(title: L10n.text("menu.edit"))
         for (title, selector, key) in [(L10n.text("menu.undo"), Selector(("undo:")), "z"), (L10n.text("menu.cut"), #selector(NSText.cut(_:)), "x"), (L10n.text("menu.copy"), #selector(NSText.copy(_:)), "c"), (L10n.text("menu.paste"), #selector(NSText.paste(_:)), "v"), (L10n.text("menu.selectAll"), #selector(NSText.selectAll(_:)), "a")] { editMenu.addItem(withTitle: title, action: selector, keyEquivalent: key) }
-        editItem.submenu = editMenu; mainMenu.addItem(editItem); NSApplication.shared.mainMenu = mainMenu
+        editItem.submenu = editMenu; mainMenu.addItem(editItem)
+        let windowItem = NSMenuItem(title: L10n.text("menu.window"), action: nil, keyEquivalent: ""), windowMenu = NSMenu(title: L10n.text("menu.window"))
+        windowMenu.addItem(withTitle: L10n.text("window.minimize"), action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        windowItem.submenu = windowMenu; mainMenu.addItem(windowItem); NSApplication.shared.windowsMenu = windowMenu
+        NSApplication.shared.mainMenu = mainMenu
         if statusItem == nil { statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength) }
         statusItem?.button?.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "AInauten Voice")
         let menu = NSMenu()
