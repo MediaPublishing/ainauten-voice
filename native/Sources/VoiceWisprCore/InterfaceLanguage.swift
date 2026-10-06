@@ -89,7 +89,15 @@ public enum L10n {
     }
     private static let tables = ["Localizable", "Views", "Runtime", "Core", "Diagnostics"]
     private static func bundle(_ language: InterfaceLanguage, resources: Bundle? = nil) -> Bundle? {
-        (resources ?? Bundle.module).path(forResource: language.rawValue, ofType: "lproj").flatMap(Bundle.init(path:))
+        let base: Bundle?
+        if let resources { base = resources }
+        else if Bundle.main.bundleURL.pathExtension == "app" {
+            // SwiftPM's accessor searches next to the main bundle, then the
+            // developer's build directory. Packaged apps keep resources inside
+            // Contents/Resources; never fall through to its fatal accessor.
+            base = Bundle.main.url(forResource: "VoiceWispr_VoiceWisprCore", withExtension: "bundle").flatMap(Bundle.init(url:))
+        } else { base = Bundle.module }
+        return base?.path(forResource: language.rawValue, ofType: "lproj").flatMap(Bundle.init(path:))
     }
     public static func text(_ key: String, _ arguments: String...) -> String { format(key, arguments: arguments) }
     public static func format(_ key: String, arguments: [String], language: InterfaceLanguage? = nil) -> String {

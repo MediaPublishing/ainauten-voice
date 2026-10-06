@@ -7,10 +7,18 @@ root = pathlib.Path(__file__).resolve().parents[1]
 p = argparse.ArgumentParser(); p.add_argument('--debug', action='store_true'); p.add_argument('--install', action='store_true')
 p.add_argument('--sdk', type=pathlib.Path, help='Explicit compatible macOS SDK; leaves the system default unchanged')
 p.add_argument('--build-system', choices=['native', 'swiftbuild'], help='Swift build engine override for compatible CLT packaging')
+p.add_argument('--development', action='store_true', help='Explicit local test package only; never accepted by public distribution gates')
+p.add_argument('--notary-profile', help='Existing notarytool Keychain profile for Apple distribution; no credentials are created')
 p.add_argument('--adhoc', action='store_true', help='Local test build only: allow ad-hoc signing without the stable identity')
 p.add_argument('--sign-identity', help='SHA-1 of an existing code-signing identity in the macOS keychain')
 p.add_argument('--install-directory', type=pathlib.Path, help='Existing installation directory; defaults to the system installation when writable')
 args = p.parse_args()
+if args.adhoc and not args.development:
+    p.error('--adhoc requires --development; ad-hoc signing is never a public release')
+if args.debug and not args.development:
+    p.error('--debug requires --development')
+if not args.development and not args.notary_profile:
+    p.error('public packaging requires --notary-profile; use --development only for local testing')
 # Public update key only. Generating a new private signing identity is a separate
 # explicitly approved action; an absent key leaves the runtime updater inactive.
 public_key_file = root/'Resources/update-public-key.txt'
@@ -30,6 +38,14 @@ if identity != '-':
     if not re.fullmatch(r'[0-9a-fA-F]{40}', identity): p.error('signing identity must be a 40-character certificate fingerprint')
     identities = subprocess.check_output(['security', 'find-identity', '-p', 'codesigning'], text=True)
     if identity.upper() not in identities.upper(): p.error('configured signing identity is unavailable; refusing ad-hoc fallback')
+# Reject a local certificate before expensive builds. Certificate creation and
+# publisher-pin migration are separate, explicitly approved setup steps.
+if not args.development:
+    valid = subprocess.check_output(['security', 'find-identity', '-v', '-p', 'codesigning'], text=True)
+    matches = [line for line in valid.splitlines() if identity.upper() in line.upper()]
+    if not any('"Developer ID Application:' in line for line in matches):
+        p.error('existing valid Developer ID Application identity required; local signing cannot be distributed')
+timestamp_options = [] if args.development else ['--timestamp']
 def run(*cmd): return subprocess.run(cmd, cwd=root, check=True)
 # The internal development report must never be distributed in an app bundle.
 user_report = root/'docs/user-verification-report.md'
@@ -81,29 +97,45 @@ if not uv.exists(): raise SystemExit('Pinned uv 0.12.5 is required for packaging
 shutil.copy2(uv, lip/'uv')
 for name in ['LICENSE-MIT', 'LICENSE-APACHE']:
     shutil.copy2(uv.parents[1]/name, lip/'licenses'/('uv-' + name))
-run('codesign', '--force', '--sign', identity, str(lip/'uv'))
+run('codesign', '--force', '--options', 'runtime', *timestamp_options, '--sign', identity, str(lip/'uv'))
 iconset = out/'VoiceWispr.iconset'
 run('swift', str(root/'scripts/make-icon.swift'), str(iconset))
 run('iconutil', '-c', 'icns', str(iconset), '-o', str(contents/'Resources/VoiceWispr.icns'))
 run('install_name_tool', '-add_rpath', '@executable_path/../Frameworks', str(contents/'MacOS/VoiceWispr'))
-run('codesign', '--force', '--sign', identity, str(contents/'Frameworks/llama.framework'))
+run('codesign', '--force', '--options', 'runtime', *timestamp_options, '--sign', identity, str(contents/'Frameworks/llama.framework'))
 # Re-sign actual nested helpers inside out; do not follow framework symlinks.
 sparkle_version = sparkle/'Versions/B'
 for helper in sorted(sparkle_version.glob('XPCServices/*.xpc')):
-    run('codesign', '--force', '--options', 'runtime', '--preserve-metadata=entitlements', '--sign', identity, str(helper))
-run('codesign', '--force', '--options', 'runtime', '--preserve-metadata=entitlements', '--sign', identity, str(sparkle_version/'Autoupdate'))
-run('codesign', '--force', '--options', 'runtime', '--preserve-metadata=entitlements', '--sign', identity, str(sparkle_version/'Updater.app'))
-run('codesign', '--force', '--sign', identity, str(sparkle))
+    run('codesign', '--force', '--options', 'runtime', '--preserve-metadata=entitlements', *timestamp_options, '--sign', identity, str(helper))
+run('codesign', '--force', '--options', 'runtime', '--preserve-metadata=entitlements', *timestamp_options, '--sign', identity, str(sparkle_version/'Autoupdate'))
+run('codesign', '--force', '--options', 'runtime', '--preserve-metadata=entitlements', *timestamp_options, '--sign', identity, str(sparkle_version/'Updater.app'))
+run('codesign', '--force', '--options', 'runtime', *timestamp_options, '--sign', identity, str(sparkle))
 # Developer ID bundles use library validation. The existing local identity has
 # no Team ID and still requires the explicit exception: never claim notarization.
 signer = subprocess.run(['codesign', '-dv', '--verbose=4', str(lip/'uv')], capture_output=True, text=True, check=True).stderr
 has_team = re.search(r'^TeamIdentifier=(?!not set)(.+)$', signer, re.MULTILINE) is not None
 entitlements = root/'Resources'/('Release.entitlements' if has_team else 'LocalRelease.entitlements')
-if not has_team: print('SIGNING LIMITATION: local identity; library-validation exception remains, not Apple-notarized')
-run('codesign', '--force', '--options', 'runtime', '--entitlements', str(entitlements), '--sign', identity, str(app))
+if not has_team and not args.development: raise SystemExit('Developer ID Team ID missing; no public package produced')
+if not has_team: print('LOCAL DEVELOPMENT ONLY: library-validation exception; not distributable or Apple-notarized')
+run('codesign', '--force', '--options', 'runtime', '--entitlements', str(entitlements), *timestamp_options, '--sign', identity, str(app))
 run('codesign', '--verify', '--deep', '--strict', str(app))
+# A build-machine resource fallback can hide a broken .app layout. Execute the
+# signed release's app-only resolver before accepting an installer.
+run(str(contents/'MacOS/VoiceWispr'), '--check-bundled-resources')
+if not args.development:
+    run('python3', 'scripts/notarize-release.py', str(app), '--keychain-profile', args.notary_profile,
+        '--output', str(out/'notarization-app'))
 dmg = create_dmg(app, out)
-if not args.adhoc and not args.debug:
+if not args.development:
+    # Apple checks the exact final DMG too; only Accepted may reach verification.
+    run('codesign', '--force', *timestamp_options, '--sign', identity, str(dmg))
+    result = subprocess.run(['xcrun', 'notarytool', 'submit', str(dmg), '--keychain-profile', args.notary_profile,
+                             '--wait', '--timeout', '20m', '--output-format', 'json'], capture_output=True, check=True, timeout=1260)
+    import json
+    submission = json.loads(result.stdout)
+    (out/'notarization-dmg.json').write_text(json.dumps(submission, indent=2)+'\n')
+    if submission.get('status') != 'Accepted': raise SystemExit('Apple did not accept DMG; no release allowed')
+    run('xcrun', 'stapler', 'staple', str(dmg))
     import sys
     sys.path.insert(0, str(root.parent/'site'))
     from release_verification import verify_release

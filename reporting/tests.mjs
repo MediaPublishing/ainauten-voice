@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {DatabaseSync} from 'node:sqlite';
+import {readFileSync} from 'node:fs';
 import worker, {ReportInbox} from './worker.mjs';
 import {validateReport, projectAppleDiagnostic, fingerprint} from '../site/report-schema.mjs';
 import pages from '../site/pages-worker.mjs';
@@ -36,6 +37,27 @@ test('Apple IPS projection excludes all raw text, paths, memory and non-app fram
   input.bundleInfo.CFBundleIdentifier='other.app';assert.throws(()=>projectAppleDiagnostic(JSON.stringify(input)));
 });
 test('disabled collector makes no provider calls',async()=>{const f=fixture();f.env.REPORTING_ENABLED='false';assert.equal((await f.send(report())).status,503);assert.equal(f.calls.length,0);});
+test('current packaged release and published retained releases can submit reports',async()=>{
+  const plist=readFileSync(new URL('../native/Resources/Info.plist',import.meta.url),'utf8');
+  const value=key=>{
+    const match=plist.match(new RegExp(`<key>${key}</key>\\s*<string>([^<]+)</string>`));
+    assert(match,`Missing packaged release metadata: ${key}`);return match[1];
+  };
+  const current=[value('CFBundleShortVersionString'),value('CFBundleVersion')];
+  for(const [version,build] of [['0.1.7','11'],['0.1.8','12'],['0.1.9','13'],current]){
+    const f=fixture();const response=await f.send({...report(),version,build});
+    assert.equal(response.status,202,`Published release rejected: ${version} (${build})`);
+    assert.equal(f.db.prepare('SELECT count(*) AS n FROM reports').get().n,1);
+  }
+});
+test('future and mismatched release pairs are rejected without storage or provider calls',async()=>{
+  for(const [version,build] of [['99.0.0','999'],['0.1.9','999'],['0.1.8','13']]){
+    const f=fixture();const response=await f.send({...report(),version,build});
+    assert.equal(response.status,400);assert.equal((await response.json()).error,'unknown_release');
+    assert.equal(f.db.prepare('SELECT count(*) AS n FROM reports').get().n,0);
+    assert.equal(f.calls.length,0);
+  }
+});
 test('strict server validation and streamed body limit',async()=>{
   const f=fixture();assert.equal((await f.send({...report(),transcript:'PRIVATE'})).status,400);
   assert.equal((await f.send({...report(),userInput:{description:'x'.repeat(20000),contact:''}})).status,413);

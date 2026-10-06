@@ -167,7 +167,7 @@ extension AppModel {
                 } else if conflict {
                     outcome = DeliveryOutcome(.notAttempted, reason: "Wispr Flow ist wieder gestartet. Der Text bleibt verfügbar.")
                 } else {
-                    outcome = await DeliveryCoordinator().deliver(text: text, to: focus, allowClipboard: document.settings.clipboardCompatibility != false)
+                    outcome = await DeliveryCoordinator().deliver(text: text, to: focus, allowClipboard: document.settings.usesClipboardForInsertion)
                 }
                 guard sessionID == id, !Task.isCancelled else { return }
                 if let context = historyContext { recordHistory(result, context: context, delivery: outcome.status) }
@@ -199,6 +199,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     private var statusRevision: UInt64 = 0
     @Published var level: Float = 0
     @Published var captureReady = false
+    /// Start request to the first normalized microphone block, not keydown or UI rendering.
     @Published var captureStartupMilliseconds: Double?
     /// Stable UI state for a delayed recording pipeline; views must not parse
     /// the localized status string.
@@ -828,7 +829,13 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         updateHotkey()
     }
     func startPractice() { start(practice: true) }
+    private func receivedCaptureAudio(session id: UUID, offset: Int, count: Int, receivedAt: TimeInterval, requestedAt: TimeInterval) {
+        guard sessionID == id, state == .recording, !captureReady, offset == 0, count > 0 else { return }
+        captureReady = true
+        captureStartupMilliseconds = max(0, receivedAt - requestedAt) * 1000
+    }
     func start(practice: Bool = false) {
+        let requestedAt = ProcessInfo.processInfo.systemUptime
         guard !quitting else { return }
         guard sessionID == nil else { return }
         guard !preparing, modelsReady, microphoneGranted else {
@@ -852,7 +859,6 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         focus = practice ? nil : FocusSnapshot.capture(); pill?.position()
         state = .recording; hotkey.cancellationEnabled = !practice && accessibilityGranted; level = 0; elapsed = 0; captureReady = false; captureStartupMilliseconds = nil
         updateLipHotkey()
-        let requestedAt = ProcessInfo.processInfo.systemUptime
         #if DEBUG
         if previewMode && CommandLine.arguments.contains("--preview-ui=continuity") {
             captureReady = true; status = "Kürzelprüfung ohne Mikrofon"
@@ -882,8 +888,11 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 #endif
                 let offsets = CaptureSampleOffsets()
                 try capture.start(onSamples: { [weak self] samples, level in
+                    // Capture the clock on the audio callback, before actor scheduling.
+                    let receivedAt = ProcessInfo.processInfo.systemUptime
                     let offset = offsets.reserve(samples.count)
                     Task { @MainActor in guard let self, self.sessionID == id, self.state == .recording else { return }; self.level = level
+                        self.receivedCaptureAudio(session: id, offset: offset, count: samples.count, receivedAt: receivedAt, requestedAt: requestedAt)
                         self.pendingSamples[offset] = samples
                         while let contiguous = self.pendingSamples.removeValue(forKey: self.acceptedSamples) {
                             self.acceptedSamples += contiguous.count
@@ -900,8 +909,6 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                         }
                     }
                 }, onError: { [weak self] message in Task { @MainActor in if self?.sessionID == id { self?.fail(message) } } }, onCompletion: { [weak self] in Task { @MainActor in guard let self, self.sessionID == id else { return }; self.stop() } })
-                captureReady = true
-                captureStartupMilliseconds = (ProcessInfo.processInfo.systemUptime - requestedAt) * 1000
                 startedAt = ProcessInfo.processInfo.systemUptime
                 clock = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in Task { @MainActor in guard let self, self.sessionID == id, self.state == .recording else { return }; self.elapsed = ProcessInfo.processInfo.systemUptime - self.startedAt
                     if self.practiceSession && self.practiceStopper.shouldStop(level: self.level, elapsed: self.elapsed) { self.stop(); return }
@@ -951,7 +958,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 else if conflict { outcome = DeliveryOutcome(.notAttempted, reason: "Wispr Flow läuft wieder. Dein Diktat bleibt verfügbar, das Tastenkürzel ist pausiert.") }
                 else if !result.isComplete { outcome = DeliveryOutcome(.notAttempted, reason: "Dieses Ergebnis ist unvollständig und wird nicht automatisch eingefügt.") }
                 else if sleepInterrupted { outcome = DeliveryOutcome(.notAttempted, reason: "Der Mac ist in den Ruhezustand gegangen. Dein Diktat wurde deshalb nicht eingefügt.") }
-                else { outcome = await DeliveryCoordinator().deliver(text: result.text, to: focus, allowClipboard: document.settings.clipboardCompatibility != false) }
+                else { outcome = await DeliveryCoordinator().deliver(text: result.text, to: focus, allowClipboard: document.settings.usesClipboardForInsertion) }
                 guard sessionID == id else { return }
                 if !practice, let context = historyContext { recordHistory(result, context: context, delivery: outcome.status) }
                 historyContext = nil
@@ -1162,7 +1169,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             #if DEBUG
             let measurementStart = ProcessInfo.processInfo.systemUptime
             #endif
-            let outcome = await DeliveryCoordinator().deliver(text: result.text, to: target, allowClipboard: document.settings.clipboardCompatibility != false)
+            let outcome = await DeliveryCoordinator().deliver(text: result.text, to: target, allowClipboard: document.settings.usesClipboardForInsertion)
             #if DEBUG
             if previewMode, CommandLine.arguments.contains("--test-delivery") {
                 let trace: [String: Any] = ["status": outcome.status.rawValue, "seconds": ProcessInfo.processInfo.systemUptime - measurementStart,
@@ -1239,7 +1246,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         recoverySelection = failureTitle == nil ? resultID ?? results.first?.id : nil
         if failureTitle != nil { recoveryClipboardState = .empty; recoveryCanUndo = false }
         recoveryTransient = autoCopy || transient
-        if autoCopy, document.settings.clipboardCompatibility != false, let result = recoveryResult, result.isComplete { copyRecoveryText(result) }
+        if autoCopy, document.settings.usesClipboardForInsertion, let result = recoveryResult, result.isComplete { copyRecoveryText(result) }
         else if recoveryCopiedID != recoveryResult?.id { recoveryClipboardState = .empty; recoveryCanUndo = false }
         if recoveryCanUndo && !recoveryClipboard.canUndo { recoveryCanUndo = false; recoveryClipboardState = .changed }
         if recoveryWindow == nil {

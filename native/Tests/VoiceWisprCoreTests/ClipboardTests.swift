@@ -16,6 +16,103 @@ private final class ClipboardLazyProvider: NSObject, NSPasteboardItemDataProvide
 }
 
 @MainActor final class ClipboardTests: XCTestCase {
+    func testRestorationReadbackRequiresEveryOriginalRepresentationByteForByte() throws {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        let original = NSPasteboardItem()
+        let text = Data("Grüße 👋".utf8), html = Data("<b>Grüße 👋</b>".utf8)
+        original.setData(text, forType: .string); original.setData(html, forType: .html)
+        XCTAssertTrue(board.writeObjects([original]))
+        let saved = try XCTUnwrap(ClipboardSnapshot.capture(board))
+        XCTAssertTrue(saved.verifiesRestoration(board, writtenAt: board.changeCount))
+
+        let missing = NSPasteboardItem(); missing.setData(text, forType: .string)
+        board.clearContents(); XCTAssertTrue(board.writeObjects([missing]))
+        let missingAt = board.changeCount
+        XCTAssertFalse(saved.verifiesRestoration(board, writtenAt: missingAt))
+        XCTAssertEqual(board.changeCount, missingAt)
+
+        let changed = NSPasteboardItem()
+        changed.setData(text, forType: .string); changed.setData(Data("<i>Grüße 👋</i>".utf8), forType: .html)
+        board.clearContents(); XCTAssertTrue(board.writeObjects([changed]))
+        let changedAt = board.changeCount
+        XCTAssertFalse(saved.verifiesRestoration(board, writtenAt: changedAt))
+        XCTAssertEqual(board.changeCount, changedAt)
+    }
+    func testRestorationReadbackRequiresOriginalItemOrderAndCount() throws {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        func item(_ text: String) -> NSPasteboardItem {
+            let value = NSPasteboardItem(); value.setString(text, forType: .string); return value
+        }
+        XCTAssertTrue(board.writeObjects([item("Erstes"), item("Zweites")]))
+        let saved = try XCTUnwrap(ClipboardSnapshot.capture(board))
+        for values in [["Zweites", "Erstes"], ["Erstes"], ["Erstes", "Zweites", "Drittes"]] {
+            board.clearContents(); XCTAssertTrue(board.writeObjects(values.map(item)))
+            let count = board.changeCount
+            XCTAssertFalse(saved.verifiesRestoration(board, writtenAt: count))
+            XCTAssertEqual(board.changeCount, count)
+        }
+    }
+    func testRestorationReadbackRejectsANewerIdenticalCopy() throws {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        board.setString("Gleicher Text", forType: .string)
+        let saved = try XCTUnwrap(ClipboardSnapshot.capture(board)), originalAt = board.changeCount
+        board.clearContents(); board.setString("Gleicher Text", forType: .string)
+        let newerAt = board.changeCount
+        XCTAssertFalse(saved.verifiesRestoration(board, writtenAt: originalAt))
+        XCTAssertEqual(board.changeCount, newerAt)
+        XCTAssertEqual(board.string(forType: .string), "Gleicher Text")
+    }
+    func testRestorationReadbackAllowsAdditionalRepresentationsWithoutDroppingOriginalBytes() {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        let text = Data("Grüße 👋".utf8)
+        let saved = ClipboardSnapshot(items: [[.string: text]], changeCount: board.changeCount)
+        let actual = NSPasteboardItem()
+        actual.setData(text, forType: .string)
+        actual.setData(Data([0, 19, 250]), forType: .init("com.mediapublishing.clipboard-test.additional"))
+        XCTAssertTrue(board.writeObjects([actual]))
+        XCTAssertTrue(saved.verifiesRestoration(board, writtenAt: board.changeCount))
+    }
+    func testEmptyRestorationReadbackRequiresAnUnchangedEmptyBoard() {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        let empty = ClipboardSnapshot(items: [], changeCount: board.changeCount)
+        XCTAssertTrue(empty.verifiesRestoration(board, writtenAt: board.changeCount))
+        board.setString("Neue Nutzerkopie", forType: .string)
+        XCTAssertFalse(empty.verifiesRestoration(board, writtenAt: board.changeCount))
+        XCTAssertEqual(board.string(forType: .string), "Neue Nutzerkopie")
+    }
+    func testRestorationReadbackCannotConfirmAnUnreadablePromisedRepresentation() throws {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        board.setString("Original", forType: .string)
+        let saved = try XCTUnwrap(ClipboardSnapshot.capture(board))
+        let type = NSPasteboard.PasteboardType("com.mediapublishing.clipboard-test.unavailable")
+        let provider = ClipboardLazyProvider { _, _, _ in }
+        let actual = NSPasteboardItem(); actual.setString("Original", forType: .string)
+        XCTAssertTrue(actual.setDataProvider(provider, forTypes: [type]))
+        board.clearContents(); XCTAssertTrue(board.writeObjects([actual]))
+        let count = board.changeCount
+        XCTAssertFalse(saved.verifiesRestoration(board, writtenAt: count))
+        XCTAssertGreaterThan(provider.requests, 0)
+        XCTAssertEqual(board.changeCount, count)
+    }
+    func testExternalCopyDuringRestorationReadbackRemainsUntouched() throws {
+        let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
+        board.setString("Original", forType: .string)
+        let saved = try XCTUnwrap(ClipboardSnapshot.capture(board))
+        let type = NSPasteboard.PasteboardType("com.mediapublishing.clipboard-test.changing")
+        var changedAt: Int?
+        let provider = ClipboardLazyProvider { _, item, requested in
+            item.setData(Data([1, 2, 3]), forType: requested)
+            board.clearContents(); board.setString("Neuere Nutzerkopie", forType: .string)
+            changedAt = board.changeCount
+        }
+        let actual = NSPasteboardItem(); actual.setString("Original", forType: .string)
+        XCTAssertTrue(actual.setDataProvider(provider, forTypes: [type]))
+        board.clearContents(); XCTAssertTrue(board.writeObjects([actual]))
+        XCTAssertFalse(saved.verifiesRestoration(board, writtenAt: board.changeCount))
+        XCTAssertGreaterThan(provider.requests, 0)
+        XCTAssertEqual(board.changeCount, changedAt)
+        XCTAssertEqual(board.string(forType: .string), "Neuere Nutzerkopie")
+    }
     func testUnreadableLazyRepresentationPreventsCopyWithoutLosingOtherFormats() throws {
         let board = NSPasteboard.withUniqueName(); defer { board.releaseGlobally() }
         let type = NSPasteboard.PasteboardType("com.mediapublishing.clipboard-test.unavailable")

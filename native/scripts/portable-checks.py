@@ -53,7 +53,9 @@ func unwrap<T>(_ x: T?, file: StaticString = #filePath, line: UInt = #line) thro
 subprocess.run(['swift','build'] + (['--sdk', str(args.sdk)] if args.sdk else []) + ['--build-system','native','--target','VoiceWisprCore','--jobs','4'], cwd=root, check=True)
 build = root/'.build/arm64-apple-macosx/debug'
 module = build/'Modules'
-cmd = ['xcrun','swiftc','-parse-as-library','-target','arm64-apple-macosx14.0','-I',str(module),'-I',str(root/'Sources/CSQLite'),'-I',str(build/'FastClusterWrapper.build'),'-I',str(build/'MachTaskSelfWrapper.build'),'-F',str(build),'-L',str(build),'-framework','llama','-framework','Accelerate','-framework','CoreML','-framework','AppKit','-framework','AVFoundation','-framework','ApplicationServices','-framework','Security','-framework','Carbon','-lsqlite3','-lc++','-Xlinker','-rpath','-Xlinker',str(build)]
+# SwiftPM built the Core in Debug above. Match its conditional compilation in
+# the test target; release-only guards need a separate non-Debug Core proof.
+cmd = ['xcrun','swiftc','-parse-as-library','-D','DEBUG','-target','arm64-apple-macosx14.0','-I',str(module),'-I',str(root/'Sources/CSQLite'),'-I',str(build/'FastClusterWrapper.build'),'-I',str(build/'MachTaskSelfWrapper.build'),'-F',str(build),'-L',str(build),'-framework','llama','-framework','Accelerate','-framework','CoreML','-framework','AppKit','-framework','AVFoundation','-framework','ApplicationServices','-framework','Security','-framework','Carbon','-lsqlite3','-lc++','-Xlinker','-rpath','-Xlinker',str(build)]
 if args.sdk: cmd += ['-sdk', str(args.sdk)]
 for target in ['FastClusterWrapper', 'MachTaskSelfWrapper']:
     cmd += ['-Xcc', '-fmodule-map-file=' + str(root/'.build/checkouts/FluidAudio/Sources'/target/'include/module.modulemap')]

@@ -58,7 +58,7 @@ Audio bleibt auf deinem Mac und wird nicht dauerhaft gespeichert. Den lokalen Te
 
 Die native App verwendet SwiftUI/AppKit, FluidAudio mit Parakeet v3 und eingebettetes llama.cpp mit Qwen3-4B. [Entwicklungsanleitung](native/README.md) · [Prüfbericht](native/docs/verification-report.md) · [Website entwickeln](site/README.md).
 
-Der öffentliche Download ist Beta **0.1.7, Build 11**, mit signierten automatischen Updates. Die Automatik ist standardmäßig aktiv und lässt sich unter **Einstellungen → Updates** ausschalten. Ältere Apps ohne Updater müssen einmalig durch den aktuellen Download ersetzt werden. Manuelle Fehlerberichte sind unter **Hilfe** verfügbar und gehen nach deiner Bestätigung an den privaten Eingang. Forschungsmodelle und automatische Fehlerübermittlung bleiben standardmäßig aus. Ein Git-Push allein verteilt kein App-Update. [Installations- und Updatehinweise](docs/agent-installation.md#updates-und-entwicklungsbuilds).
+Der öffentliche Download ist Beta **0.1.10, Build 14**, mit signierten automatischen Updates. Die Automatik ist standardmäßig aktiv und lässt sich unter **Einstellungen → Updates** ausschalten. Ältere Apps ohne Updater müssen einmalig durch den aktuellen Download ersetzt werden. Manuelle Fehlerberichte sind unter **Hilfe** verfügbar und gehen nach deiner Bestätigung an den privaten Eingang. Forschungsmodelle und automatische Fehlerübermittlung bleiben standardmäßig aus. Ein Git-Push allein verteilt kein App-Update. [Installations- und Updatehinweise](docs/agent-installation.md#updates-und-entwicklungsbuilds).
 
 Der Quellcode ist öffentlich einsehbar. Für den eigenen App-Code wurde bislang keine Open-Source-Lizenz erteilt; alle Rechte bleiben vorbehalten. Abhängigkeiten und Modelle haben eigene Lizenzen. [Lizenznachweise](native/Resources/Licenses/NOTICE.md) · [Forschungsmodell-Lizenzen](native/lipreading_runtime/licenses/NOTICE-Research-Models.txt).
 
@@ -67,3 +67,7 @@ Der Quellcode ist öffentlich einsehbar. Für den eigenen App-Code wurde bislang
 Entwickelt von [AInauten](https://www.ainauten.com/). AInauten Voice ist ein eigenständiges Projekt ohne Verbindung zu Wispr. Wispr Flow ist eine Marke ihres Inhabers.
 
 Fehler und Ideen: [Issue anlegen](https://github.com/MediaPublishing/ainauten-voice/issues/new/choose). Sicherheitslücken bitte [privat melden](https://github.com/MediaPublishing/ainauten-voice/security/advisories/new).
+
+### Sicherheitsänderungen im Quellcode
+
+Der öffentliche Download **0.1.10 (14)** ist weiterhin lokal signiert, nicht Apple-notarisiert und verwendet für kompatibles Einfügen standardmäßig kurz die systemweite Zwischenablage. Die aktualisierte Quelle schaltet diese automatische Nutzung standardmäßig aus; nur eine ausdrückliche Freigabe aktiviert sie. Neue öffentliche Releases sind ohne Apple Developer ID, aktive Bibliotheksvalidierung und geprüfte Notarisierung gesperrt. Diese Änderungen sind noch kein ausgeliefertes App-Update. [Details und offene Apple-Einrichtung](native/docs/security-followup-2026-10-06.md).

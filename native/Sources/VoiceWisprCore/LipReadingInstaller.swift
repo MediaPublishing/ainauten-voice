@@ -7,6 +7,7 @@ public actor LipReadingInstaller {
     private var process: Process?
     public init() {}
     public func install(language: LipReadingLanguage, root: URL, resources: URL, progress: @escaping @Sendable (String) -> Void) async throws {
+        guard LipReadingRuntime.releaseAvailable else { throw VoiceError.message(LipReadingRuntime.securityNotice) }
         guard process == nil else { throw VoiceError.message("Die Beta wird bereits eingerichtet.") }
         let uv = resources.appendingPathComponent("uv")
         guard FileManager.default.isExecutableFile(atPath: uv.path) else { throw VoiceError.message("Die Beta-Laufzeit fehlt im App-Paket. Bitte installiere die vollständige App.") }

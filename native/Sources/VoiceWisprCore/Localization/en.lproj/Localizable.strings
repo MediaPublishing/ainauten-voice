@@ -143,7 +143,7 @@
 "practice.waitForModels" = "You can try dictation once the models have loaded.";
 "privacy.audio" = "Audio is processed in memory and released after dictation. Diagnostic messages do not contain dictations.";
 "privacy.clipboard" = "Use clipboard for compatible insertion";
-"privacy.clipboardDetail" = "During insertion, your text briefly enters the system clipboard, where other local apps can read it. When off, insertion only uses Accessibility; text for unsupported fields remains available in the app.";
+"privacy.clipboardDetail" = "Off by default. Only enabling this option briefly places inserted text on the system clipboard, where other local apps can read it. Without this opt-in, insertion uses Accessibility directly; text for unsupported fields remains in the app. You can transfer it yourself with Copy.";
 "privacy.clipboardHelp" = "Previous clipboard content is saved and restored. Anything you copy takes priority. Uncertain results are never inserted again automatically.";
 "privacy.cloud" = "Cloud optimization is optional and only sends text to your chosen endpoint. Credentials are stored in macOS Keychain.";
 "privacy.exportHistory" = "Export history…";
@@ -156,9 +156,9 @@
 "readiness.pendingAX" = "%@: pending";
 "readiness.readyAX" = "%@: ready";
 "settings.report.allowed" = "allowed";
-"settings.report.captureStart" = "Recording started %@ ms after trigger\n";
+"settings.report.captureStart" = "First audio received %@ ms after the start request\n";
 "settings.report.close" = "Close verification report";
-"settings.report.noRecording" = "No recording in this process yet.";
+"settings.report.noRecording" = "No microphone audio received for this recording yet.";
 "settings.report.pending" = "pending";
 "settings.report.runtime" = "## Current process\n\nMicrophone: %@ · Accessibility: %@\n\n";
 "report.show" = "Show verification report";

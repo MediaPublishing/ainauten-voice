@@ -30,7 +30,7 @@ python3 scripts/check-download-transport.py  # echte Downloads kleiner Loopback-
 python3 scripts/check-cloud-transport.py  # optionale Text-Cloud gegen lokalen Mockserver
 python3 scripts/check-paragraph-quality.py  # vorhandenes lokales Qwen-Modell, Textfälle ohne Mikrofon/ASR
 python3 scripts/check-textedit-delivery.py --include-fullscreen  # eigene TextEdit-Dokumente, bestehende AX-Freigabe
-python3 scripts/package.py --install
+python3 scripts/package.py --development --install
 swift run -c release VoiceWisprProbe format-cases docs/fixtures/formatting-contracts.json
 python3 scripts/human-fixtures.py  # öffentliche CC-BY-4.0-Sprachaufnahmen
 swift run -c release VoiceWisprProbe suite artifacts/fixtures/fleurs/manifest.json 3 --styles=original,cleaned,email,chat
@@ -73,3 +73,16 @@ Drittlizenzen und Modellkarten: `Resources/Licenses/`.
 Die Echtzeit-Probe liefert 100ms-Blöcke erst nach ihrem Aufnahmeende; die letzte Teilsekunde wird nicht aufgerundet. Die Stop-Uhr beginnt am logischen Ende der Aufnahmedauer und enthält verspätete Audiozustellung. `feed-pacing-check` prüft genau diese Fristen und einen absichtlich verzögerten letzten Block ohne Modelle. Frühere Sekundenblock-Feeds lieferten Audio zu früh: Ihre Zeiten sind keine Latenzabnahme. Der Checker weist sie standardmäßig ab; `--legacy-quality-only` erlaubt ausschließlich ihre Inhaltsdiagnose. Die Pipeline wird vor den Messungen mit der vollständigen ersten Fixture gewärmt, ohne diese aus den drei Wiederholungen auszuschließen.
 
 `--dual-decode` ist eine diagnostische Option für den akustischen Variantenvergleich und bleibt standardmäßig aus. Der Suite-Lauf und `speech-config-check` verwenden dieselbe Konfiguration; `dualDecodeArbitration` wird im Suite-Start protokolliert. Frühere Suite-Versionen ignorierten diesen Schalter. Erst ein gemessener Vergleich auf denselben vollständigen Audiofällen kann eine Änderung der App rechtfertigen. Der Konfigurationstest allein belegt keine bessere Erkennung oder Latenz.
+
+`--trace-stages` ergänzt ausschließlich für öffentliche FLEURS-Fixtures ohne `--settings-dictionary` lokale Zeitmessungen für ASR und Formatierung. Die Ausgabe enthält Aufruf-IDs, Zeiten, Längen und Prüfsummen; auch die regulären Case-Zeilen unterdrücken dann Text-, Zahlen- und Verneinungsinhalte sowie rohe Fehlermeldungen. Ohne den Schalter bleibt die bisherige Suite-Ausgabe erhalten. `capture-end` markiert die tatsächlich abgeschlossene Audiozustellung im Prüfprogramm, keine physische Mikrofonmessung. Überlappende Zeiten enthalten auch Wartezeit und dürfen nicht als CPU-Zeiten addiert werden. Die Option verändert weder App-Verhalten noch Modell- oder Formatierungsregeln und ist keine End-to-End-Abnahme.
+
+
+### Fenster im Ruhezustand prüfen
+
+`python3 scripts/check-window-visibility.py --stage foreground --output-dir artifacts/receipts/window-foreground` beobachtet drei Sekunden lang alle vom WindowServer gemeldeten Fenster der bereits laufenden App unter `/Applications/AInauten Voice.app`. Die Einstellungen müssen zuvor im Vordergrund geöffnet sein. Für `--stage background` muss eine andere App im Vordergrund sein, während das Einstellungsfenster auf demselben Bildschirm sichtbar bleibt. Für `--stage closed` müssen die Einstellungen geschlossen und eine andere App aktiv sein. Verwende je Zustand einen eigenen Ausgabeordner.
+
+Der Prüfer aktiviert oder startet keine App und liest keine Diktate, Zwischenablage oder Einstellungen. Er benötigt keine Modelle und fordert keine Berechtigungen an. Rohdaten und auch fehlgeschlagene Vorbereitungen bleiben erhalten. Ein positives Ergebnis betrifft nur den beobachteten Zustand; es belegt keinen abgeschlossenen Diktiervorgang, keine weiteren Spaces oder Displays und keine Latenzabnahme.
+
+## Sicherheitsänderungen für den nächsten Kandidaten
+
+Der veröffentlichte Build 0.1.10 (14) ist weiterhin lokal signiert und nicht notarisiert. Neue öffentliche Pakete benötigen jetzt eine bestehende Apple Developer ID Application sowie `--notary-profile`; lokale Tests benötigen ausdrücklich `--development`. Automatische Zwischenablage-Nutzung ist im aktuellen Quellcode standardmäßig aus und erfordert Opt-in. Details und noch offene Apple-Einrichtung: [Sicherheitsnachprüfung](docs/security-followup-2026-10-06.md).

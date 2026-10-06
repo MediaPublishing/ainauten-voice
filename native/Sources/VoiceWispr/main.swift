@@ -17,6 +17,31 @@ if let root = CommandLine.arguments.first(where: { $0.hasPrefix("--reporting-pro
 #endif
 import VoiceWisprCore
 
+// Read-only packaging check: no AppModel, settings migration, hotkeys or model
+// loading. Exercise the same lazy diagnostics that run during normal startup.
+if CommandLine.arguments.contains("--check-bundled-resources") {
+    do {
+        guard Bundle.main.bundleURL.pathExtension == "app",
+              let resources = Bundle.main.resourceURL,
+              let core = Bundle.main.url(forResource: "VoiceWispr_VoiceWisprCore", withExtension: "bundle"),
+              core.deletingLastPathComponent().standardizedFileURL == resources.standardizedFileURL,
+              L10n.template("settings.interfaceLanguage", language: .en) == "Interface language",
+              L10n.template("settings.interfaceLanguage", language: .de) == "Oberflächensprache",
+              L10n.plural("history.count", count: 1, language: .en) == "1 dictation",
+              L10n.plural("history.count", count: 2, language: .de) == "2 Diktate",
+              L10n.message("No speech detected") == .key("status.noSpeech", []) else {
+            throw VoiceError.message("Packaged interface resources are missing or unavailable.")
+        }
+        let manifest = try ModelManifest.bundled()
+        guard !manifest.files.isEmpty else { throw VoiceError.message("Packaged model manifest is empty.") }
+        print("BUNDLED_RESOURCES_PASS english=true german=true plurals=true diagnostics=true modelManifest=true")
+        exit(0)
+    } catch {
+        print("BUNDLED_RESOURCES_FAIL")
+        exit(1)
+    }
+}
+
 let application = NSApplication.shared
 application.setActivationPolicy(.regular)
 let model = MainActor.assumeIsolated {
