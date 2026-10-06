@@ -33,3 +33,11 @@ python3 native/scripts/package.py --development \
 ```
 
 Apple beschreibt [Bibliotheksvalidierung](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.cs.disable-library-validation) und den [Notarisierungsablauf](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow). Eigene Nachweise liegen lokal unter `native/artifacts/receipts/peter-security-20261006/`. Die Modellqualität, physische Einfüge-Latenz, weitere Geräte und die früheren optionalen Abhängigkeitsbefunde bleiben gesondert offen. Diese gezielte AI-gestützte Nachprüfung ersetzt keinen professionellen Sicherheitsaudit.
+
+## Prüfung des tatsächlich veröffentlichten Pakets
+
+Installer und Update-Archiv für 0.1.10 (14) wurden erneut heruntergeladen und geprüft. Die 168 Bundle-Einträge stimmen einschließlich Dateiinhalten, Dateimodi und internen Links überein. Die Ed25519-Signaturen des Update-Archivs und des Appcasts sind mit dem öffentlichen Updateschlüssel gültig; dafür wurde kein privater Schlüssel gelesen. Diese Updatesignaturen ersetzen keine Apple Developer ID oder Notarisierung.
+
+Das tatsächliche Paket verwendet weiterhin die lokale Signatur ohne Apple-Team-ID, enthält `com.apple.security.cs.disable-library-validation = true` und hat weder ein angeheftetes App- noch DMG-Notarisierungsticket. Der veröffentlichte Quellstand enthält weiterhin die eingeschaltete Zwischenablage-Voreinstellung. Eine neue Veröffentlichung bleibt deshalb gesperrt, bis die Apple-Voraussetzungen erfüllt sind.
+
+Der Release-Prüfer fordert die Entitlements jetzt ausdrücklich als XML an; aktuelle macOS-Versionen liefern sonst eine Textdarstellung, die kein Property List Parser lesen kann. Zwölf gezielte Regressionstests prüfen diesen Pfad einschließlich des echten lokalen Bundles. Für den vorherigen Sicherheitscommit waren keine GitHub-Check-Runs oder Commit-Statusmeldungen vorhanden; ein erfolgreicher lokaler Test ist kein CI-Nachweis.

@@ -48,7 +48,7 @@ def validate_metadata(metadata, entitlements, expected_team=None):
 def verify_code(path, expected_team=None):
     run(['codesign', '--verify', '--strict', '-R', '=' + DEVELOPER_ID, path])
     metadata = run(['codesign', '-dv', '--verbose=4', path]).stderr.decode()
-    payload = run(['codesign', '-d', '--entitlements', '-', path]).stdout
+    payload = run(['codesign', '-d', '--entitlements', '-', '--xml', path]).stdout
     entitlements = plistlib.loads(payload) if payload.strip() else {}
     return validate_metadata(metadata, entitlements, expected_team)
 

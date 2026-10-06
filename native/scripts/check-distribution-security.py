@@ -20,6 +20,26 @@ GOOD = ('Authority=Developer ID Application: Synthetic Fixture (ABCDE12345)\n'
 
 
 class DistributionSecurityTests(unittest.TestCase):
+    def testEntitlementsExplicitlyUseXML(self):
+        def codesign(command):
+            if '--entitlements' in command:
+                self.assertIn('--xml', command)
+                return subprocess.CompletedProcess(command, 0, plistlib.dumps({}), b'')
+            return subprocess.CompletedProcess(command, 0, b'', GOOD.encode())
+        with patch.object(security, 'run', side_effect=codesign):
+            self.assertEqual(security.verify_code(Path('/synthetic.app')), 'ABCDE12345')
+
+    def testActualCodesignXMLReadsLibraryValidationException(self):
+        app = Path('/Applications/AInauten Voice.app')
+        if not app.exists():
+            self.skipTest('existing installed bundle unavailable')
+        payload = security.run(['codesign', '-d', '--entitlements', '-', '--xml', app]).stdout
+        entitlements = plistlib.loads(payload)
+        self.assertIsInstance(entitlements, dict)
+        if entitlements.get('com.apple.security.cs.disable-library-validation'):
+            with self.assertRaises(ValueError):
+                security.validate_metadata(GOOD, entitlements)
+
     def testStrictMetadataAndExplicitFalseExceptions(self):
         self.assertEqual(security.validate_metadata(GOOD, {}), 'ABCDE12345')
         self.assertEqual(security.validate_metadata(GOOD, {k: False for k in security.FORBIDDEN}), 'ABCDE12345')
