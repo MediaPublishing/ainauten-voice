@@ -5,3 +5,6 @@ AInauten Voice ist eine native lokale Diktier-App für macOS und Apple Silicon. 
 [Prüfstand und offene Grenzen](verification-report.md) · [Entwickeln](../README.md) · [Lizenzen](../Resources/Licenses/NOTICE.md)
 
 Bundle-ID, Modulname und der lokale Datenordner behalten für bestehende Installationen den internen Namen Voice Wispr. Für das Produkt wird AInauten Voice verwendet. Audio bleibt lokal und wird nicht dauerhaft aufgezeichnet; Textverlauf ist lokal und abschaltbar.
+
+
+Zusätzlicher Entwicklungsstand: Schutzregeln für vollständige Sprachwechsel und Satzzeichen an begrenzten Textkorrekturen sind im Quellcode enthalten. 97 gezielte native Contract-Prüfungen bestehen. Die abschließende Modellprüfung der Satzzeichenkorrektur ist noch nicht vollständig belegt. Diese Änderungen sind noch nicht im oben genannten Beta-Download enthalten; daraus folgt keine Abnahme der allgemeinen Erkennungsqualität oder Einfügezeit.

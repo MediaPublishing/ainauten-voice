@@ -14,9 +14,11 @@ private actor WindowSpeech: SpeechTranscribing {
 }
 private actor WindowFormatter: TextFormatting {
     let failContinuation: Bool
+    private(set) var inputs: [String] = []
     init(failContinuation: Bool = false) { self.failContinuation = failContinuation }
     func prepare() async throws {}
     func format(_ text: String, style: TextStyle, context: String, vocabulary: [String]) async throws -> String {
+        inputs.append(text)
         if text.contains("Form. Bringen") {
             if failContinuation { throw VoiceError.message("Test: Optimierung fehlgeschlagen") }
             return text.replacingOccurrences(of: "Form. Bringen", with: "Form bringen")
@@ -25,6 +27,46 @@ private actor WindowFormatter: TextFormatting {
     }
 }
 final class FormattingWindowTests: XCTestCase {
+    func testPipelineKeepsLanguageSwitchInSeparateFormattingCalls() async throws {
+        let german = "Wir prüfen heute den Entwurf und warten vor dem Versand auf die Rückmeldung."
+        let english = "Please keep the report on this computer until we have received approval."
+        for sections in [[german, english], [english, german]] {
+            let formatter = WindowFormatter()
+            let pipeline = ProcessingPipeline(speech: WindowSpeech(sections), formatter: formatter, coreSamples: 16_000, overlapSamples: 0)
+            let result = try await pipeline.process(samples: [Float](repeating: 0.1, count: 32_000), sessionID: UUID(), style: .cleaned)
+            XCTAssertEqual(result.text, sections.joined(separator: " "))
+            XCTAssertEqual(result.original, sections.joined(separator: " "))
+            XCTAssertFalse(result.usedFallback)
+            let inputs = await formatter.inputs
+            XCTAssertFalse(inputs.contains { $0.contains("Rückmeldung") && $0.contains("approval") })
+            XCTAssertGreaterThan(inputs.count, 1)
+        }
+    }
+    func testCompleteLanguageSwitchDoesNotReopenVerifiedSentence() throws {
+        let german = "Wir prüfen heute den Entwurf und warten vor dem Versand auf die Rückmeldung."
+        let english = "Please keep the report on this computer until we have received approval."
+        XCTAssertTrue(FormattingWindow.hasLanguageBoundary(previous: german, next: english))
+        XCTAssertTrue(FormattingWindow.hasLanguageBoundary(previous: english, next: german))
+        XCTAssertNil(FormattingWindow.continuation(previous: .init(input: german, output: german, formatted: true), next: english))
+        XCTAssertNil(FormattingWindow.continuation(previous: .init(input: english, output: english, formatted: true), next: german))
+    }
+    func testAmbiguousShortOrUnfinishedSpeechKeepsContinuation() throws {
+        let german = "Wir prüfen heute den Entwurf und warten vor dem Versand auf die Rückmeldung."
+        let english = "Please keep the report on this computer until we have received approval."
+        XCTAssertFalse(FormattingWindow.hasLanguageBoundary(previous: "Wir warten.", next: english))
+        XCTAssertFalse(FormattingWindow.hasLanguageBoundary(previous: german, next: "Please wait."))
+        XCTAssertFalse(FormattingWindow.hasLanguageBoundary(previous: String(german.dropLast()), next: english))
+        XCTAssertFalse(FormattingWindow.hasLanguageBoundary(previous: german, next: english.lowercased()))
+        _ = try XCTUnwrap(FormattingWindow.continuation(previous: .init(input: german, output: german, formatted: true), next: "Danach prüfen wir alles noch einmal."))
+        _ = try XCTUnwrap(FormattingWindow.continuation(previous: .init(input: "Das Ganze in eine saubere Form.", output: "Das Ganze in eine saubere Form.", formatted: true), next: "Bringen und als Goal definieren lassen."))
+    }
+    func testLanguageBoundaryUsesLastAndFirstSentencesOnly() {
+        let german = "Wir prüfen heute den Entwurf und warten vor dem Versand auf die Rückmeldung."
+        let english = "Please keep the report on this computer until we have received approval."
+        XCTAssertTrue(FormattingWindow.hasLanguageBoundary(previous: english + " " + german, next: english + " " + german))
+        XCTAssertFalse(FormattingWindow.hasLanguageBoundary(previous: german + " " + english, next: english + " " + german))
+        XCTAssertEqual(FormattingWindow.languageBoundaryOffsets(in: german + " " + english), [(german as NSString).length + 1])
+    }
     func testContinuationCanRemoveAPausePointAcrossCaptureSections() async throws {
         let sections = ["Das Ganze in eine saubere Form.", "Bringen und als Goal definieren lassen."]
         let pipeline = ProcessingPipeline(speech: WindowSpeech(sections), formatter: WindowFormatter(), coreSamples: 16_000, overlapSamples: 0)
