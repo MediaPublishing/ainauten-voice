@@ -1,6 +1,6 @@
 # Sicherheitsnachprüfung: Bibliotheken, Zwischenablage, Apple-Verteilung
 
-Der öffentliche Download 0.1.10 (14) und die bisher installierte App sind weiterhin lokal signiert und nicht Apple-notarisiert. Sie enthalten die Ausnahme für Bibliotheksvalidierung. Die folgenden Änderungen sind Quellcode-Korrekturen für den nächsten Kandidaten; ein Git-Push ersetzt diesen Download nicht.
+Der zu Beginn dieser Nachprüfung veröffentlichte Download 0.1.10 (14) und die damalige Installation waren lokal signiert und nicht Apple-notarisiert. Sie enthalten die Ausnahme für Bibliotheksvalidierung. Die folgenden Änderungen sind Quellcode-Korrekturen für den nächsten Kandidaten; ein Git-Push ersetzt diesen Download nicht.
 
 ## Zwischenablage
 
@@ -10,7 +10,7 @@ TextEdit unterstützt die bestehende direkte Einfügung über Bedienungshilfen. 
 
 ## Signierung und Notarisierung
 
-Neue öffentliche Pakete, Update-Archive und Website-Release-Builds werden ohne Apple Developer ID Application, Hardened Runtime, aktive Bibliotheksvalidierung und überprüfte Notarisierung abgewiesen. Alle tatsächlichen Mach-O-Dateien im Bundle müssen mit derselben Apple-Team-ID signiert sein. Debugging- und Code-Injection-Ausnahmen sind für die Verteilung gesperrt. Die bestehende Publisher-Pin-Prüfung bleibt zusätzlich erhalten.
+Im Apple-Verteilungsweg werden Pakete, Update-Archive und Website-Release-Builds ohne Apple Developer ID Application, Hardened Runtime, aktive Bibliotheksvalidierung und überprüfte Notarisierung abgewiesen. Alle tatsächlichen Mach-O-Dateien im Bundle müssen mit derselben Apple-Team-ID signiert sein. Debugging- und Code-Injection-Ausnahmen sind für die Verteilung gesperrt. Die bestehende Publisher-Pin-Prüfung bleibt zusätzlich erhalten.
 
 `package.py` verlangt im öffentlichen Modus ein bestehendes `--notary-profile`. Der Ablauf signiert die verschachtelten Komponenten mit sicherem Zeitstempel, notarisiert die App, verlangt Apples Status `Accepted`, heftet das Ticket an und überprüft es. Anschließend wird die finale DMG separat signiert, eingereicht, angeheftet und geprüft. Update-Archive entstehen erst aus der so geprüften App. Fehlende Zugangsdaten oder abgelehnte Einreichungen sind kein Erfolg; die Artefakte bleiben zur Diagnose erhalten.
 
