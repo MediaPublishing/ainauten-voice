@@ -3,6 +3,22 @@ import Foundation
 @testable import VoiceWisprCore
 
 final class FormatterFastPathTests: XCTestCase {
+    func testInternalAllCapsFunctionWordsDoNotBypassOptimization() {
+        XCTAssertTrue(LocalFormatter.needsModel("Der Text wurde MIT dem Team abgestimmt.", style: .cleaned))
+        XCTAssertTrue(LocalFormatter.needsModel("Das ist wichtig, weil ES den Ablauf vereinfacht.", style: .cleaned))
+        XCTAssertTrue(LocalFormatter.needsModel("Das kannst DU direkt installieren.", style: .chat))
+        XCTAssertTrue(LocalFormatter.needsModel("Ich glaube, DASS die App heute startet.", style: .cleaned))
+    }
+    func testInstitutionAcronymAndUnrelatedAllCapsKeepFastPath() {
+        XCTAssertFalse(LocalFormatter.needsModel("Wir arbeiten mit der NASA und dem MIT.", style: .cleaned))
+        XCTAssertFalse(LocalFormatter.needsModel("Forschung am MIT hilft dem Team.", style: .cleaned))
+        XCTAssertFalse(LocalFormatter.needsModel("This uses the CPU and API.", style: .chat))
+        XCTAssertFalse(LocalFormatter.needsModel("Die Antwort lautet „MIT“.", style: .cleaned))
+    }
+    func testOriginalAllCapsRemainUntouched() {
+        XCTAssertFalse(LocalFormatter.needsModel("Der Text wurde MIT dem Team abgestimmt.", style: .original))
+        XCTAssertFalse(LocalFormatter.needsModel("Das kannst DU direkt installieren.", style: .original))
+    }
     func testUnexpectedInternalFunctionWordCapitalsRequireOptimization() {
         XCTAssertTrue(LocalFormatter.needsModel("Ich habe festgestellt, dass Einige Worte im Text, insbesondere kurze Worte, groß geschrieben werden statt Klein.", style: .cleaned))
         XCTAssertTrue(LocalFormatter.needsModel("In diesem Beispiel hier, Das ich angesprochen habe, siehst Du, Dass einige und Klein großgeschrieben wurden, fälschlicherweise.", style: .cleaned))

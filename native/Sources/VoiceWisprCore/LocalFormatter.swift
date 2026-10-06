@@ -74,7 +74,7 @@ public actor LocalFormatter: TextFormatting {
             }.joined(separator: " ")
         }.joined(separator: "\n")
         let user = reconstruct ? "Wortschatzhinweise (keine zwingenden Großschreibungsregeln): \(vocabulary.prefix(32).joined(separator: ", "))\nBeachte die deutsche Groß-/Kleinschreibung: Satzanfänge, Nomen und tatsächliche Eigennamen groß; gewöhnliche Bindewörter, Pronomen, Adjektive und Adverbien im Satz klein. Schreibe die persönliche Anrede du, dir, dich und dein im Satz immer klein; keine Brief-Großschreibung von Du. Erhalte die Höflichkeitsanrede Sie. Entscheide nach dem Satzkontext, nicht allein nach der Schreibweise eines Hinweises. Satzzeichen der Erkennung können bloße Sprechpausen sein: verbinde grammatisch zusammengehörige Satzfragmente, entferne dafür falsche Punkte und setze passende Kommas. Erhalte echte vollständige Sätze und Fragen. Ein Nebensatz mit indem, was, weil oder wenn gehört zum Hauptsatz; keine alleinstehenden Satzfragmente. Trenne aufgezählte Tätigkeiten oder Begriffe mit Kommas, beispielsweise Design, Veröffentlichung und Test; klebe getrennte Begriffe nicht zu einem neuen Namen zusammen. Setze bei einem Themenwechsel einen Absatz, in längeren Erklärungen etwa nach drei bis vier vollständigen Sätzen. Ein Abschnittsende ist nicht automatisch ein Satzende.\nVorherige zwei Sätze (nur Kontext): \(Self.lastTwoSentences(previous))\nAktueller Abschnitt (Sprechpausen wurden entfernt; Satzzeichen neu setzen):\n\(current)" : "Wortschatzhinweise (keine zwingenden Großschreibungsregeln): \(vocabulary.prefix(32).joined(separator: ", "))\nBeachte die deutsche Groß-/Kleinschreibung: Satzanfänge, Nomen und tatsächliche Eigennamen groß; gewöhnliche Bindewörter, Pronomen, Adjektive und Adverbien im Satz klein. Schreibe die persönliche Anrede du, dir, dich und dein im Satz immer klein; keine Brief-Großschreibung von Du. Erhalte die Höflichkeitsanrede Sie. Entscheide nach dem Satzkontext, nicht allein nach der Schreibweise eines Hinweises. Satzzeichen der Erkennung können bloße Sprechpausen sein: verbinde grammatisch zusammengehörige Satzfragmente, entferne dafür falsche Punkte und setze passende Kommas. Erhalte echte vollständige Sätze und Fragen.\nVorherige zwei Sätze (nur Kontext): \(Self.lastTwoSentences(previous))\nAktueller Abschnitt:\n\(text)"
-        let casingHint = "\nGrammatikbeispiele, keine zusätzlichen Ausgabewörter: einen Neuen Mac → einen neuen Mac; Über Nacht auf Am Laufen → über Nacht auf am Laufen. Adjektive vor einem Nomen und Präpositionen im Satz klein schreiben. Substantivierte Verben und Adjektive bleiben groß: am Laufen, das Schöne. Tatsächliche Eigennamen bleiben erhalten: Frau Klein, OpenAI, MIT."
+        let casingHint = "\nGrammatikbeispiele, keine zusätzlichen Ausgabewörter: einen Neuen Mac → einen neuen Mac; Über Nacht auf Am Laufen → über Nacht auf am Laufen. Adjektive vor einem Nomen und Präpositionen im Satz klein schreiben. Substantivierte Verben und Adjektive bleiben groß: am Laufen, das Schöne. Tatsächliche Eigennamen bleiben erhalten: Frau Klein, OpenAI, die Institution MIT in am MIT. Die Präposition mit bleibt im Satz klein, auch wenn MIT im Wortschatz steht: MIT dem Team → mit dem Team; MIT dem Bericht → mit dem Bericht."
         let prompt = try chatPrompt(system: instruction, user: user + casingHint)
         let grammar = try FormattingGrammar.make(text, vocabulary: vocabulary)
         let deadline = GenerationDeadline()
@@ -205,13 +205,24 @@ public actor LocalFormatter: TextFormatting {
         let normallyLowercase: Set<NLTag> = [.verb, .adjective, .adverb, .pronoun, .determiner, .particle, .preposition, .conjunction]
         let source = text as NSString
         var previousEnd = 0
+        var previousWord = ""
         for match in casingWords.matches(in: text, range: NSRange(location: 0, length: source.length)) {
             let word = source.substring(with: match.range)
+            let precedingWord = previousWord
+            previousWord = word.lowercased()
             let gap = source.substring(with: NSRange(location: previousEnd, length: match.range.location - previousEnd))
             let startsSentence = previousEnd == 0 || gap.rangeOfCharacter(from: CharacterSet(charactersIn: ".!?:\n\"„“")) != nil
             previousEnd = NSMaxRange(match.range)
-            guard !startsSentence,
-                  word.first?.isUppercase == true,
+            guard !startsSentence, word.first?.isUppercase == true else { continue }
+            // All-caps ASR function words need the same contextual correction
+            // as title-case ones. Keep the institution MIT after nominal
+            // introducers; ordinary prepositional MIT still goes to the model.
+            if word.count > 1, word == word.uppercased(), functionWords.contains(word.lowercased()) {
+                let nominalIntroducers: Set<String> = ["am", "vom", "ans", "beim", "das", "die", "der", "den", "dem", "des", "zum"]
+                if word != "MIT" || !nominalIntroducers.contains(precedingWord) { return true }
+                continue
+            }
+            guard
                   word == word.prefix(1).uppercased() + word.dropFirst().lowercased() else { continue }
             if functionWords.contains(word.lowercased()) { return true }
             guard german else { continue }
