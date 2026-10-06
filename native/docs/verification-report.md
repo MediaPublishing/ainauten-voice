@@ -23,8 +23,10 @@ Der Download enthält den separat signierten Sparkle-Updater, Hilfe, einen aktiv
 - Vier aktuelle TextEdit-Prüfungen bestätigten Auswahlersetzung, Einfügen am Cursor, langen Text und die Ablehnung eines gewechselten Ziels in eigenen Testdokumenten. Sie prüfen die Zustellung im Core, keine physische Aufnahme oder vollständige Ziel-App-Matrix.
 - Für die Auswahländerung bestanden **83 gezielte Vertragsfälle** und ein weiterer tatsächlicher Lauf aller elf Textfälle sowie beider Pipelineprüfungen.
 - Ein isolierter Vergleich der Auswahl im Textmodell umfasste sechs vollständige Läufe und alle elf bisherigen Textfälle. Die Ausgaben blieben identisch. Der Median der gepaarten Fallquotienten sank um rund 15 %; dies ist ein begrenzter Modellzeitvergleich, keine Messung bis zur Einfügung in eine andere App. [Details und Grenzen](formatter-selection-2026-10-05.md).
+- Für das aktuelle Paket bestanden 58 gezielt ausgewählte portable Vertragsfälle sowie 31 Prüfungen des Fehlerempfangs ohne Fehler. Das sind gezielte Prüfungen, keine vollständige App-Abnahme.
+- Ein synthetischer Bericht aus dem aktuellen Release erreichte den privaten Fehlerempfang und genau ein privates GitHub-Issue. Eine Wiederholung mit derselben Berichts-ID erzeugte keinen zweiten Bericht. Automatische Nutzerberichte bleiben standardmäßig aus.
 - Screenshots und Promo-Material zeigen ausschließlich ausdrücklich gekennzeichnete Beispieldaten.
-- App-Signatur, DMG-Integrität, öffentlicher Download und signierter Updatekanal werden für 0.1.10, Build 14 vor der Veröffentlichung erneut geprüft. Die Offline-Installationsanleitung liegt im DMG.
+- App-Signatur, DMG-Integrität, öffentlicher Download und signierter Updatekanal wurden für 0.1.10, Build 14 erneut geprüft. Die veröffentlichten Pakete stimmen bytegenau mit dem geprüften Kandidaten überein. Die Offline-Installationsanleitung liegt im DMG.
 
 ## Sprachrückmeldung und unpersönlicher Probetest
 
