@@ -6,6 +6,7 @@ from package_dmg import create_dmg
 root = pathlib.Path(__file__).resolve().parents[1]
 p = argparse.ArgumentParser(); p.add_argument('--debug', action='store_true'); p.add_argument('--install', action='store_true')
 p.add_argument('--sdk', type=pathlib.Path, help='Explicit compatible macOS SDK; leaves the system default unchanged')
+p.add_argument('--built-products', type=pathlib.Path, help='Resume explicit local beta packaging from this checkout’s successful release build; no compilation')
 p.add_argument('--build-system', choices=['native', 'swiftbuild'], help='Swift build engine override for compatible CLT packaging')
 p.add_argument('--local-beta', action='store_true', help='Explicit locally signed public beta; no Apple notarization, existing publisher pin required')
 p.add_argument('--development', action='store_true', help='Explicit local test package only; never accepted by public distribution gates')
@@ -56,10 +57,16 @@ report_text = user_report.read_text()
 if not report_text.startswith('# AInauten Voice: Prüfbericht') or any(value in report_text for value in ['/Users/', '/home/', 'PRIVATE KEY', 'Administratorpasswort', 'Voice Wispr']):
     raise SystemExit('The user verification report is missing or contains internal data')
 configuration = 'debug' if args.debug else 'release'
-run('python3', 'scripts/bootstrap.py')
-build_options = (['--sdk', str(args.sdk)] if args.sdk else []) + (['--build-system', args.build_system] if args.build_system else [])
-run('swift', 'build', *build_options, '-c', configuration, '-j', '4')
-build = pathlib.Path(subprocess.check_output(['swift', 'build', *build_options, '-c', configuration, '--show-bin-path'], cwd=root, text=True).strip())
+if args.built_products:
+    if not args.local_beta: p.error('--built-products is only available for an explicit local beta')
+    build = args.built_products.resolve()
+    if build != (root/'.build/out/Products/Release').resolve() or not (build/'VoiceWispr').is_file():
+        p.error('--built-products must be this checkout’s existing successful release products')
+else:
+    run('python3', 'scripts/bootstrap.py')
+    build_options = (['--sdk', str(args.sdk)] if args.sdk else []) + (['--build-system', args.build_system] if args.build_system else [])
+    run('swift', 'build', *build_options, '-c', configuration, '-j', '4')
+    build = pathlib.Path(subprocess.check_output(['swift', 'build', *build_options, '-c', configuration, '--show-bin-path'], cwd=root, text=True).strip())
 stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 out = root / 'artifacts' / stamp; out.mkdir(parents=True)
 app = out / 'AInauten Voice.app'; contents = app / 'Contents'
@@ -76,10 +83,18 @@ if public_key:
     info['SUPublicEDKey'] = public_key
     (contents/'Info.plist').write_bytes(plistlib.dumps(info))
 shutil.copy2(build/'VoiceWispr', contents/'MacOS/VoiceWispr')
-for bundle in build.glob('*.bundle'): shutil.copytree(bundle, contents/'Resources'/bundle.name)
+for bundle in build.glob('*.bundle'):
+    target_bundle = contents/'Resources'/bundle.name
+    # Keep the app's established flat SwiftPM resource layout under both build engines.
+    resource_base = bundle/'Contents/Resources'
+    if resource_base.is_dir():
+        shutil.copytree(resource_base, target_bundle)
+        shutil.copy2(bundle/'Contents/Info.plist', target_bundle/'Info.plist')
+    else:
+        shutil.copytree(bundle, target_bundle)
 localized_bundles = list((contents/'Resources').glob('*.bundle'))
 for language in ['de', 'en']:
-    if not any((bundle/f'{language}.lproj/Localizable.strings').is_file() for bundle in localized_bundles):
+    if not any((base/f'{language}.lproj/Localizable.strings').is_file() for bundle in localized_bundles for base in [bundle, bundle/'Contents/Resources']):
         raise SystemExit(f'Missing packaged interface language: {language}')
 framework = root/'Vendor/build-apple/llama.xcframework/macos-arm64_x86_64/llama.framework'
 shutil.copytree(framework, contents/'Frameworks/llama.framework', symlinks=True)
