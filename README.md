@@ -51,14 +51,14 @@ Mikrofon, Bedienungshilfen und den ersten macOS-Start bestätigst du selbst. [De
 
 ## Deine Daten
 
-Audio bleibt auf deinem Mac und wird nicht dauerhaft gespeichert. Den lokalen Textverlauf kannst du ausschalten. Cloud-Textoptimierung ist optional und standardmäßig aus. Kompatibles Einfügen verwendet kurz die systemweite Zwischenablage; unter Datenschutz kannst du das ausschalten. Lippenlesen ist vorübergehend gesperrt, bis eine signierte und isolierte Laufzeit verfügbar ist.
+Audio bleibt auf deinem Mac und wird nicht dauerhaft gespeichert. Den lokalen Textverlauf kannst du ausschalten. Cloud-Textoptimierung ist optional und standardmäßig aus. Kompatibles Einfügen verwendet kurz die systemweite Zwischenablage; die Option ist standardmäßig aus und lässt sich unter Datenschutz bewusst aktivieren. Lippenlesen ist vorübergehend gesperrt, bis eine signierte und isolierte Laufzeit verfügbar ist.
 
 <details>
 <summary>Für Entwickler: Technik, Versionsstand und Lizenz</summary>
 
 Die native App verwendet SwiftUI/AppKit, FluidAudio mit Parakeet v3 und eingebettetes llama.cpp mit Qwen3-4B. [Entwicklungsanleitung](native/README.md) · [Prüfbericht](native/docs/verification-report.md) · [Website entwickeln](site/README.md).
 
-Der öffentliche Download ist Beta **0.1.10, Build 14**, mit signierten automatischen Updates. Die Automatik ist standardmäßig aktiv und lässt sich unter **Einstellungen → Updates** ausschalten. Ältere Apps ohne Updater müssen einmalig durch den aktuellen Download ersetzt werden. Manuelle Fehlerberichte sind unter **Hilfe** verfügbar und gehen nach deiner Bestätigung an den privaten Eingang. Forschungsmodelle und automatische Fehlerübermittlung bleiben standardmäßig aus. Ein Git-Push allein verteilt kein App-Update. [Installations- und Updatehinweise](docs/agent-installation.md#updates-und-entwicklungsbuilds).
+Der öffentliche Download ist Beta **0.1.11, Build 15**, mit signierten automatischen Updates. Die Automatik ist standardmäßig aktiv und lässt sich unter **Einstellungen → Updates** ausschalten. Ältere Apps ohne Updater müssen einmalig durch den aktuellen Download ersetzt werden. Manuelle Fehlerberichte sind unter **Hilfe** verfügbar und gehen nach deiner Bestätigung an den privaten Eingang. Forschungsmodelle und automatische Fehlerübermittlung bleiben standardmäßig aus. Ein Git-Push allein verteilt kein App-Update. [Installations- und Updatehinweise](docs/agent-installation.md#updates-und-entwicklungsbuilds).
 
 Der Quellcode ist öffentlich einsehbar. Für den eigenen App-Code wurde bislang keine Open-Source-Lizenz erteilt; alle Rechte bleiben vorbehalten. Abhängigkeiten und Modelle haben eigene Lizenzen. [Lizenznachweise](native/Resources/Licenses/NOTICE.md) · [Forschungsmodell-Lizenzen](native/lipreading_runtime/licenses/NOTICE-Research-Models.txt).
 
@@ -70,4 +70,4 @@ Fehler und Ideen: [Issue anlegen](https://github.com/MediaPublishing/ainauten-vo
 
 ### Sicherheitsänderungen im Quellcode
 
-Der öffentliche Download **0.1.10 (14)** ist weiterhin lokal signiert, nicht Apple-notarisiert und verwendet für kompatibles Einfügen standardmäßig kurz die systemweite Zwischenablage. Die aktualisierte Quelle schaltet diese automatische Nutzung standardmäßig aus; nur eine ausdrückliche Freigabe aktiviert sie. Neue öffentliche Releases sind ohne Apple Developer ID, aktive Bibliotheksvalidierung und geprüfte Notarisierung gesperrt. Diese Änderungen sind noch kein ausgeliefertes App-Update. [Details und offene Apple-Einrichtung](native/docs/security-followup-2026-10-06.md).
+Der öffentliche Download **0.1.11 (15)** ist weiterhin eine lokal signierte, nicht Apple-notarisierte Beta mit einer Ausnahme für Bibliotheksvalidierung. Automatische Nutzung der systemweiten Zwischenablage ist jetzt standardmäßig aus; nur eine ausdrückliche Aktivierung erlaubt sie. Bereits gespeicherte Aktivierungen bleiben erhalten. Direkte Texteingabe über Bedienungshilfen bleibt verfügbar; nicht unterstützte Felder benötigen bewusstes Kopieren. Die Update-Signaturen bleiben geprüft. Der gesonderte Apple-Release-Weg verlangt weiterhin Developer ID, aktive Bibliotheksvalidierung und Notarisierung. [Details](native/docs/security-followup-2026-10-06.md).

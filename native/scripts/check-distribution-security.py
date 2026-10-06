@@ -40,6 +40,49 @@ class DistributionSecurityTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 security.validate_metadata(GOOD, entitlements)
 
+    def testBetaModeRejectsDebugAdhocAndNotaryCombinations(self):
+        for extra in ['--development', '--debug', '--adhoc', '--notary-profile=x']:
+            process = subprocess.run(['python3', str(ROOT/'scripts/package.py'), '--local-beta', extra], capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(process.returncode, 0)
+            self.assertIn('--local-beta cannot be combined', process.stderr)
+
+    def testLocalBetaCannotAcceptUnmarkedExistingApp(self):
+        with tempfile.TemporaryDirectory(prefix='voice-unmarked-fixture-') as temp:
+            app = Path(temp)/'AInauten Voice.app'; (app/'Contents').mkdir(parents=True)
+            (app/'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier':'com.mediapublishing.VoiceWispr'}))
+            with self.assertRaisesRegex(ValueError, 'explicit local-beta marker'):
+                security.verify_local_beta_app(app)
+
+    def testBetaAllowsOnlyExistingMainLibraryException(self):
+        with tempfile.TemporaryDirectory(prefix='voice-beta-fixture-') as temp:
+            app = Path(temp)/'AInauten Voice.app'
+            (app/'Contents/MacOS').mkdir(parents=True)
+            (app/'Contents/Frameworks').mkdir()
+            (app/'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier':'com.mediapublishing.VoiceWispr', 'CFBundleExecutable':'VoiceWispr', 'AInautenDistributionMode':'local-beta'}))
+            main = app/'Contents/MacOS/VoiceWispr'; main.write_bytes(b'\xcf\xfa\xed\xfe')
+            nested = app/'Contents/Frameworks/test.dylib'; nested.write_bytes(b'\xcf\xfa\xed\xfe')
+            def probe(command):
+                entitlements = {'com.apple.security.cs.disable-library-validation': True} if Path(command[-1]) in [app, main] else {}
+                if '--entitlements' in command:
+                    return subprocess.CompletedProcess(command, 0, plistlib.dumps(entitlements), b'')
+                return subprocess.CompletedProcess(command, 0, b'', b'TeamIdentifier=not set\nCodeDirectory v=20500 flags=0x10000(runtime)\n')
+            with patch.object(security, 'run', side_effect=probe):
+                result = security.verify_local_beta_app(app)
+                self.assertFalse(result['notarized'])
+                self.assertEqual(result['codeObjects'], 2)
+            def malicious(command):
+                if '--entitlements' in command:
+                    return subprocess.CompletedProcess(command, 0, plistlib.dumps({'com.apple.security.get-task-allow':True}), b'')
+                return probe(command)
+            with patch.object(security, 'run', side_effect=malicious), self.assertRaisesRegex(ValueError, 'code-injection exception'):
+                security.verify_local_beta_app(app)
+            def nested_exception(command):
+                if '--entitlements' in command and Path(command[-1]) == nested:
+                    return subprocess.CompletedProcess(command, 0, plistlib.dumps({'com.apple.security.cs.disable-library-validation':True}), b'')
+                return probe(command)
+            with patch.object(security, 'run', side_effect=nested_exception), self.assertRaisesRegex(ValueError, 'nested beta code'):
+                security.verify_local_beta_app(app)
+
     def testStrictMetadataAndExplicitFalseExceptions(self):
         self.assertEqual(security.validate_metadata(GOOD, {}), 'ABCDE12345')
         self.assertEqual(security.validate_metadata(GOOD, {k: False for k in security.FORBIDDEN}), 'ABCDE12345')

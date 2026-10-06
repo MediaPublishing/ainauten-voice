@@ -31,5 +31,5 @@ Diese Fassung wird mit der App ausgeliefert. Sie enthält keine Diktate, Namen o
 - macOS 14 ist das Build-Ziel, getestet wurde bisher auf neueren Versionen.
 - Namen und Fachbegriffe können Fehler enthalten. Die Optimierung ersetzt keine inhaltliche Prüfung.
 - Die App ist lokal signiert, aber noch nicht von Apple notarisiert. Die lokale Signatur benötigt weiterhin eine Ausnahme für Bibliotheksvalidierung. Eine Apple-Developer-ID-Signatur steht aus.
-- Kompatibles Einfügen verwendet kurz die systemweite Zwischenablage. Unter Datenschutz lässt es sich ausschalten; nicht unterstützte Textfelder werden dann nicht automatisch befüllt.
+- Kompatibles Einfügen verwendet kurz die systemweite Zwischenablage. Die Option ist standardmäßig aus und lässt sich unter Datenschutz bewusst aktivieren; nicht unterstützte Textfelder werden dann nicht automatisch befüllt.
 - Lippenlesen ist im Release vorübergehend gesperrt, bis eine signierte und isolierte Laufzeit verfügbar ist. Mikrofondiktate sind davon nicht betroffen.

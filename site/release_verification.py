@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'native/scripts'))
-from distribution_security import verify_distribution_app, verify_ticket
+from distribution_security import verify_distribution_app, verify_ticket, verify_local_beta_app
 
 
 def require(condition, message):
@@ -38,9 +38,9 @@ def bundle_manifest(app):
     return result
 
 
-def verify_app(app):
+def verify_app(app, *, local_beta=False):
     require(app.is_dir() and not app.is_symlink(), 'regular app required')
-    verify_distribution_app(app)
+    (verify_local_beta_app if local_beta else verify_distribution_app)(app)
     fingerprint = (ROOT / 'native/Resources/release-signing-fingerprint.txt').read_text().strip()
     require(bool(re.fullmatch('[0-9A-F]{40}', fingerprint)), 'missing publisher pin')
     subprocess.run(['codesign', '--verify', '--deep', '--strict', '-R',
@@ -68,11 +68,11 @@ def verify_app(app):
     return info, bundle_manifest(app)
 
 
-def verify_release(app, dmg):
+def verify_release(app, dmg, *, local_beta=False):
     require(dmg.is_file() and not dmg.is_symlink(), 'regular installer required')
-    verify_ticket(dmg)
+    if not local_beta: verify_ticket(dmg)
     before = hashlib.sha256(dmg.read_bytes()).hexdigest()
-    info, reviewed = verify_app(app)
+    info, reviewed = verify_app(app, local_beta=local_beta)
     subprocess.run(['hdiutil', 'verify', str(dmg)], check=True, stdout=subprocess.DEVNULL)
     with tempfile.TemporaryDirectory(prefix='ainauten-installer-check-') as mount:
         attached = False
@@ -82,7 +82,7 @@ def verify_release(app, dmg):
             attached = True
             apps = list(Path(mount).glob('*.app'))
             require(len(apps) == 1 and apps[0].name == 'AInauten Voice.app', 'unexpected installer apps')
-            embedded, manifest = verify_app(apps[0])
+            embedded, manifest = verify_app(apps[0], local_beta=local_beta)
             require(embedded == info, 'installer metadata differs from reviewed app')
             require(manifest == reviewed, 'installer contents differ from reviewed signed app')
         finally:
@@ -90,13 +90,13 @@ def verify_release(app, dmg):
                 subprocess.run(['hdiutil', 'detach', mount], check=True, stdout=subprocess.DEVNULL)
     require(hashlib.sha256(dmg.read_bytes()).hexdigest() == before, 'installer changed during verification')
     return {'sha256': before, 'version': info['CFBundleShortVersionString'], 'build': info['CFBundleVersion'],
-            'entries': len(reviewed), 'signing': 'pinned-apple-developer-id', 'notarized': True}
+            'entries': len(reviewed), 'signing': 'pinned-local-beta' if local_beta else 'pinned-apple-developer-id', 'notarized': not local_beta}
 
 
-def verify_archive(app, archive):
+def verify_archive(app, archive, *, local_beta=False):
     """Extract only a bounded, path-safe signed archive and compare its app."""
     require(archive.is_file() and not archive.is_symlink(), 'regular update archive required')
-    info, reviewed = verify_app(app)
+    info, reviewed = verify_app(app, local_beta=local_beta)
     with zipfile.ZipFile(archive) as zipped:
         names = set()
         require(sum(item.file_size for item in zipped.infolist()) <= 300 * 1024 * 1024, 'expanded archive too large')
@@ -115,6 +115,6 @@ def verify_archive(app, archive):
     with tempfile.TemporaryDirectory(prefix='ainauten-update-check-') as directory:
         subprocess.run(['ditto', '-x', '-k', str(archive), directory], check=True)
         candidate = Path(directory) / app.name
-        embedded, actual = verify_app(candidate)
+        embedded, actual = verify_app(candidate, local_beta=local_beta)
         require(embedded == info and actual == reviewed, 'update contents differ from reviewed signed app')
     return {'entries': len(reviewed), 'matchesReviewedApp': True}

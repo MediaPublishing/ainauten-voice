@@ -82,3 +82,41 @@ def verify_distribution_app(app, *, notarized=True):
         run(['spctl', '--assess', '--type', 'execute', app])
     return {'signing': 'apple-developer-id', 'teamID': team,
             'libraryValidation': True, 'notarized': notarized, 'codeObjects': count}
+
+
+def verify_local_beta_app(app):
+    """Explicit non-notarized beta only; never substitutes for the Apple gate."""
+    app = Path(app)
+    require(app.is_dir() and not app.is_symlink(), 'regular beta app required')
+    info = plistlib.loads((app/'Contents/Info.plist').read_bytes())
+    require(info.get('AInautenDistributionMode') == 'local-beta', 'explicit local-beta marker required')
+    require(info.get('CFBundleIdentifier') == 'com.mediapublishing.VoiceWispr', 'wrong beta identity')
+    fingerprint = (Path(__file__).resolve().parents[1]/'Resources/release-signing-fingerprint.txt').read_text().strip()
+    require(re.fullmatch(r'[0-9A-F]{40}', fingerprint), 'reviewed publisher pin required')
+    run(['codesign', '--verify', '--deep', '--strict', app])
+    main = (app/'Contents/MacOS'/info['CFBundleExecutable']).resolve()
+    require(main.is_relative_to(app.resolve()), 'executable escapes beta bundle')
+    count = 0
+    paths = [app]
+    for path in sorted(app.rglob('*')):
+        if path.is_symlink():
+            require(path.resolve().is_relative_to(app.resolve()), 'beta link escapes app')
+        elif path.is_file():
+            with path.open('rb') as stream:
+                if stream.read(4) in MACHO:
+                    paths.append(path); count += 1
+    require(count > 0, 'no beta executable code found')
+    for path in paths:
+        run(['codesign', '--verify', '--strict', '-R', '=certificate leaf = H"'+fingerprint+'"', path])
+        metadata = run(['codesign', '-dv', '--verbose=4', path]).stderr.decode()
+        require('TeamIdentifier=not set' in metadata, 'local-beta must use the existing local identity')
+        require(re.search(r'^CodeDirectory .*flags=.*\bruntime\b', metadata, re.MULTILINE), 'beta hardened runtime missing')
+        payload = run(['codesign', '-d', '--entitlements', '-', '--xml', path]).stdout
+        entitlements = plistlib.loads(payload) if payload.strip() else {}
+        require(isinstance(entitlements, dict), 'invalid beta entitlements')
+        exceptions = FORBIDDEN - {'com.apple.security.cs.disable-library-validation'}
+        require(not any(entitlements.get(key) for key in exceptions), 'beta adds code-injection exception')
+        if path != app and path.resolve() != main:
+            require(not entitlements.get('com.apple.security.cs.disable-library-validation'), 'nested beta code disables library validation')
+    return {'signing':'pinned-local-beta', 'teamID':None, 'libraryValidation':False,
+            'notarized':False, 'codeObjects':count}

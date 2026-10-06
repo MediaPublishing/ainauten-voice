@@ -102,9 +102,10 @@ def main():
     previous.add_argument('--previous-feed', type=pathlib.Path, help='Previously published channel for monotonic-version verification')
     previous.add_argument('--bootstrap', action='store_true', help='First channel publication only')
     parser.add_argument('--release-notes', type=pathlib.Path, required=True)
+    parser.add_argument('--local-beta', action='store_true', help='Explicit pinned local beta; never an Apple-notarized release')
     args = parser.parse_args()
-    from distribution_security import verify_distribution_app
-    verify_distribution_app(args.app)
+    from distribution_security import verify_distribution_app, verify_local_beta_app
+    (verify_local_beta_app if args.local_beta else verify_distribution_app)(args.app)
     info = info_for(args.app)
     tools = ROOT/'.build/artifacts/sparkle/Sparkle/bin'
     # Public-key lookup only, in the explicitly named existing account.

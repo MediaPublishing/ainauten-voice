@@ -41,3 +41,11 @@ Installer und Update-Archiv für 0.1.10 (14) wurden erneut heruntergeladen und g
 Das tatsächliche Paket verwendet weiterhin die lokale Signatur ohne Apple-Team-ID, enthält `com.apple.security.cs.disable-library-validation = true` und hat weder ein angeheftetes App- noch DMG-Notarisierungsticket. Der veröffentlichte Quellstand enthält weiterhin die eingeschaltete Zwischenablage-Voreinstellung. Eine neue Veröffentlichung bleibt deshalb gesperrt, bis die Apple-Voraussetzungen erfüllt sind.
 
 Der Release-Prüfer fordert die Entitlements jetzt ausdrücklich als XML an; aktuelle macOS-Versionen liefern sonst eine Textdarstellung, die kein Property List Parser lesen kann. Zwölf gezielte Regressionstests prüfen diesen Pfad einschließlich des echten lokalen Bundles. Für den vorherigen Sicherheitscommit waren keine GitHub-Check-Runs oder Commit-Statusmeldungen vorhanden; ein erfolgreicher lokaler Test ist kein CI-Nachweis.
+
+## Freigegebenes Zwischenrelease 0.1.11 (15)
+
+Auf ausdrücklichen Betreiberauftrag wird die nicht notarisierte Beta weitergeführt, während die Apple-Einrichtung aussteht. Dafür ist `--local-beta` in Paket-, Update- und Website-Build ausdrücklich erforderlich. Das Bundle trägt den signierten Modus `local-beta`. Der getrennte Apple-Verteilungsweg und seine Prüfungen bleiben unverändert streng. Ad-hoc-, Debug- und Entwicklungsbuilds sind keine Beta-Releases.
+
+Die Beta prüft weiterhin den vorhandenen Publisher-Fingerprint, alle tatsächlichen Mach-O-Dateien, Hardened Runtime, Bundle-Identität und interne Links. Nur die bestehende Bibliotheksvalidierungs-Ausnahme des Hauptprogramms ist erlaubt; weitere Code-Injection-Ausnahmen und solche Ausnahmen in verschachtelten Komponenten werden abgewiesen. Dieser Paketnachweis verhindert keine Code-Injection zur Laufzeit und ersetzt keine aktive Apple-Bibliotheksvalidierung.
+
+Die automatische Zwischenablage-Nutzung ist im ausgelieferten Quellstand standardmäßig aus. Eine vorher ausdrücklich gespeicherte Aktivierung bleibt erhalten. Bibliotheksvalidierung und Apple-Notarisierung bleiben in diesem Zwischenrelease offen; Website, README, Nutzerprüfbericht und Release-Hinweise benennen dies.

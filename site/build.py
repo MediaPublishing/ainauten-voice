@@ -22,6 +22,7 @@ input_group.add_argument('--existing-site', type=Path, help='Refresh only fronte
 parser.add_argument('--promo-video', type=Path, help='User-provided original MP4; never copied into Git')
 parser.add_argument('--updates', type=Path, help='Signed update directory prepared by native/scripts/package-update.py')
 parser.add_argument('--github-release', action='store_true', help='Host assets exceeding the Pages limit in the matching public GitHub release')
+parser.add_argument('--local-beta', action='store_true', help='Explicit non-notarized pinned beta; preserve Apple default gates')
 args = parser.parse_args()
 subprocess.run(['node', str(root / 'scripts/build-shell.mjs')], cwd=root, check=True)
 subprocess.run(['node', str(root / 'scripts/check-shell.mjs')], cwd=root, check=True)
@@ -39,7 +40,7 @@ require(dmg.is_file(), 'Release DMG missing')
 asset_limit = 25 * 1024 * 1024
 require(info['CFBundleIdentifier'] == 'com.mediapublishing.VoiceWispr', 'invalid release input')
 from release_verification import verify_release, verify_archive
-verified_release = verify_release(app, dmg)
+verified_release = verify_release(app, dmg, local_beta=args.local_beta)
 dmg_data = dmg.read_bytes()
 require(hashlib.sha256(dmg_data).hexdigest() == verified_release['sha256'], 'Installer changed after verification')
 require(verified_release['version'] == version and verified_release['build'] == info['CFBundleVersion'], 'Reviewed app metadata changed')
@@ -67,7 +68,7 @@ if args.updates:
             captured = Path(saved)
             for name, data in update_assets.items(): (captured/name).write_bytes(data)
             updater.verify_signatures(captured, app)
-            verify_archive(app, captured/update_receipt['filename'])
+            verify_archive(app, captured/update_receipt['filename'], local_beta=args.local_beta)
 dist = root / 'dist'
 if dist.exists():
     archived = root.parent / 'native/artifacts' / ('site-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
@@ -122,7 +123,7 @@ html = index.read_text()
 if "{{DOWNLOAD_SHA256}}" in html:
     index.write_text(html.replace("{{DOWNLOAD_SHA256}}", digest))
 (downloads / 'SHA256SUMS.txt').write_text(f'{digest}  {dmg.name}\n')
-(downloads / 'release.json').write_text(json.dumps({'name': 'AInauten Voice', 'version': version, 'build': int(info['CFBundleVersion']), 'updaterIncluded': bool(info.get('SUPublicEDKey') and (app/'Contents/Frameworks/Sparkle.framework').exists()), 'automaticUpdatesByDefault': bool(info.get('SUEnableAutomaticChecks') and info.get('SUAutomaticallyUpdate')), 'reportDeliveryEnabled': info.get('AInautenReportDeliveryEnabled') is True, 'architecture': 'arm64', 'sha256': digest, 'filename': dmg.name, 'size': len(dmg_data), 'notarized': False}, indent=2) + '\n')
+(downloads / 'release.json').write_text(json.dumps({'name': 'AInauten Voice', 'version': version, 'build': int(info['CFBundleVersion']), 'updaterIncluded': bool(info.get('SUPublicEDKey') and (app/'Contents/Frameworks/Sparkle.framework').exists()), 'automaticUpdatesByDefault': bool(info.get('SUEnableAutomaticChecks') and info.get('SUAutomaticallyUpdate')), 'reportDeliveryEnabled': info.get('AInautenReportDeliveryEnabled') is True, 'architecture': 'arm64', 'sha256': digest, 'filename': dmg.name, 'size': len(dmg_data), 'notarized': verified_release['notarized'], 'signing': verified_release['signing'], 'clipboardCompatibilityByDefault': False}, indent=2) + '\n')
 print(f'RELEASE {version} {len(dmg_data)} bytes SHA256 {digest}')
 print(f'PROMO {video.stat().st_size} bytes SHA256 {video_digest}')
 if args.updates:
