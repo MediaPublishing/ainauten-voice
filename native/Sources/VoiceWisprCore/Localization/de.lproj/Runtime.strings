@@ -36,8 +36,11 @@
 "menu.settings" = "Einstellungen …";
 "menu.checkUpdates" = "Nach Updates suchen …";
 "menu.report" = "Fehler melden …";
+"menu.hide" = "AInauten Voice ausblenden";
 "menu.quit" = "AInauten Voice beenden";
 "menu.file" = "Ablage";
+"menu.window" = "Fenster";
+"window.minimize" = "Minimieren";
 "menu.edit" = "Bearbeiten";
 "menu.undo" = "Rückgängig";
 "menu.cut" = "Ausschneiden";
