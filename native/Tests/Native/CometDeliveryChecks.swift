@@ -164,7 +164,7 @@ import VoiceWisprCore
         var beforeDeliveryRange = CFRange(location: -1, length: -1)
         if let rawRange = attribute(ready.element, kAXSelectedTextRangeAttribute), CFGetTypeID(rawRange) == AXValueGetTypeID() { _ = AXValueGetValue(rawRange as! AXValue, .cfRange, &beforeDeliveryRange) }
         let started = ContinuousClock.now
-        let outcome = await DeliveryCoordinator().deliver(text: insertion, to: ready)
+        let outcome = await DeliveryCoordinator().deliver(text: insertion, to: ready, allowClipboard: true)
         let postPasteModifiers = CGEventSource.flagsState(.hidSystemState).rawValue
         let duration = started.duration(to: .now).components
         let expected = mode == "focus" ? ready.baseline : (ready.baseline as NSString).replacingCharacters(in: selected, with: insertion)

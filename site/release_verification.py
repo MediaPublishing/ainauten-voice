@@ -4,6 +4,7 @@ The fingerprint is public; no private signing material is read here. Local
 signing is explicitly not Apple Developer ID signing or notarization.
 """
 import hashlib
+import sys
 import plistlib
 import re
 import subprocess
@@ -13,6 +14,8 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT/'native/scripts'))
+from distribution_security import verify_distribution_app, verify_ticket
 
 
 def require(condition, message):
@@ -37,6 +40,7 @@ def bundle_manifest(app):
 
 def verify_app(app):
     require(app.is_dir() and not app.is_symlink(), 'regular app required')
+    verify_distribution_app(app)
     fingerprint = (ROOT / 'native/Resources/release-signing-fingerprint.txt').read_text().strip()
     require(bool(re.fullmatch('[0-9A-F]{40}', fingerprint)), 'missing publisher pin')
     subprocess.run(['codesign', '--verify', '--deep', '--strict', '-R',
@@ -66,6 +70,7 @@ def verify_app(app):
 
 def verify_release(app, dmg):
     require(dmg.is_file() and not dmg.is_symlink(), 'regular installer required')
+    verify_ticket(dmg)
     before = hashlib.sha256(dmg.read_bytes()).hexdigest()
     info, reviewed = verify_app(app)
     subprocess.run(['hdiutil', 'verify', str(dmg)], check=True, stdout=subprocess.DEVNULL)
@@ -85,7 +90,7 @@ def verify_release(app, dmg):
                 subprocess.run(['hdiutil', 'detach', mount], check=True, stdout=subprocess.DEVNULL)
     require(hashlib.sha256(dmg.read_bytes()).hexdigest() == before, 'installer changed during verification')
     return {'sha256': before, 'version': info['CFBundleShortVersionString'], 'build': info['CFBundleVersion'],
-            'entries': len(reviewed), 'signing': 'pinned-local-certificate', 'notarized': False}
+            'entries': len(reviewed), 'signing': 'pinned-apple-developer-id', 'notarized': True}
 
 
 def verify_archive(app, archive):

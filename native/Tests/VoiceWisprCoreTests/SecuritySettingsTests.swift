@@ -4,6 +4,17 @@ import Darwin
 @testable import VoiceWisprCore
 
 final class SecuritySettingsTests: XCTestCase {
+    func testClipboardRequiresExplicitOptInForNewAndLegacySettings() throws {
+        XCTAssertFalse(Settings().usesClipboardForInsertion)
+        let legacy = try JSONDecoder().decode(Settings.self, from: JSONEncoder().encode(Settings()))
+        XCTAssertNil(legacy.clipboardCompatibility)
+        XCTAssertFalse(legacy.usesClipboardForInsertion)
+        var optedIn = Settings(); optedIn.clipboardCompatibility = true
+        let restored = try JSONDecoder().decode(Settings.self, from: JSONEncoder().encode(optedIn))
+        XCTAssertTrue(restored.usesClipboardForInsertion)
+        optedIn.clipboardCompatibility = false
+        XCTAssertFalse(optedIn.usesClipboardForInsertion)
+    }
     private func directory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("voice-security-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

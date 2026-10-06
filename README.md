@@ -67,3 +67,7 @@ Der Quellcode ist öffentlich einsehbar. Für den eigenen App-Code wurde bislang
 Entwickelt von [AInauten](https://www.ainauten.com/). AInauten Voice ist ein eigenständiges Projekt ohne Verbindung zu Wispr. Wispr Flow ist eine Marke ihres Inhabers.
 
 Fehler und Ideen: [Issue anlegen](https://github.com/MediaPublishing/ainauten-voice/issues/new/choose). Sicherheitslücken bitte [privat melden](https://github.com/MediaPublishing/ainauten-voice/security/advisories/new).
+
+### Sicherheitsänderungen im Quellcode
+
+Der öffentliche Download **0.1.10 (14)** ist weiterhin lokal signiert, nicht Apple-notarisiert und verwendet für kompatibles Einfügen standardmäßig kurz die systemweite Zwischenablage. Die aktualisierte Quelle schaltet diese automatische Nutzung standardmäßig aus; nur eine ausdrückliche Freigabe aktiviert sie. Neue öffentliche Releases sind ohne Apple Developer ID, aktive Bibliotheksvalidierung und geprüfte Notarisierung gesperrt. Diese Änderungen sind noch kein ausgeliefertes App-Update. [Details und offene Apple-Einrichtung](native/docs/security-followup-2026-10-06.md).

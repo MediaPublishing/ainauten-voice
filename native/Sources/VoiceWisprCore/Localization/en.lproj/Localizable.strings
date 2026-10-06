@@ -143,7 +143,7 @@
 "practice.waitForModels" = "You can try dictation once the models have loaded.";
 "privacy.audio" = "Audio is processed in memory and released after dictation. Diagnostic messages do not contain dictations.";
 "privacy.clipboard" = "Use clipboard for compatible insertion";
-"privacy.clipboardDetail" = "During insertion, your text briefly enters the system clipboard, where other local apps can read it. When off, insertion only uses Accessibility; text for unsupported fields remains available in the app.";
+"privacy.clipboardDetail" = "Off by default. Only enabling this option briefly places inserted text on the system clipboard, where other local apps can read it. Without this opt-in, insertion uses Accessibility directly; text for unsupported fields remains in the app. You can transfer it yourself with Copy.";
 "privacy.clipboardHelp" = "Previous clipboard content is saved and restored. Anything you copy takes priority. Uncertain results are never inserted again automatically.";
 "privacy.cloud" = "Cloud optimization is optional and only sends text to your chosen endpoint. Credentials are stored in macOS Keychain.";
 "privacy.exportHistory" = "Export history…";

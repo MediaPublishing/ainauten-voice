@@ -26,7 +26,7 @@ python3 scripts/check-download-transport.py  # echte Downloads kleiner Loopback-
 python3 scripts/check-cloud-transport.py  # optionale Text-Cloud gegen lokalen Mockserver
 python3 scripts/check-paragraph-quality.py  # vorhandenes lokales Qwen-Modell, Textfälle ohne Mikrofon/ASR
 python3 scripts/check-textedit-delivery.py --include-fullscreen  # eigene TextEdit-Dokumente, bestehende AX-Freigabe
-python3 scripts/package.py --install
+python3 scripts/package.py --development --install
 swift run -c release VoiceWisprProbe format-cases docs/fixtures/formatting-contracts.json
 python3 scripts/human-fixtures.py  # öffentliche CC-BY-4.0-Sprachaufnahmen
 swift run -c release VoiceWisprProbe suite artifacts/fixtures/fleurs/manifest.json 3 --styles=original,cleaned,email,chat
@@ -78,3 +78,7 @@ Die Echtzeit-Probe liefert 100ms-Blöcke erst nach ihrem Aufnahmeende; die letzt
 `python3 scripts/check-window-visibility.py --stage foreground --output-dir artifacts/receipts/window-foreground` beobachtet drei Sekunden lang alle vom WindowServer gemeldeten Fenster der bereits laufenden App unter `/Applications/AInauten Voice.app`. Die Einstellungen müssen zuvor im Vordergrund geöffnet sein. Für `--stage background` muss eine andere App im Vordergrund sein, während das Einstellungsfenster auf demselben Bildschirm sichtbar bleibt. Für `--stage closed` müssen die Einstellungen geschlossen und eine andere App aktiv sein. Verwende je Zustand einen eigenen Ausgabeordner.
 
 Der Prüfer aktiviert oder startet keine App und liest keine Diktate, Zwischenablage oder Einstellungen. Er benötigt keine Modelle und fordert keine Berechtigungen an. Rohdaten und auch fehlgeschlagene Vorbereitungen bleiben erhalten. Ein positives Ergebnis betrifft nur den beobachteten Zustand; es belegt keinen abgeschlossenen Diktiervorgang, keine weiteren Spaces oder Displays und keine Latenzabnahme.
+
+## Sicherheitsänderungen für den nächsten Kandidaten
+
+Der veröffentlichte Build 0.1.10 (14) ist weiterhin lokal signiert und nicht notarisiert. Neue öffentliche Pakete benötigen jetzt eine bestehende Apple Developer ID Application sowie `--notary-profile`; lokale Tests benötigen ausdrücklich `--development`. Automatische Zwischenablage-Nutzung ist im aktuellen Quellcode standardmäßig aus und erfordert Opt-in. Details und noch offene Apple-Einrichtung: [Sicherheitsnachprüfung](docs/security-followup-2026-10-06.md).

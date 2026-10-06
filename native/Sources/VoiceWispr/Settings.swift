@@ -525,7 +525,7 @@ struct SettingsView: View {
             Text(L10n.text("privacy.historyHelp")).font(.system(size: 12)).foregroundStyle(.secondary)
             HStack { Button(L10n.text("privacy.exportHistory")) { model.exportHistory() }; Button(L10n.text("privacy.resetHistory")) { model.resetHistory() }.disabled(model.state == .recording || model.state == .processing || model.isUIPreview) }
             if !model.historyNotice.isEmpty { Text(model.historyNotice).font(.system(size: 12)).foregroundStyle(.secondary) }
-            Toggle(L10n.text("privacy.clipboard"), isOn: Binding(get: { model.document.settings.clipboardCompatibility ?? true }, set: { model.document.settings.clipboardCompatibility = $0 }))
+            Toggle(L10n.text("privacy.clipboard"), isOn: Binding(get: { model.document.settings.usesClipboardForInsertion }, set: { model.document.settings.clipboardCompatibility = $0 }))
                 .help(L10n.text("privacy.clipboardHelp"))
             Text(L10n.text("privacy.clipboardDetail")).font(.system(size: 12)).foregroundStyle(.secondary)
             Text(L10n.text("privacy.cloud"))

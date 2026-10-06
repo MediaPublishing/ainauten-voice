@@ -284,7 +284,7 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         guard targetReadable && !secure && focusUnchanged else { return DeliveryOutcome(.notAttempted, reason: "Ziel nicht sicher verifizierbar; Text steht zur Wiederherstellung bereit.") }
         return DeliveryOutcome(.uncertain, reason: "Ziel geprüft; Zustellung muss noch bestätigt werden.")
     }
-    public func deliver(text: String, to target: FocusSnapshot?, allowClipboard: Bool = true) async -> DeliveryOutcome {
+    public func deliver(text: String, to target: FocusSnapshot?, allowClipboard: Bool = false) async -> DeliveryOutcome {
         guard !Task.isCancelled else { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
         guard !text.isEmpty, let target, target.isUnchanged() else {
             return DeliveryOutcome(.notAttempted, reason: "Fokus, Auswahl oder Textfeld haben sich verändert. Text aus dem Wiederherstellungsfenster verwenden.")
