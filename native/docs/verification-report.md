@@ -10,6 +10,7 @@ Der Download enthält den separat signierten Sparkle-Updater, Hilfe, einen aktiv
 
 ## Nachweise
 
+- Der aktuelle Quellstand sperrt auch den direkten Lippenlese-Installer im Release. Drei gezielte native Release-Prüfungen bestanden; der alte Installer scheitert nachweislich am neuen Test. Die ungeprüften Forschungs-Abhängigkeiten sind damit nicht aktualisiert oder sicherheitsqualifiziert. Der Fix ist noch nicht im Download enthalten.
 - Im aktuellen Quellstand bestätigt die Zwischenablage-Wiederherstellung erst eine zusätzliche Prüfung aller ursprünglichen Datenformate und Einträge. **20 gezielte native Vertragsfälle ohne Fehler**, mit separaten AppKit-Testzwischenablagen und unabhängiger Gegenprüfung. Dieser Fix ist noch nicht im Download 0.1.9, Build 13 enthalten; keine Mikrofon- oder vollständige App-Abnahme daraus abgeleitet.
 - Für die letzte Oberflächenänderung wurden **97 gezielt ausgewählte portable Vertragsfälle ohne Fehler** ausgeführt. Das sind ausgewählte Prüfungen, kein vollständiger Apple-XCTest-Lauf und keine Gesamtabnahme.
 - Der native Release-Build, die eingebetteten Sprachressourcen, der direkte Oberflächensprachwechsel und die Speicherung der Sprachwahl über einen Neustart wurden geprüft. Diktatsprachen und vorhandene Einstellungen blieben erhalten.
