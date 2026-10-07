@@ -38,6 +38,7 @@ public final class DictationGestureMachine {
         return nil
     }
     var awaitingSecondTap: Bool { firstTap != nil }
+    var isHoldRecording: Bool { recording && controller.activeMode == .hold }
     public func reset() { controller.reset(); recording = false; downAt = nil; firstTap = nil }
     public func beginHandsFree() { reset(); controller.forceToggleMode(); _ = controller.handle(event: .toggleDeactivated, isTranscribing: false); recording = true }
     public func toggleHandsFree() -> DictationGesture {
@@ -58,6 +59,7 @@ public final class DictationGestureMachine {
     private var matched: Shortcut?
     private var chordDeadline: TimeInterval?
     private var previousFlags: UInt64 = 0
+    private static let flagMask: UInt64 = (1 << 17) | (1 << 18) | (1 << 19) | (1 << 20) | (1 << 23)
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var expiry: Timer?
@@ -113,10 +115,13 @@ public final class DictationGestureMachine {
         if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
     }
     func handle(_ type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput { if let tap { CGEvent.tapEnable(tap: tap, enable: true) }; return Unmanaged.passUnretained(event) }
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            recoverAfterTapTimeout()
+            if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
+            return Unmanaged.passUnretained(event)
+        }
         let code = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
-        let flagMask: UInt64 = (1 << 17) | (1 << 18) | (1 << 19) | (1 << 20) | (1 << 23)
-        let flags = event.flags.rawValue & flagMask
+        let flags = event.flags.rawValue & Self.flagMask
         let previous = previousFlags
         if type == .flagsChanged { previousFlags = flags }
         func activated(_ shortcut: Shortcut) -> Bool {
@@ -160,6 +165,14 @@ public final class DictationGestureMachine {
             return held.keyCode == nil ? Unmanaged.passUnretained(event) : nil
         }
         return Unmanaged.passUnretained(event)
+    }
+    /// A disabled tap may miss release events. Finish a released hold without losing its audio.
+    func recoverAfterTapTimeout(flags: CGEventFlags = CGEventSource.flagsState(.combinedSessionState),
+                               keyIsDown: (UInt16) -> Bool = { CGEventSource.keyState(.combinedSessionState, key: $0) }) {
+        guard enabled, machine.isHoldRecording, let held = matched else { return }
+        let heldNow = held.keyCode.map(keyIsDown) ?? (flags.rawValue & Self.flagMask == held.modifiers)
+        guard !heldNow else { return }
+        reset(); onGesture?(.stop)
     }
     public func reset() { machine.reset(); matched = nil; previousFlags = 0 }
     public func beginHandsFree() { matched = nil; machine.beginHandsFree() }

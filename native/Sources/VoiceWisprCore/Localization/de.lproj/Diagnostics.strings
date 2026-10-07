@@ -5,6 +5,7 @@
 "capture.convertFailed" = "Audio konnte nicht auf 16 kHz umgerechnet werden";
 "capture.limit" = "Das maximale Diktat von 20 Minuten wurde erreicht";
 "capture.deviceChanged" = "Mikrofon wurde geändert. Das bisherige Diktat wird abgeschlossen.";
+"capture.startTimedOut" = "Das Mikrofon liefert kein Audio. Prüfe das Eingabegerät und starte das Diktat erneut.";
 "capture.recordingAX" = "Aufnahme läuft";
 "camera.permission" = "Bitte erlaube die Kamera für die Lippenlesen-Beta.";
 "camera.running" = "Eine Kameraaufnahme läuft bereits.";

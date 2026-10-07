@@ -856,7 +856,8 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         errorMessage = nil
         if practice { practiceFeedback.begin(id) }
         practiceStopper = PracticeSession()
-        focus = practice ? nil : FocusSnapshot.capture(); pill?.position()
+        let targetPID = practice ? nil : NSWorkspace.shared.frontmostApplication?.processIdentifier
+        focus = nil
         state = .recording; hotkey.cancellationEnabled = !practice && accessibilityGranted; level = 0; elapsed = 0; captureReady = false; captureStartupMilliseconds = nil
         updateLipHotkey()
         #if DEBUG
@@ -865,12 +866,16 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             traceRecoveryPreview("recording"); return
         }
         #endif
-        let style = document.settings.style(for: focus?.bundleID)
-        historyContext = HistoryCaptureContext(date: Date(), style: style, bundleID: focus?.bundleID,
-            appName: focus.flatMap { NSRunningApplication(processIdentifier: $0.pid)?.localizedName }, enabled: document.settings.historyEnabled ?? true)
         let dictionary = document.dictionary
         operation = Task {
             do {
+                guard sessionID == id, !Task.isCancelled else { return }
+                // Keep synchronous AX queries outside the event-tap callback.
+                if let targetPID { focus = FocusSnapshot.capture(expectedPID: targetPID) }
+                pill?.position()
+                let style = document.settings.style(for: focus?.bundleID)
+                historyContext = HistoryCaptureContext(date: Date(), style: style, bundleID: focus?.bundleID,
+                    appName: focus.flatMap { NSRunningApplication(processIdentifier: $0.pid)?.localizedName }, enabled: document.settings.historyEnabled ?? true)
                 let selectedFormatter: any TextFormatting
                 if document.settings.cloudEnabled && style != .original {
                     guard let endpoint = URL(string: document.settings.cloudEndpoint) else { throw VoiceError.message("Ungültige Cloud-Adresse") }
@@ -878,7 +883,11 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                     selectedFormatter = CloudFormatter(endpoint: endpoint, model: document.settings.cloudModel, key: key)
                 } else { selectedFormatter = formatter }
                 let pipeline = ProcessingPipeline(speech: speech, formatter: selectedFormatter); self.pipeline = pipeline
-                guard sessionID == id, state == .recording else { return }
+                // An immediate release still needs pipeline initialization so Stop can finish.
+                if state != .recording {
+                    try await pipeline.start(sessionID: id, style: style, dictionary: dictionary)
+                    return
+                }
                 #if DEBUG
                 if practice && practiceFixture != nil {
                     try await pipeline.start(sessionID: id, style: style, dictionary: dictionary)
