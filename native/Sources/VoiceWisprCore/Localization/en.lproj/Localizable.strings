@@ -216,8 +216,7 @@
 "switch.title" = "Switch from Wispr Flow to AInauten Voice";
 "window.close" = "Close window";
 "settings.interfaceLanguage" = "Interface language";
+"settings.menuBarOnly" = "Show only in the menu bar";
 "settings.interfaceLanguage.system" = "Automatic (system language)";
 "settings.interfaceLanguage.help" = "Changes only the interface. Your dictation languages stay the same.";
 "settings.interfaceLanguage.saveFailed" = "The interface language could not be saved. Your previous choice is still active.";
-
-"settings.menuBarOnly" = "Show only in the menu bar";

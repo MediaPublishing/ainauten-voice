@@ -36,6 +36,7 @@
 "menu.settings" = "Settings …";
 "menu.checkUpdates" = "Check for Updates …";
 "menu.report" = "Report an Issue …";
+"menu.hide" = "Hide AInauten Voice";
 "menu.quit" = "Quit AInauten Voice";
 "menu.file" = "File";
 "menu.edit" = "Edit";

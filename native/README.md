@@ -14,7 +14,7 @@ Vor dem DMG-Bau werden die Bibliothekspfade des arm64-Laufzeitprogramms und sein
 
 ## Menüleiste und Dock
 
-Unter **Diktieren → Nur in der Menüleiste anzeigen** lässt sich das Dock-Symbol sofort ausblenden. Die Auswahl bleibt nach einem Neustart erhalten. Einstellungen sind weiterhin über das Menüleistensymbol erreichbar; bestehende Profile zeigen das Dock-Symbol, bis die Option eingeschaltet wird.
+Unter **Diktieren → Nur in der Menüleiste anzeigen** lässt sich das Dock-Symbol sofort ausblenden. Die Auswahl bleibt nach einem Neustart erhalten. Einstellungen sind weiterhin über das Menüleistensymbol erreichbar; bestehende Profile zeigen das Dock-Symbol, bis die Option eingeschaltet wird. Cmd+H schließt im Menüleistenmodus das aktive Fenster. Mit Dock-Symbol blendet Cmd+H die App aus.
 
 ## Entwickeln
 
