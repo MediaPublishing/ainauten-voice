@@ -30,7 +30,7 @@
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
-	<false/>
+	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Die optionale Lippenlesen-Beta nutzt deine Kamera nur während einer bewusst gestarteten Aufnahme. Bilder werden lokal verarbeitet und nicht dauerhaft gespeichert.</string>
 	<key>NSHighResolutionCapable</key>
