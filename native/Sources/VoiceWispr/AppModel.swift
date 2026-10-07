@@ -185,7 +185,10 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
 
 @MainActor final class AppModel: NSObject, ObservableObject, NSWindowDelegate, NSApplicationDelegate {
     let reports = ErrorReportController()
-    @Published var document = ExportDocument() { didSet { scheduleSave(); updateHotkey() } }
+    @Published var document = ExportDocument() { didSet {
+        scheduleSave(); updateHotkey()
+        if document.settings.menuBarOnly != oldValue.settings.menuBarOnly { updateActivationPolicy() }
+    } }
     @Published var state: PillState = .loading { didSet { updatePillVisibility(); if state != oldValue { announceState() } } }
     @Published private var statusMessage: LocalizedMessage = .key("status.setup", [])
     var status: String {
@@ -452,6 +455,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         }
         lipHotkey.onFailure = { [weak self] message in self?.lipStatus = message }
         if let preview {
+            updateActivationPolicy()
             #if DEBUG
             if ["overview", "history", "statistics", "dictionary", "updates", "beta", "help"].contains(preview) {
                 loadHistoryPreview(empty: CommandLine.arguments.contains("--preview-empty"))
@@ -558,6 +562,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                     if let endpoint = URL(string: document.settings.cloudEndpoint), (try? CloudRecipient.isApproved(endpoint)) == true {} else { document.settings.cloudEnabled = false }
                 }
             } catch { errorMessage = "Einstellungen konnten nicht geladen werden: \(error.localizedDescription)"; reports.record(component: .settings, code: .settingsLoadFailed) }
+            updateActivationPolicy()
             loading = false
             wisprInstalled = WisprSwitch.installedURL != nil
             refreshImportPreview()
@@ -583,6 +588,10 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             Task { @MainActor in WebAccessibility.enable(for: app) }
         }
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.pill?.position() } }
+    }
+    private func updateActivationPolicy() {
+        let policy: NSApplication.ActivationPolicy = document.settings.menuBarOnly == true ? .accessory : .regular
+        if NSApp.activationPolicy() != policy { NSApp.setActivationPolicy(policy) }
     }
     private var interfaceLanguageObserver: NSObjectProtocol?
     private func interfaceLanguageChanged() {

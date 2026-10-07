@@ -219,3 +219,5 @@
 "settings.interfaceLanguage.system" = "Automatic (system language)";
 "settings.interfaceLanguage.help" = "Changes only the interface. Your dictation languages stay the same.";
 "settings.interfaceLanguage.saveFailed" = "The interface language could not be saved. Your previous choice is still active.";
+
+"settings.menuBarOnly" = "Show only in the menu bar";

@@ -20,6 +20,22 @@ final class SecuritySettingsTests: XCTestCase {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }
+    func testMenuBarOnlyPreservesLegacyDefaultAndSurvivesSave() async throws {
+        let legacy = try JSONDecoder().decode(Settings.self, from: JSONEncoder().encode(Settings()))
+        XCTAssertNil(legacy.menuBarOnly)
+        let root = try directory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = SettingsStore(url: root.appendingPathComponent("settings.json"))
+        for enabled in [true, false] {
+            var document = ExportDocument(settings: legacy)
+            document.settings.menuBarOnly = enabled
+            try await store.save(document)
+            let restored = try await store.load()
+            XCTAssertEqual(restored.settings.menuBarOnly, enabled)
+            XCTAssertEqual(restored.settings.shortcut, legacy.shortcut)
+            XCTAssertEqual(restored.settings.languages, legacy.languages)
+        }
+    }
     func testBoundedLoaderRejectsSparseOversizedFilesLinksAndPipes() throws {
         let root = try directory(), large = root.appendingPathComponent("large.json")
         FileManager.default.createFile(atPath: large.path, contents: Data())

@@ -86,6 +86,8 @@ public struct Settings: Codable, Equatable, Sendable {
     /// Only an explicit opt-in may expose automatic dictation to the system clipboard.
     public var clipboardCompatibility: Bool?
     public var usesClipboardForInsertion: Bool { clipboardCompatibility == true }
+    /// Older profiles retain their Dock icon until this option is enabled.
+    public var menuBarOnly: Bool?
     public var cloudEnabled = false
     public var cloudEndpoint = "https://api.openai.com/v1"
     public var cloudModel = "gpt-4.1-mini"

@@ -219,3 +219,5 @@
 "settings.interfaceLanguage.system" = "Automatisch (Systemsprache)";
 "settings.interfaceLanguage.help" = "Ändert nur die Oberfläche. Deine Diktatsprachen bleiben erhalten.";
 "settings.interfaceLanguage.saveFailed" = "Die Oberflächensprache konnte nicht gespeichert werden. Die bisherige Auswahl bleibt erhalten.";
+
+"settings.menuBarOnly" = "Nur in der Menüleiste anzeigen";
