@@ -56,6 +56,8 @@ public final class DictationGestureMachine {
     public var enabled = false { didSet { if !enabled && oldValue { machine.reset(); matched = nil; previousFlags = 0 } } }
     private let machine = DictationGestureMachine()
     private var matched: Shortcut?
+    // Consume captured hold keys until key-up, including after Stop or cancellation.
+    private var capturedHoldKeys: Set<UInt16> = []
     private var chordDeadline: TimeInterval?
     private var previousFlags: UInt64 = 0
     private var tap: CFMachPort?
@@ -105,7 +107,7 @@ public final class DictationGestureMachine {
         expiry?.invalidate(); expiry = nil
         if let tap { CGEvent.tapEnable(tap: tap, enable: false); CFMachPortInvalidate(tap) }
         if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
-        source = nil; tap = nil; reset()
+        source = nil; tap = nil; reset(); capturedHoldKeys.removeAll()
     }
     deinit {
         expiry?.invalidate()
@@ -123,7 +125,15 @@ public final class DictationGestureMachine {
             if let key = shortcut.keyCode { return type == .keyDown && code == key && flags == shortcut.modifiers && event.getIntegerValueField(.keyboardEventAutorepeat) == 0 }
             return type == .flagsChanged && flags == shortcut.modifiers && previous != flags
         }
+        func releaseModifiers(for shortcut: Shortcut) -> UInt64 {
+            let holdMask: UInt64 = (1 << 18) | (1 << 19) | (1 << 20)
+            return shortcut.keyCode != nil && shortcut.modifiers & holdMask != 0 ? shortcut.modifiers : 0
+        }
         if cancellationEnabled && (type == .keyDown && code == 53 || bindings.cancel.contains(where: activated)) { reset(); onGesture?(.cancel); return nil }
+        if capturedHoldKeys.contains(code) {
+            if type == .keyUp { capturedHoldKeys.remove(code); return nil }
+            if type == .keyDown, event.getIntegerValueField(.keyboardEventAutorepeat) != 0 { return nil }
+        }
         guard enabled else { return Unmanaged.passUnretained(event) }
         let time = ProcessInfo.processInfo.systemUptime
         if bindings.copyLast.contains(where: activated) { onGesture?(.copyLast); return nil }
@@ -136,14 +146,19 @@ public final class DictationGestureMachine {
         // A keyed hands-free combination can extend an active modifier-only hold.
         // Releasing its Fn/modifier must not turn it back into a hold-to-stop session.
         if let held = matched {
-            let released = held.keyCode.map { type == .keyUp && code == $0 } ?? (type == .flagsChanged && flags != held.modifiers)
+            let modifiers = releaseModifiers(for: held)
+            let released = modifiers != 0 ? type == .flagsChanged && flags & modifiers == 0 :
+                held.keyCode.map { type == .keyUp && code == $0 } ?? (type == .flagsChanged && flags != held.modifiers)
             if released {
                 matched = nil; if let a = machine.up(at: time) { onGesture?(a) }
                 if machine.awaitingSecondTap { startExpiryTimer() }
-                return held.keyCode == nil ? Unmanaged.passUnretained(event) : nil
+                return held.keyCode == nil || modifiers != 0 ? Unmanaged.passUnretained(event) : nil
             }
             // Autorepeat of the held key belongs to the shortcut, not to the target app.
-            if let key = held.keyCode, type == .keyDown, code == key { return nil }
+            if let key = held.keyCode, type == .keyDown, code == key {
+                if modifiers != 0 { capturedHoldKeys.insert(key) }
+                return nil
+            }
             // Ctrl+Shift+Tab, Fn+Delete: the held modifiers began another app's shortcut.
             // Discard that fresh session and pass the key on unchanged. Later keys never
             // discard, so a stray key cannot cost a long dictation.
@@ -154,6 +169,7 @@ public final class DictationGestureMachine {
             }
         }
         if let held = ([shortcut] + bindings.holdExtras).first(where: activated) {
+            if releaseModifiers(for: held) != 0, let key = held.keyCode { capturedHoldKeys.insert(key) }
             matched = held; let action = machine.down(at: time)
             chordDeadline = held.keyCode == nil && action == .start ? time + 0.5 : nil
             if let action { onGesture?(action) }
