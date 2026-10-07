@@ -107,6 +107,8 @@ public enum DeliveryVerification {
     static func fullRangeText(_ element: AXUIElement) -> String? {
         guard let count = value(element, kAXNumberOfCharactersAttribute) as? NSNumber,
               count.intValue >= 0, count.intValue <= 4_000_000 else { return nil }
+        // WhatsApp reports zero characters but no value for its empty range.
+        if count.intValue == 0 { return "" }
         var range = CFRange(location: 0, length: count.intValue)
         guard let parameter = AXValueCreate(.cfRange, &range) else { return nil }
         for attribute in [kAXStringForRangeParameterizedAttribute, kAXAttributedStringForRangeParameterizedAttribute] {
