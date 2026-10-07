@@ -101,11 +101,10 @@ struct PillView: View {
         .overlay(Capsule().stroke(.white.opacity(0.12), lineWidth: 1))
         .help(recordingWarning ? model.status : model.pillActionLabel)
         .padding(8)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.1), value: model.level)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.095), value: model.spectrumLevels)
     }
     private func barHeight(_ index: Int) -> CGFloat {
-        let magnitude = 5.0 + 10.0 * abs(sin(Double(index) * 1.3))
-        return CGFloat(4.0 + Double(model.level) * magnitude)
+        return CGFloat(4.0 + 16.0 * Double(model.spectrumLevels[index]))
     }
     private var recordingWarning: Bool { model.state == .recording && (model.elapsed >= 1140 || model.recordingDelayed) }
     private var icon: String { if recordingWarning { return "exclamationmark.triangle.fill" }; switch model.state { case .success: return "checkmark"; case .error, .conflict: return "exclamationmark.circle"; case .needsSetup: return "gearshape"; case .loading: return "hourglass"; case .paused: return "mic.slash"; default: return "mic.fill" } }
