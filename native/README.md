@@ -12,9 +12,11 @@ Release-Pakete sind mit der festen lokalen Identität signiert und nutzen Harden
 
 Vor dem DMG-Bau werden die Bibliothekspfade des arm64-Laufzeitprogramms und seiner Abhängigkeiten geprüft. Eine gültige Codesignatur allein reicht dafür nicht: Ein Bundle mit nicht auffindbarer `llama.framework` wird vor der Installer-Erstellung abgewiesen. Für interne Oberflächenprüfungen ebenfalls ein vollständig gepacktes Debug-Bundle mit `@executable_path/../Frameworks` verwenden; das unveränderte SwiftPM-Programm allein genügt nicht. `python3 scripts/app_bundle.py /Pfad/zu/App.app` prüft das Bundle ohne Start, `python3 scripts/check-app-bundle.py` testet fehlende Pfade, fehlende Abhängigkeiten und das Verschieben der App mit isolierten Fixtures.
 
-## Diktieren mit Strg+Z
+## Diktieren mit Modifier-Kombinationen
 
-Beim Halten-Kürzel Strg+Z genügt es, die Kombination einmal zu drücken und anschließend nur Strg festzuhalten. Z darf losgelassen werden; das Diktat endet beim Loslassen von Strg. Für den Freihändig-Modus die vollständige Kombination zweimal kurz drücken und loslassen.
+Bei Halten-Kürzeln mit Cmd, Strg oder Alt und einer beliebigen weiteren Taste genügt es, die vollständige konfigurierte Kombination einmal zu drücken. Die zusätzliche Taste darf danach losgelassen werden; das Diktat läuft weiter, solange mindestens ein zur Kombination gehörender Modifier gedrückt bleibt. Bei Strg+Alt+Leertaste endet es beispielsweise erst, wenn sowohl Strg als auch Alt losgelassen sind. Gehören auch Shift oder Fn zur Kombination, halten diese das Diktat ebenfalls offen. Zusätzlich gedrückte, nicht konfigurierte Modifier verlängern die Aufnahme nicht.
+
+Für den Freihändig-Modus die vollständige Kombination zweimal kurz drücken und loslassen. Kürzel ohne Modifier sowie reine Shift-/Fn-Kombinationen behalten ihr bisheriges Loslass-Verhalten.
 
 ## Entwickeln
 
