@@ -377,6 +377,7 @@ struct SettingsView: View {
                 .help(L10n.text("shortcuts.disabledHelp"))
             if model.document.settings.paused { Text(L10n.text("shortcuts.disabled")).font(.system(size: 12)).foregroundStyle(.secondary) }
             Toggle(L10n.text("startup.enabled"), isOn: Binding(get: { model.loginEnabled }, set: { model.setLogin($0) }))
+            Toggle(L10n.text("settings.menuBarOnly"), isOn: Binding(get: { model.document.settings.menuBarOnly == true }, set: { model.document.settings.menuBarOnly = $0 }))
         }
     }
     private var dictationReadiness: some View {

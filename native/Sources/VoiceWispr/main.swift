@@ -43,7 +43,8 @@ if CommandLine.arguments.contains("--check-bundled-resources") {
 }
 
 let application = NSApplication.shared
-application.setActivationPolicy(.regular)
+// Keep the Dock hidden until the saved preference has been loaded.
+application.setActivationPolicy(.accessory)
 let model = MainActor.assumeIsolated {
 let model = AppModel()
 application.delegate = model
