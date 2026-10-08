@@ -12,6 +12,7 @@ struct DictionaryEditor: View {
     @ObservedObject var model: AppModel
     @ObservedObject private var interfaceLanguage = InterfaceLanguageStore.shared
     @State private var query = ""
+    @State private var messageID: UUID?
     @State private var kind: DictionaryKind = .all
     @State private var matches: [DictionaryEntry] = []
     @State private var limit = 100
@@ -21,7 +22,8 @@ struct DictionaryEditor: View {
     @State private var replacement = ""
     @State private var validation = ""
     @State private var removed: (entry: DictionaryEntry, index: Int)?
-    @FocusState private var phraseFocused: Bool
+    private enum EditorField: Hashable { case phrase, replacement }
+    @FocusState private var focusedField: EditorField?
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
@@ -30,11 +32,12 @@ struct DictionaryEditor: View {
                 Button { edit(nil) } label: { Image(systemName: "plus").frame(width: 24, height: 24).contentShape(Rectangle()) }.buttonStyle(.plain).help(d("dictionary.add")).accessibilityLabel(d("dictionary.add"))
             }
             Text(d("dictionary.subtitle")).font(.system(size: 12)).foregroundStyle(.secondary)
+            recentMessage
             if editorOpen {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(editingID == nil ? d("dictionary.new") : d("dictionary.edit")).fontWeight(.semibold)
-                    TextField(d("dictionary.phrase.placeholder"), text: $phrase).focused($phraseFocused).textFieldStyle(.roundedBorder)
-                    TextField(d("dictionary.replacement.placeholder"), text: $replacement).textFieldStyle(.roundedBorder)
+                    TextField(d("dictionary.phrase.placeholder"), text: $phrase).focused($focusedField, equals: .phrase).textFieldStyle(.roundedBorder)
+                    TextField(d("dictionary.replacement.placeholder"), text: $replacement).focused($focusedField, equals: .replacement).textFieldStyle(.roundedBorder)
                     if !validation.isEmpty { Text(L10n.diagnostic(validation)).font(.system(size: 12)).foregroundStyle(.orange) }
                     HStack { Text(d("dictionary.caseHint")).font(.system(size: 11)).foregroundStyle(.secondary); Spacer(); Button(d("common.cancel")) { editorOpen = false; validation = "" }; Button(d("common.save"), action: save).buttonStyle(.borderedProminent).disabled(phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
                 }.padding(14).background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
@@ -77,6 +80,63 @@ struct DictionaryEditor: View {
             .onChange(of: kind) { _, _ in filter() }
             .onChange(of: model.document.dictionary) { _, _ in filter() }
     }
+    private var messages: [(id: UUID, text: String)] {
+        var seen = Set<UUID>()
+        return (model.results.map { ($0.id, $0.text) } + model.latestHistory.map { ($0.id, $0.text) })
+            .filter { seen.insert($0.0).inserted }
+    }
+    private var messageIndex: Int { messages.firstIndex { $0.id == messageID } ?? 0 }
+    private var message: String { messages.isEmpty ? "" : messages[messageIndex].text }
+    private func moveMessage(by offset: Int) {
+        let available = messages
+        let index = messageIndex + offset
+        guard available.indices.contains(index) else { return }
+        messageID = index == 0 ? nil : available[index].id
+    }
+    private var linkedMessage: AttributedString {
+        var attributed = AttributedString(message)
+        for range in HistoryWords.ranges(message) {
+            guard let swiftRange = Range(range, in: message),
+                  let attributedRange = Range(swiftRange, in: attributed) else { continue }
+            attributed[attributedRange].link = URL(string: "ainauten-dictionary://word/\(range.location)")
+        }
+        return attributed
+    }
+    private var recentMessage: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(d("dictionary.lastMessage")).fontWeight(.semibold)
+                Button { moveMessage(by: 1) } label: {
+                    Image(systemName: "chevron.left").frame(width: 24, height: 24).contentShape(Rectangle())
+                }.buttonStyle(.plain).pointerAwareFocus()
+                    .help(d("dictionary.message.older")).accessibilityLabel(d("dictionary.message.older"))
+                    .disabled(messageIndex + 1 >= messages.count)
+                Button { moveMessage(by: -1) } label: {
+                    Image(systemName: "chevron.right").frame(width: 24, height: 24).contentShape(Rectangle())
+                }.buttonStyle(.plain).pointerAwareFocus()
+                    .help(d("dictionary.message.newer")).accessibilityLabel(d("dictionary.message.newer"))
+                    .disabled(messageIndex == 0)
+            }
+            if message.isEmpty {
+                Text(d("dictionary.lastMessage.empty")).foregroundStyle(.secondary)
+            } else {
+                Text(d("dictionary.lastMessage.help")).font(.system(size: 12)).foregroundStyle(.secondary)
+                ScrollView {
+                    Text(linkedMessage).frame(maxWidth: .infinity, alignment: .leading)
+                        .environment(\.openURL, OpenURLAction { url in
+                            guard url.scheme == "ainauten-dictionary", let offset = Int(url.lastPathComponent),
+                                  let range = HistoryWords.ranges(message).first(where: { $0.location == offset }) else { return .discarded }
+                            let word = (message as NSString).substring(with: range)
+                            edit(model.document.dictionary.first { $0.phrase == word })
+                            phrase = word
+                            focusedField = .replacement
+                            return .handled
+                        })
+                }.frame(maxHeight: 160)
+            }
+        }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+    }
     private var filters: some View { Picker(d("dictionary.kind.label"), selection: $kind) { ForEach(DictionaryKind.allCases) { Text($0.title).tag($0) } }.pickerStyle(.segmented).labelsHidden().accessibilityLabel(d("dictionary.kind.filter")).frame(width: 265) }
     private func filter() {
         let key = HistoryWords.searchKey(query.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -88,7 +148,7 @@ struct DictionaryEditor: View {
     }
     private func edit(_ entry: DictionaryEntry?) {
         editingID = entry?.id; phrase = entry?.phrase ?? ""; replacement = entry?.replacement ?? ""
-        validation = ""; editorOpen = true; phraseFocused = true
+        validation = ""; editorOpen = true; focusedField = .phrase
     }
     private func save() {
         let name = phrase.trimmingCharacters(in: .whitespacesAndNewlines)

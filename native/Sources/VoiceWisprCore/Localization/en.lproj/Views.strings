@@ -169,3 +169,9 @@
 "history.stats.dayHelp" = "%@: %@ words, %@ dictations";
 "history.stats.dayAX" = "%@, %@ words";
 "recovery.result" = "Result %@";
+
+"dictionary.lastMessage" = "Last message";
+"dictionary.lastMessage.help" = "Click a word and enter the replacement you want.";
+"dictionary.lastMessage.empty" = "After your next dictation, you can select a word here.";
+"dictionary.message.older" = "Older message";
+"dictionary.message.newer" = "Newer message";

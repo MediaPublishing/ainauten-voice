@@ -623,7 +623,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         if statusItem == nil { statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength) }
         statusItem?.button?.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "AInauten Voice")
         let menu = NSMenu()
-        for (title, selector) in [(L10n.text("menu.open"), #selector(openOverview)), (L10n.text("menu.history"), #selector(openHistory)), (L10n.text("menu.results"), #selector(openResults)), (L10n.text("menu.shortcutsEnabled"), #selector(togglePause)), (L10n.text("menu.returnToWispr"), #selector(returnToWispr)), (L10n.text("menu.quitShort"), #selector(quit))] {
+        for (title, selector) in [(L10n.text("menu.open"), #selector(openOverview)), (L10n.text("menu.history"), #selector(openHistory)), (L10n.text("navigation.dictionary"), #selector(openDictionary)), (L10n.text("menu.results"), #selector(openResults)), (L10n.text("menu.shortcutsEnabled"), #selector(togglePause)), (L10n.text("menu.returnToWispr"), #selector(returnToWispr)), (L10n.text("menu.quitShort"), #selector(quit))] {
             let item = NSMenuItem(title: title, action: selector, keyEquivalent: ""); item.target = self; menu.addItem(item)
             if selector == #selector(togglePause) { pauseMenuItem = item }
             if selector == #selector(returnToWispr) { wisprMenuItem = item }
@@ -655,6 +655,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     }
     @objc private func openOverview() { navigate(to: document.settings.onboardingComplete ? .overview : .setup) }
     @objc private func openHistory() { navigate(to: .history) }
+    @objc private func openDictionary() { navigate(to: .dictionary); refreshHistory() }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         #if DEBUG
         if previewMode, CommandLine.arguments.contains("--test-delivery") { return true }
