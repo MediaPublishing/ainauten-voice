@@ -11,6 +11,14 @@ public struct ClipboardOwnership: Sendable, Equatable {
 }
 
 public enum DeliveryVerification {
+    public static func insertionText(_ text: String, baseline: String, selection: NSRange) -> String {
+        let value = baseline as NSString
+        guard let first = text.first, !first.isWhitespace,
+              selection.location != NSNotFound, selection.location > 0,
+              selection.location <= value.length,
+              [0x2E, 0x3F, 0x21].contains(value.character(at: selection.location - 1)) else { return text }
+        return " " + text
+    }
     public static func expectedValue(baseline: String, selection: NSRange, insertion: String) -> String? {
         let value = baseline as NSString
         guard selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,
@@ -289,6 +297,7 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         guard !text.isEmpty, let target, target.isUnchanged() else {
             return DeliveryOutcome(.notAttempted, reason: "Fokus, Auswahl oder Textfeld haben sich verändert. Text aus dem Wiederherstellungsfenster verwenden.")
         }
+        let text = DeliveryVerification.insertionText(text, baseline: target.baseline, selection: target.selectedRange)
         let role = AXAccess.string(target.element, kAXRoleAttribute)
         let selected = AXAccess.string(target.element, kAXSelectedTextAttribute)
         let expectedSelected = (target.baseline as NSString).substring(with: target.selectedRange)

@@ -351,6 +351,30 @@ final class MigrationDeliveryTests: XCTestCase {
         XCTAssertNil(DeliveryVerification.expectedValue(baseline: "abc", selection: NSRange(location: 2, length: 3), insertion: "x"))
         XCTAssertEqual(DeliveryVerification.expectedValue(baseline: "😀 old", selection: NSRange(location: 3, length: 3), insertion: "neu"), "😀 neu")
     }
+    func testDeliveryAddsSpaceAfterSentencePunctuationAtInsertionPoint() {
+        let cases: [(String, Int, String, String)] = [
+            ("Hallo.", 6, "Weiter", " Weiter"),
+            ("Hallo?", 6, "Weiter", " Weiter"),
+            ("Hallo!", 6, "Weiter", " Weiter"),
+            ("Hallo.Rest", 6, "Weiter", " Weiter"),
+            ("😀.", 3, "Weiter", " Weiter"),
+            ("Hallo. ", 7, "Weiter", "Weiter"),
+            ("Hallo", 5, "Weiter", "Weiter"),
+            ("", 0, "Weiter", "Weiter"),
+            ("Hallo.", 0, "Weiter", "Weiter"),
+            ("Hallo.", 6, " Weiter", " Weiter"),
+            ("Hallo.", 6, "\nWeiter", "\nWeiter"),
+            ("Hallo.", 6, "", ""),
+            ("Hallo.", NSNotFound, "Weiter", "Weiter"),
+            ("Hallo.", 99, "Weiter", "Weiter")
+        ]
+        for (baseline, offset, text, expected) in cases {
+            XCTAssertEqual(DeliveryVerification.insertionText(text, baseline: baseline, selection: NSRange(location: offset, length: 0)), expected)
+        }
+        let selection = NSRange(location: 6, length: 4)
+        let insertion = DeliveryVerification.insertionText("Weiter", baseline: "Hallo.Rest", selection: selection)
+        XCTAssertTrue(DeliveryVerification.confirmed(baseline: "Hallo.Rest", selection: selection, insertion: insertion, observed: "Hallo. Weiter", caret: NSRange(location: 13, length: 0)))
+    }
     func testClipboardNewCopyWinsEvenWhenTextIsIdentical() {
         let nonce = UUID(), owned = ClipboardOwnership(nonce: nonce, changeCount: 12)
         XCTAssertTrue(owned.owns(changeCount: 12, nonce: nonce))
