@@ -30,7 +30,7 @@
 "common.cancel" = "Abbrechen";
 "common.copy" = "Kopieren";
 "common.next" = "Weiter";
-"dictation.help" = "Cursor ins Textfeld setzen, Kürzel halten, sprechen und loslassen. Doppeltipp startet freihändig; erneutes Drücken stoppt. Die Pill erscheint nur während des Diktats.";
+"dictation.help" = "Cursor ins Textfeld setzen, Kürzel halten, sprechen und loslassen. Doppeltipp startet freihändig; erneutes Drücken stoppt. Das Overlay erscheint beim App-Start und während des Diktats.";
 "dictation.language.addAX" = "%@, hinzufügen";
 "dictation.language.removeAX" = "%@, ausgewählt. Entfernen";
 "dictation.languageBrief" = "Automatische Erkennung, auch bei Sprachwechseln.";

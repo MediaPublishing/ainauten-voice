@@ -103,32 +103,54 @@ public final class AudioCapture: @unchecked Sendable {
     }
 }
 
+/// Follows the delivered PCM format, which can differ from a cached input-node format.
+/// Used only on the native tap's serial audio callback.
+final class AudioCaptureConverter {
+    private var converter: AVAudioConverter?
+    func samples(from pcm: AVAudioPCMBuffer) throws -> [Float] {
+        guard pcm.frameLength > 0 else { return [] }
+        let inputFormat = pcm.format
+        guard inputFormat.sampleRate.isFinite, inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else { throw VoiceError.message("Mikrofonformat wird nicht unterstützt") }
+        if converter?.inputFormat != inputFormat {
+            guard let outputFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
+                  let next = AVAudioConverter(from: inputFormat, to: outputFormat) else { throw VoiceError.message("Mikrofonformat wird nicht unterstützt") }
+            converter = next
+        }
+        guard let converter else { throw VoiceError.message("Mikrofonformat wird nicht unterstützt") }
+        let capacity = AVAudioFrameCount(ceil(Double(pcm.frameLength) * 16_000 / inputFormat.sampleRate)) + 64
+        guard let output = AVAudioPCMBuffer(pcmFormat: converter.outputFormat, frameCapacity: capacity) else { throw VoiceError.message("Audio-Puffer konnte nicht angelegt werden") }
+        var supplied = false; var failure: NSError?
+        let status = converter.convert(to: output, error: &failure) { _, state in
+            if supplied { state.pointee = .noDataNow; return nil }
+            supplied = true; state.pointee = .haveData; return pcm
+        }
+        if let failure { throw failure }
+        guard status != .error, let channel = output.floatChannelData?[0] else { throw VoiceError.message("Audio konnte nicht auf 16 kHz umgerechnet werden") }
+        return Array(UnsafeBufferPointer(start: channel, count: Int(output.frameLength)))
+    }
+}
+
 private final class AVAudioCaptureDriver: AudioCaptureDriving, @unchecked Sendable {
-    private lazy var engine = AVAudioEngine()
+    private var engine: AVAudioEngine?
     private var tapInstalled = false
     private var configurationObserver: NSObjectProtocol?
     deinit { if let configurationObserver { NotificationCenter.default.removeObserver(configurationObserver) } }
     func start(buffer sessionBuffer: AudioCaptureBuffer, onSamples: @escaping AudioCapture.SamplesHandler,
                onLevel: @escaping AudioCapture.LevelHandler, onError: @escaping AudioCapture.ErrorHandler,
                onCompletion: (@Sendable () -> Void)?) throws {
-        let input = engine.inputNode
-        let inputFormat = input.outputFormat(forBus: 0)
-        guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0,
-              let outputFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false),
-              let converter = AVAudioConverter(from: inputFormat, to: outputFormat) else { throw VoiceError.message("Mikrofonformat wird nicht unterstützt") }
         guard !sessionBuffer.isFinished else { return }
-        input.installTap(onBus: 0, bufferSize: 2048, format: inputFormat) { pcm, _ in
+        // A stopped engine can retain the previous device's sample rate after sleep or a route change.
+        let engine = AVAudioEngine(); self.engine = engine
+        let input = engine.inputNode
+        let inputFormat = input.inputFormat(forBus: 0)
+        guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else { throw VoiceError.message("Mikrofonformat wird nicht unterstützt") }
+        let converter = AudioCaptureConverter()
+        // Let Core Audio choose its current format instead of applying a stale node format.
+        input.installTap(onBus: 0, bufferSize: 2048, format: nil) { pcm, _ in
             guard !sessionBuffer.isFinished else { return }
-            let capacity = AVAudioFrameCount(ceil(Double(pcm.frameLength) * 16_000 / inputFormat.sampleRate)) + 64
-            guard let output = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: capacity) else { onError(VoiceError.message("Audio-Puffer konnte nicht angelegt werden")); return }
-            var supplied = false; var failure: NSError?
-            let status = converter.convert(to: output, error: &failure) { _, state in
-                if supplied { state.pointee = .noDataNow; return nil }
-                supplied = true; state.pointee = .haveData; return pcm
-            }
-            if let failure { onError(failure); return }
-            guard status != .error, let channel = output.floatChannelData?[0] else { onError(VoiceError.message("Audio konnte nicht auf 16 kHz umgerechnet werden")); return }
-            let samples = Array(UnsafeBufferPointer(start: channel, count: Int(output.frameLength)))
+            let samples: [Float]
+            do { samples = try converter.samples(from: pcm) }
+            catch { onError(error); return }
             let chunk = sessionBuffer.append(samples)
             guard !chunk.samples.isEmpty else { return }
             let rms = sqrt(chunk.samples.reduce(Float(0)) { $0 + $1 * $1 } / Float(chunk.samples.count))
@@ -149,8 +171,10 @@ private final class AVAudioCaptureDriver: AudioCaptureDriving, @unchecked Sendab
     }
     func stop() {
         if let configurationObserver { NotificationCenter.default.removeObserver(configurationObserver); self.configurationObserver = nil }
+        guard let engine else { return }
         engine.stop()
         if tapInstalled { engine.inputNode.removeTap(onBus: 0); tapInstalled = false }
+        self.engine = nil
     }
 }
 

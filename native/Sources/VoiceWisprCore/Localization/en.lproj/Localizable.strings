@@ -30,7 +30,7 @@
 "common.cancel" = "Cancel";
 "common.copy" = "Copy";
 "common.next" = "Next";
-"dictation.help" = "Place the cursor in a text field, hold the shortcut, speak and release. Double-tap to go hands-free; press again to stop. The pill only appears during dictation.";
+"dictation.help" = "Place the cursor in a text field, hold the shortcut, speak and release. Double-tap to go hands-free; press again to stop. The overlay appears during app startup and dictation.";
 "dictation.language.addAX" = "%@, add";
 "dictation.language.removeAX" = "%@, selected. Remove";
 "dictation.languageBrief" = "Automatic detection, even when you switch languages.";

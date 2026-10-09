@@ -1,4 +1,5 @@
 import XCTest
+import AVFoundation
 @testable import VoiceWisprCore
 
 private final class CaptureTestDriver: AudioCaptureDriving, @unchecked Sendable {
@@ -40,6 +41,30 @@ private final class CaptureTestDriver: AudioCaptureDriving, @unchecked Sendable 
 }
 
 final class AudioCaptureTests: XCTestCase {
+    func testConversionFollowsDeliveredFormatAcrossDeviceRateChanges() throws {
+        let converter = AudioCaptureConverter()
+        for (rate, channels) in [(48_000.0, 1), (44_100.0, 1), (48_000.0, 2), (16_000.0, 1), (44_100.0, 1), (48_000.0, 1)] {
+            let format = try XCTUnwrap(AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: AVAudioChannelCount(channels), interleaved: false))
+            let frames = AVAudioFrameCount(rate / 10)
+            let pcm = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames))
+            pcm.frameLength = frames
+            let data = try XCTUnwrap(pcm.floatChannelData)
+            for channel in 0..<channels {
+                for frame in 0..<Int(frames) { data[channel][frame] = 0.25 * Float(sin(2 * .pi * 440 * Double(frame) / rate)) }
+            }
+            let samples = try converter.samples(from: pcm)
+            XCTAssertTrue(samples.allSatisfy { $0.isFinite })
+            XCTAssertTrue(samples.contains { abs($0) > 0.1 })
+            // Allow system resampler priming and carried frames across the two 100 ms blocks.
+            let continuation = try converter.samples(from: pcm)
+            XCTAssertEqual(Double(samples.count + continuation.count) / 16_000, 0.2, accuracy: 0.025)
+        }
+    }
+    func testEmptyPCMProducesNoSamples() throws {
+        let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1))
+        let pcm = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 128))
+        XCTAssertTrue(try AudioCaptureConverter().samples(from: pcm).isEmpty)
+    }
     func testFirstAudioWinsOverEmptyBufferTimeout() {
         let buffer = AudioCaptureBuffer()
         buffer.append([0])
