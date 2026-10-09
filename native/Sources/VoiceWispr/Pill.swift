@@ -56,7 +56,7 @@ struct PillView: View {
         }
     }
     private var showsControls: Bool {
-        if model.state == .recording || model.state == .processing || model.state == .success || model.state == .error { return true }
+        if model.state == .loading || model.state == .recording || model.state == .processing || model.state == .success || model.state == .error { return true }
         #if DEBUG
         // The public insertion diagnostic needs a button after its recovery
         // timer expires. Production keeps its idle pill hidden as requested.
@@ -67,7 +67,11 @@ struct PillView: View {
     }
     private var activeContent: some View {
         HStack(spacing: 6) {
-            if model.state == .recording {
+            if model.state == .loading {
+                ProgressView().controlSize(.mini).tint(.white).frame(width: 16, height: 16)
+                    .accessibilityHidden(true)
+                Text(model.status).font(.system(size: 12, weight: .medium)).lineLimit(1)
+            } else if model.state == .recording {
                 if model.lipSession {
                     Image(systemName: "camera.fill").frame(width: 40, height: 20)
                         .accessibilityLabel(p("pill.lipRecording", model.durationLabel))
@@ -93,13 +97,14 @@ struct PillView: View {
                     .frame(width: 52, height: 24)
             }
         }
+        .environment(\.colorScheme, .dark)
         .foregroundStyle(Color(red: 0.93, green: 0.94, blue: 0.95))
         .buttonStyle(.plain)
-        .frame(width: model.state == .recording ? 118 : model.state == .processing ? 96 : 52,
-               height: model.state == .recording || model.state == .processing ? 28 : 24)
+        .frame(width: model.state == .loading ? 300 : model.state == .recording ? 118 : model.state == .processing ? 96 : 52,
+               height: model.state == .loading ? 32 : model.state == .recording || model.state == .processing ? 28 : 24)
         .background(Color(red: 0.105, green: 0.115, blue: 0.13), in: Capsule())
         .overlay(Capsule().stroke(.white.opacity(0.12), lineWidth: 1))
-        .help(recordingWarning ? model.status : model.pillActionLabel)
+        .help(model.state == .loading || recordingWarning ? model.status : model.pillActionLabel)
         .padding(8)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.1), value: model.level)
     }
@@ -135,7 +140,9 @@ private final class PillHostingView: NSHostingView<PillView> {
         panel.contentView = PillHostingView(rootView: PillView(model: model))
         position()
     }
-    func setVisible(_ visible: Bool) {
+    func setVisible(_ visible: Bool, loading: Bool = false) {
+        let size = loading ? NSSize(width: 336, height: 60) : NSSize(width: 144, height: 44)
+        if panel.frame.size != size { panel.setContentSize(size); position() }
         guard panel.isVisible != visible else { return }
         if visible { position(); panel.orderFrontRegardless() }
         else { panel.orderOut(nil) }

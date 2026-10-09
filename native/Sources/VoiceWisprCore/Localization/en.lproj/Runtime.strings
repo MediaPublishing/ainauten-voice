@@ -62,6 +62,10 @@
 "status.processing" = "Preparing text …";
 "status.inserting" = "Inserting text …";
 "status.modelsLoading" = "Loading models …";
+"status.starting" = "Starting app …";
+"status.modelsChecking" = "Checking models …";
+"status.speechLoading" = "Preparing speech recognition …";
+"status.formatterLoading" = "Preparing text optimization …";
 "status.modelsCheck" = "Check models";
 "status.practiceRecognized" = "Practice dictation recognized";
 "status.practiceIncomplete" = "Practice dictation incomplete";

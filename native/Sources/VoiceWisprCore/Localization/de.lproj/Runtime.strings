@@ -62,6 +62,10 @@
 "status.processing" = "Text wird aufbereitet …";
 "status.inserting" = "Text wird eingefügt …";
 "status.modelsLoading" = "Modelle werden geladen …";
+"status.starting" = "App wird gestartet …";
+"status.modelsChecking" = "Modelle werden geprüft …";
+"status.speechLoading" = "Spracherkennung wird vorbereitet …";
+"status.formatterLoading" = "Textoptimierung wird vorbereitet …";
 "status.modelsCheck" = "Modelle prüfen";
 "status.practiceRecognized" = "Probediktat erkannt";
 "status.practiceIncomplete" = "Probediktat unvollständig";

@@ -67,8 +67,9 @@ public enum DeliveryVerification {
     public let selectedRange: NSRange
     public let baseline: String
     public let secure: Bool
-    public static func capture() -> FocusSnapshot? {
+    public static func capture(expectedPID: pid_t? = nil) -> FocusSnapshot? {
         guard AXIsProcessTrusted(), let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        guard expectedPID == nil || app.processIdentifier == expectedPID else { return nil }
         WebAccessibility.enable(for: app)
         let application = AXUIElementCreateApplication(app.processIdentifier)
         AXUIElementSetMessagingTimeout(application, 0.05)
