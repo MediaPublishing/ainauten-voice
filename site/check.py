@@ -59,7 +59,7 @@ for ref in page.refs:
         if root == source and path == '/installation.html':
             assert (source.parent / 'native/Resources/InstallerGuide/installation.html').is_file(), ref
             continue
-        assert (root / path[1:]).is_file() or path in redirects, ref
+        assert (root / path[1:]).is_file() or (root / path[1:] / 'index.html').is_file() or path in redirects, ref
 assert f'AInauten-Voice-{version}-arm64.dmg' in text
 assert f'Beta {version}' in text
 for term in ['Beispieldaten', 'nicht Apple-notarisiert', 'Audio bleibt', 'Mikrofon', 'Bedienungshilfen', 'Apple Silicon', 'SHA256SUMS.txt', 'aria-selected', 'Impressum', 'Datenschutz']:

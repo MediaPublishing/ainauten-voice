@@ -1,0 +1,522 @@
+[
+  {
+    "id": "developers",
+    "picks": [
+      "superwhisper",
+      "wispr-flow",
+      "ainauten"
+    ],
+    "de": {
+      "audience": "Entwickler",
+      "title": "Die besten Diktier-Apps für Entwickler auf dem Mac",
+      "summary": "Für eigene Modell- und Promptabläufe gehört Superwhisper auf die erste Testliste. Wispr Flow passt zu wechselnden Geräten. AInauten Voice ist der kostenlose lokale Kandidat für natürlichsprachliche Prompts auf Apple Silicon, nicht die Empfehlung für ungeprüfte Codeeingabe.",
+      "scene": "Du beschreibst einem Coding-Agenten einen Fehler, statt eine Funktion Zeichen für Zeichen zu diktieren. Die kritischen Stellen sind Dateinamen, Verneinungen, Versionsnummern und die Trennung zwischen Beschreibung und ausführbarem Code. Ein flüssiger Absatz hilft wenig, wenn aus „nicht überschreiben“ ein anderer Auftrag wird.",
+      "criteria": [
+        "Verneinungen und Einschränkungen unverändert erhalten.",
+        "Eigene Projektnamen und Fachbegriffe kontrolliert ins Wörterbuch übernehmen.",
+        "Im tatsächlichen Editor testen, nicht nur in einer Demo.",
+        "Prompts und Quellcode als getrennte Eingaben behandeln."
+      ],
+      "workflow": "Sprich zuerst Ziel, Einschränkungen und Abnahmekriterium. Ergänze Pfade, Befehle und Variablennamen anschließend mit der Tastatur. Für einen Agenten ist ein präziser Auftrag nützlicher als ein langer, automatisch umformulierter Monolog.",
+      "test": "Diktiere ein Bug-Ticket mit „nicht löschen“, einem gemischten deutschen und englischen Fachbegriff und einer Versionsnummer. Prüfe danach denselben Text im Editor und im Browser. Miss auch Korrekturzeit und Einfügefehler, nicht nur die Dauer bis zum ersten Text.",
+      "avoid": "Wenn exakte Codezeichen oder ein Firmenstandard zwingend sind, nimm keine App allein aufgrund ihrer Diktierdemo. AInauten Voice garantiert kein korrektes Einfügen in jedes Editorfeld; kompatibles Einfügen über die Zwischenablage ist eine bewusste Option.",
+      "faq": "Kann ich damit Code diktieren?",
+      "answer": "Beschreibungen und Prompts sind ein sinnvoller Einstieg. Für ausführbaren Code musst du Zeichen, Einrückung und Syntax separat prüfen; wir haben keine Genauigkeitsrangliste für Code gemessen.",
+      "pickReasons": [
+        "Eigene Anweisungen sind sinnvoll, wenn du Tickets, Prompts und Rohtext unterschiedlich behandeln willst.",
+        "Eine geräteübergreifende Auswahl hilft, wenn du dieselben Projektbeschreibungen am Mac und anderswo diktierst.",
+        "Teste einen natürlichsprachlichen Bug-Auftrag lokal und kostenlos; Codezeichen ergänzt du kontrolliert."
+      ]
+    },
+    "en": {
+      "audience": "developers",
+      "title": "Best dictation apps for developers on Mac",
+      "summary": "Shortlist Superwhisper for custom model and prompt workflows, Wispr Flow for mixed devices, and AInauten Voice for free local natural-language prompts on Apple Silicon. This is not a recommendation to enter executable code unchecked.",
+      "scene": "You describe a bug to a coding agent instead of dictating a function character by character. Paths, negations, version numbers and the boundary between description and executable code are the critical details. A fluent paragraph is not useful if “do not overwrite” becomes a different instruction.",
+      "criteria": [
+        "Preserve negations and constraints.",
+        "Add project names and specialist vocabulary deliberately.",
+        "Test the actual editor, not just a demo.",
+        "Treat prompts and source code as different inputs."
+      ],
+      "workflow": "Speak the goal, constraints and acceptance criterion first. Add paths, commands and variable names with the keyboard afterwards. A precise instruction is more useful to an agent than a long monologue that has been rewritten automatically.",
+      "test": "Dictate a bug ticket with “do not delete,” a mixed-language technical term and a version number. Check the same text in your editor and browser. Measure correction time and insertion errors, not just time until text appears.",
+      "avoid": "If exact code characters or a workplace standard are mandatory, do not choose from a dictation demo alone. AInauten Voice does not guarantee insertion into every editor field; clipboard-compatible insertion is an explicit option.",
+      "faq": "Can I dictate code?",
+      "answer": "Descriptions and prompts are a useful starting point. Check characters, indentation and syntax separately for executable code; we have not measured an accuracy ranking for code.",
+      "pickReasons": [
+        "Custom instructions help when tickets, prompts and raw capture need different handling.",
+        "A cross-device option helps if you dictate the same project descriptions on Mac and elsewhere.",
+        "Try a natural-language bug report locally at no charge; enter code characters deliberately."
+      ]
+    }
+  },
+  {
+    "id": "writers",
+    "picks": [
+      "ainauten",
+      "superwhisper",
+      "apple-dictation"
+    ],
+    "de": {
+      "audience": "Autoren",
+      "title": "Die besten Diktier-Apps für Autoren auf dem Mac",
+      "summary": "Für lokale Rohentwürfe ohne Abo ist AInauten Voice einen Test wert. Superwhisper passt, wenn eigene Prompts zur Schreibarbeit gehören. Für gelegentliche Absätze reicht möglicherweise bereits Apples Diktierfunktion.",
+      "scene": "Du kennst den Gedanken, aber der fertige Satz fehlt noch. Beim Sprechen entstehen Wiederholungen, Pausen und Satzanfänge, die du wieder verwirfst. Entscheidend ist, ob der Text deine Stimme bewahrt. Glattere Sprache ist kein Vorteil, wenn die App eine Pointe, eine Einschränkung oder den Rhythmus verändert.",
+      "criteria": [
+        "Rohtext und Umarbeitung bewusst trennen.",
+        "Absatzgrenzen und längere Gedanken testen.",
+        "Namen und wiederkehrende Begriffe korrigieren können.",
+        "Den Entwurf wiederfinden können, ohne sensible Texte unnötig aufzubewahren."
+      ],
+      "workflow": "Diktiere einen Absatz pro Gedanken. Lass das Tool zunächst nur erfassen und korrigiere die Form später. Für Dialoge oder bewusst mündliche Sprache vergleiche eine möglichst unveränderte Transkription mit dem optimierten Modus, bevor du ihn zum Standard machst.",
+      "test": "Sprich einen Rohabsatz, einen Dialog und einen Absatz mit einem Eigennamen. Vergleiche Sinn, Tonfall und Absätze mit deinem Gesagten. Prüfe auch, wie leicht du eine falsche Ersetzung rückgängig machst. Die beste Wahl verlangt in deinem Text die wenigste Nacharbeit.",
+      "avoid": "Verwende automatische Glättung nicht unkontrolliert für Zitate. Wenn du Interviews aus Dateien transkribieren willst, ist MacWhisper die passendere zusätzliche Vorauswahl als eine reine Rohentwurfsstrecke.",
+      "faq": "Schreibt die App den Text für mich?",
+      "answer": "Sie erfasst Sprache und kann je nach Modus Text bearbeiten. Inhaltliche Entscheidungen und der finale Stil bleiben deine Aufgabe; eine flüssige Ausgabe ist kein Beleg für unveränderten Sinn.",
+      "pickReasons": [
+        "Für einen ersten lokalen Rohentwurf zählt die erhaltene Stimme mehr als eine lange Funktionsliste.",
+        "Eigene Prompts sind interessant, wenn du bestimmte Textsorten bewusst unterschiedlich bearbeiten möchtest.",
+        "Für einen gelegentlichen Absatz prüfst du zuerst, ob die vorhandene Systemfunktion reicht."
+      ]
+    },
+    "en": {
+      "audience": "writers",
+      "title": "Best dictation apps for writers on Mac",
+      "summary": "Try AInauten Voice for local rough drafts without a subscription. Shortlist Superwhisper if custom prompts are part of your writing process. Apple's built-in dictation may already cover occasional paragraphs.",
+      "scene": "You know the idea but not yet the final sentence. Speaking produces repetition, pauses and abandoned openings. What matters is whether the output keeps your voice. Smoother language is not a benefit if the app changes a punchline, qualification or rhythm.",
+      "criteria": [
+        "Separate raw capture from rewriting.",
+        "Test paragraph boundaries and longer thoughts.",
+        "Correct names and recurring vocabulary.",
+        "Recover drafts without keeping sensitive text unnecessarily."
+      ],
+      "workflow": "Dictate one idea per paragraph. Capture first and edit later. For dialogue or deliberately conversational prose, compare a minimally changed transcript with an optimized mode before making it the default.",
+      "test": "Speak a rough paragraph, dialogue and a paragraph with a proper name. Compare meaning, tone and paragraph breaks against what you said. Check how easily you can undo a wrong replacement. The best fit needs the least correction on your actual writing.",
+      "avoid": "Do not apply automatic polishing to quotations unchecked. If you need to transcribe interview files, MacWhisper is a more suitable additional shortlist choice than a rough-drafting workflow.",
+      "faq": "Does the app write the text for me?",
+      "answer": "It captures speech and may edit text depending on the mode. Content decisions and final style remain yours; fluent output is not proof that meaning was preserved.",
+      "pickReasons": [
+        "For a first local draft, preserving voice matters more than a long feature list.",
+        "Custom prompts are worth evaluating when different writing forms need deliberate processing.",
+        "For an occasional paragraph, first check whether the built-in feature is sufficient."
+      ]
+    }
+  },
+  {
+    "id": "students",
+    "picks": [
+      "apple-dictation",
+      "ainauten",
+      "macwhisper"
+    ],
+    "de": {
+      "audience": "Studierende",
+      "title": "Die besten Diktier-Apps für Studierende auf dem Mac",
+      "summary": "Starte für eigene Notizen mit der kostenlosen Mac-Diktierfunktion. AInauten Voice ist ein lokaler Beta-Kandidat für ausführlichere Entwürfe. Für vorhandene Vorlesungs- oder Interviewdateien gehört MacWhisper auf die Testliste.",
+      "scene": "Eine Seminaridee in eigene Worte zu fassen ist etwas anderes, als eine Stunde Vorlesung zu transkribieren. Die erste Aufgabe braucht einen guten Einstieg ins Textfeld, die zweite einen Datei- und Aufnahmeablauf. Ein Tool kann günstig sein und trotzdem den falschen Teil deiner Arbeit lösen.",
+      "criteria": [
+        "Eigene Gedanken und fremde Aufnahmen getrennt behandeln.",
+        "Fachbegriffe, Formeln und Quellenangaben prüfen.",
+        "Gesamtkosten statt vermeintlicher Studentenangebote vergleichen.",
+        "Mit deinem tatsächlichen Rechner und Speicherbudget testen."
+      ],
+      "workflow": "Sprich nach dem Lesen eine kurze Zusammenfassung in eigenen Worten. Ergänze Zitate, Seitenzahlen und Formeln manuell. Wenn du fremde Stimmen aufzeichnen möchtest, kläre die Erlaubnis und Hochschulregeln vorher; ein Transkriptor erledigt diese Entscheidung nicht.",
+      "test": "Diktiere eine Erklärung mit drei Fachbegriffen und zwei Zahlen. Übertrage sie in deine Notiz-App und kontrolliere Begriffe und Absätze. Teste eine erlaubte Beispieldatei separat, falls du Transkription brauchst. Bewerte beides als unterschiedliche Aufgaben.",
+      "avoid": "Für eine gelegentliche Notiz musst du kein Abo abschließen. AInauten Voice braucht Apple Silicon, Platz für Modelle und eine manuelle Startbestätigung der Beta. Auf einem ungeeigneten oder verwalteten Mac ist die integrierte Funktion die sinnvollere Ausgangsbasis.",
+      "faq": "Ersetzt Diktat eine Vorlesungsaufzeichnung?",
+      "answer": "Nein. Eigene Texte diktieren und eine Aufnahme transkribieren sind unterschiedliche Abläufe. Wähle nach der Aufgabe und beachte die Regeln für Aufnahmen und Prüfungsleistungen.",
+      "pickReasons": [
+        "Für eigene Zusammenfassungen ist eine vorhandene Funktion der Einstieg mit dem geringsten Zusatzaufwand.",
+        "Für lokale Entwürfe auf einem passenden Mac kannst du die kostenlose Beta mit Fachbegriffen testen.",
+        "Wenn die Ausgangsquelle eine Datei ist, brauchst du einen Dateiablauf statt nur ein Diktierkürzel."
+      ]
+    },
+    "en": {
+      "audience": "students",
+      "title": "Best dictation apps for students on Mac",
+      "summary": "Start with built-in Mac dictation for your own notes. AInauten Voice is a local beta candidate for longer drafts. Shortlist MacWhisper for existing lecture or interview files.",
+      "scene": "Explaining a seminar idea in your own words is different from transcribing an hour of lectures. One job needs reliable text entry, the other a file and recording workflow. A low-cost tool can still solve the wrong part of your work.",
+      "criteria": [
+        "Separate your ideas from recordings of other people.",
+        "Check specialist terms, formulas and citations.",
+        "Compare total cost rather than assumed student deals.",
+        "Test the computer and storage space you actually have."
+      ],
+      "workflow": "After reading, speak a short summary in your own words. Add quotations, page references and formulas manually. Before recording other people, establish permission and university rules; a transcription tool does not make that decision for you.",
+      "test": "Dictate an explanation with three specialist terms and two numbers. Enter it in your notes app and check terminology and paragraphs. Test an authorized sample file separately if you need transcription. Evaluate these as different jobs.",
+      "avoid": "An occasional note does not justify a subscription by itself. AInauten Voice needs Apple Silicon, model storage and a manual first-launch confirmation for the beta. Built-in dictation is a better baseline on an unsuitable or managed Mac.",
+      "faq": "Does dictation replace a lecture recorder?",
+      "answer": "No. Dictating your own text and transcribing a recording are different workflows. Choose by task and follow rules for recording and assessed work.",
+      "pickReasons": [
+        "For your own summaries, an existing feature adds the least setup overhead.",
+        "On a suitable Mac, test the free beta for local drafts with specialist terms.",
+        "When the starting material is a file, you need a file workflow, not just a dictation shortcut."
+      ]
+    }
+  },
+  {
+    "id": "adhd",
+    "picks": [
+      "apple-dictation",
+      "wispr-flow",
+      "ainauten"
+    ],
+    "de": {
+      "audience": "Menschen mit ADHS",
+      "title": "Die besten Diktier-Apps für Menschen mit ADHS auf dem Mac",
+      "summary": "Es gibt keinen belegten Diktier-App-Sieger für ADHS in diesem Vergleich. Probiere Apples Diktat für den kleinsten Einrichtungsaufwand, Wispr Flow für wechselnde Geräte und AInauten Voice für lokale Gedankennotizen auf einem Mac.",
+      "scene": "Ein Gedanke ist da, während das leere Textfeld noch vor dir liegt. Eine kurze Sprachaufnahme kann den Einstieg erleichtern. Ob das im Alltag hilft, hängt von dir und deinem Umfeld ab: Im Großraumbüro ist Sprechen vielleicht unpraktischer als Tippen, und ein weiterer Einstellungsdialog kann zusätzliche Reibung erzeugen.",
+      "criteria": [
+        "Mit einem gut erreichbaren Kürzel anfangen können.",
+        "Den Unterschied zwischen Erfassen und Überarbeiten klar sehen.",
+        "Einen Entwurf wiederfinden, ohne in Menüs suchen zu müssen.",
+        "Unterbrechungen und Korrekturen im eigenen Alltag testen."
+      ],
+      "workflow": "Beginne mit einer einzigen Notiz: Was ist der nächste konkrete Schritt? Diktiere erst den Gedanken und strukturiere danach. Wähle nur einen Modus für den Einstieg. Mehr Automatik ist nicht automatisch hilfreicher; wichtiger ist, dass du Start, Ende und Ergebnis verstehst.",
+      "test": "Teste denselben kurzen Gedanken an drei normalen Arbeitstagen. Notiere, ob du leichter angefangen hast, ob der Text auffindbar war und ob dich Fehler oder Hinweise unterbrochen haben. Entscheide nach diesem Ablauf, nicht nach einem medizinisch klingenden Marketingversprechen.",
+      "avoid": "Keine dieser Empfehlungen ist eine Behandlung oder ein Nachweis besonderer Wirksamkeit bei ADHS. Wenn schon das Einrichten einer Beta zu viel Aufwand ist, ist die vorhandene Systemfunktion der sinnvollere erste Versuch.",
+      "faq": "Hilft eine Diktier-App bei ADHS?",
+      "answer": "Sie kann für manche Menschen das Festhalten von Gedanken erleichtern. Wir haben keine klinische Wirksamkeit untersucht und empfehlen anhand von Bedienabläufen, nicht anhand von Behandlungsaussagen.",
+      "pickReasons": [
+        "Der erste Versuch braucht keine weitere App; prüfe, ob dieser einfache Einstieg zu dir passt.",
+        "Diese Option passt eher, wenn du Gedanken auf mehreren Geräten festhalten willst.",
+        "Für Gedanken auf einem Mac ist der lokale Verlauf ein möglicher Vorteil; schalte ihn nur bewusst ein."
+      ]
+    },
+    "en": {
+      "audience": "people with ADHD",
+      "title": "Best dictation apps for people with ADHD on Mac",
+      "summary": "This comparison establishes no proven ADHD-specific winner. Try Apple Dictation for minimal setup, Wispr Flow for mixed devices and AInauten Voice for local thought capture on one Mac.",
+      "scene": "An idea arrives while the empty text box is still in front of you. Speaking a short note may make starting easier. Whether it helps depends on you and your surroundings: speaking in an open office may be less practical than typing, and another settings dialog may add friction.",
+      "criteria": [
+        "Start with an easily reached shortcut.",
+        "Distinguish capturing from editing.",
+        "Find a draft without hunting through menus.",
+        "Test interruptions and corrections in your real routine."
+      ],
+      "workflow": "Begin with one note: what is the next concrete step? Capture the thought before structuring it. Pick one starting mode. More automation is not necessarily more helpful; understanding the start, finish and result matters more.",
+      "test": "Try the same short thought on three ordinary working days. Record whether starting was easier, the text was easy to find and errors or notifications interrupted you. Choose from that workflow, not from medical-sounding marketing claims.",
+      "avoid": "These recommendations are not treatment or evidence of ADHD-specific effectiveness. If setting up a beta is already too much friction, the existing system feature is a more sensible first attempt.",
+      "faq": "Does a dictation app help with ADHD?",
+      "answer": "It may make capturing thoughts easier for some people. We have not investigated clinical effectiveness and recommend workflows, not treatment outcomes.",
+      "pickReasons": [
+        "The first trial needs no additional app; check whether that starting point suits you.",
+        "This option fits better when you capture thoughts across devices.",
+        "Local history may help recover thoughts on one Mac; enable it deliberately."
+      ]
+    }
+  },
+  {
+    "id": "lawyers",
+    "picks": [
+      "voiceink",
+      "superwhisper",
+      "ainauten"
+    ],
+    "de": {
+      "audience": "Anwälte",
+      "title": "Die besten Diktier-Apps für Anwälte auf dem Mac",
+      "summary": "Für unvertrauliche Entwürfe kommen lokal konfigurierte VoiceInk- oder Superwhisper-Abläufe infrage. AInauten Voice ist nur ein Beta-Testkandidat mit bekannten Sicherheitsgrenzen. Für echte Mandatsdaten ist die Freigabe der Kanzlei entscheidend, nicht unsere Rangfolge.",
+      "scene": "Du diktierst einen Entwurf mit Namen, Fristen und einer ausdrücklichen Verneinung. Ein einziges falsches Datum oder ein weggelassenes „nicht“ kann wichtiger sein als hundert korrekt erkannte Wörter. Gleichzeitig endet der Datenweg nicht am Mikrofon: Textverlauf, Zwischenablage, Zielsoftware und Cloud-Umarbeitung gehören dazu.",
+      "criteria": [
+        "Datenwege und Aufbewahrung vor dem Einsatz klären.",
+        "Namen, Fristen und Verneinungen einzeln prüfen.",
+        "Cloud-Optimierung und Zwischenablage bewusst konfigurieren.",
+        "Freigaben und Sicherheitsanforderungen der Kanzlei erfüllen."
+      ],
+      "workflow": "Teste zunächst ausschließlich fiktive Mandate. Diktiere in eine geeignete Entwurfsfläche und kontrolliere jeden rechtlich relevanten Wert vor der Übernahme. Für wiederkehrende Formulierungen ist ein geprüftes Muster sicherer als ein frei umformulierter Absatz. Lokale Verarbeitung allein ist keine Compliance-Abnahme.",
+      "test": "Verwende einen fiktiven Namen, ein Datum, einen Betrag und eine Verneinung. Prüfe, wo der Text gespeichert wird und ob die App ohne Cloud-Verbindung arbeitet. Lass die IT danach den konkreten Aufbau bewerten. Eine Herstellerangabe ersetzt diese Prüfung nicht.",
+      "avoid": "Unsere Beta ist noch nicht Apple-notarisiert und nutzt eine Ausnahme für Bibliotheksvalidierung. Wenn deine Kanzlei diese Konfiguration nicht erlaubt, ist AInauten Voice keine passende Wahl. Wir behaupten auch für Wettbewerber keine pauschale DSGVO- oder Berufsrechtsfreigabe.",
+      "faq": "Ist lokale Diktier-Software automatisch kanzleigeeignet?",
+      "answer": "Nein. Lokale Verarbeitung ist nur ein Teil des Daten- und Sicherheitskonzepts. Die konkrete Software, Aufbewahrung, Zielanwendung und Kanzleivorgaben müssen geprüft werden.",
+      "pickReasons": [
+        "Eine lokale Konfiguration ist eine technische Vorauswahl, keine Freigabe für Mandatsdaten.",
+        "Modell- und Promptwahl kann bei fiktiven Fachtexten getestet werden; Umarbeitung darf Fakten nicht verändern.",
+        "Nur für einen freigegebenen Beta-Test mit fiktiven Daten, nicht als Standard für vertrauliche Mandate."
+      ]
+    },
+    "en": {
+      "audience": "lawyers",
+      "title": "Best dictation apps for lawyers on Mac",
+      "summary": "Locally configured VoiceInk or Superwhisper workflows can be evaluated for non-confidential drafts. AInauten Voice is only a beta test candidate with known security limits. Firm approval, not our ordering, determines suitability for real client data.",
+      "scene": "You dictate a draft with names, deadlines and an explicit negation. One wrong date or missing “not” may matter more than a hundred correctly recognized words. The data route also extends beyond the microphone: history, clipboard, destination software and cloud rewriting all matter.",
+      "criteria": [
+        "Establish data routes and retention before use.",
+        "Check names, deadlines and negations individually.",
+        "Configure cloud enhancement and clipboard access deliberately.",
+        "Meet the firm's approval and security requirements."
+      ],
+      "workflow": "Test only fictional matters first. Dictate into an appropriate draft area and verify every legally relevant value before using it. A checked template is safer than freely rewritten language for recurring wording. Local processing alone is not a compliance assessment.",
+      "test": "Use a fictional name, date, amount and negation. Check where text is retained and whether the app works without a cloud connection. Have IT assess the specific setup afterwards. Vendor statements do not replace that review.",
+      "avoid": "Our beta is not Apple-notarized and uses a library-validation exception. If your firm disallows that configuration, AInauten Voice is unsuitable. We also make no blanket data-protection or professional-compliance approval claim for competitors.",
+      "faq": "Is local dictation software automatically suitable for a law firm?",
+      "answer": "No. Local processing is one part of the data and security design. Review the actual software, retention, destination application and firm requirements.",
+      "pickReasons": [
+        "A local setup is a technical shortlist, not approval for client data.",
+        "Test models and prompts on fictional specialist text; rewriting must not alter facts.",
+        "Only for an approved beta trial with fictional data, not as the default for confidential matters."
+      ]
+    }
+  },
+  {
+    "id": "doctors",
+    "picks": [
+      "voiceink",
+      "superwhisper",
+      "apple-dictation"
+    ],
+    "de": {
+      "audience": "Ärzte",
+      "title": "Die besten Diktier-Apps für Ärzte auf dem Mac",
+      "summary": "Für unvertrauliche allgemeine Texte kannst du lokale VoiceInk- oder Superwhisper-Abläufe und Apples Diktat prüfen. Für Patientendokumentation empfehlen wir keine App aus dieser Liste ohne organisatorische Freigabe. AInauten Voice ist dafür derzeit keine Standardempfehlung.",
+      "scene": "Eine Praxisnotiz enthält Dosierungen, Einheiten, Seitenangaben und Verneinungen. Automatische Sprachglättung kann eine scheinbar kleine Änderung erzeugen, die den Inhalt verfälscht. Deshalb ist „schön formatiert“ ein anderes Ziel als „fachlich korrekt dokumentiert“.",
+      "criteria": [
+        "Zahlen, Einheiten und Negationen zuverlässig kontrollieren.",
+        "Keine sensiblen Testdaten an ungeprüfte Dienste senden.",
+        "Aufbewahrung und Zielsystem zusammen bewerten.",
+        "Freigabe des Verantwortlichen und der IT vor dem produktiven Einsatz."
+      ],
+      "workflow": "Beginne mit einem allgemeinen Text ohne Patientendaten. Für spezialisierte Dokumentation müssen Wortschatz, Vorlagen und Prüfprozess zur Praxis passen. Verwende keine frei gewählte Cloud-Umarbeitung nur, weil sie eine verständlichere Formulierung erzeugt. Dieser Ratgeber bewertet Arbeitsabläufe, keine medizinische Richtigkeit.",
+      "test": "Diktiere fiktive Begriffe, Zahlen und Einheiten in ein isoliertes Testfeld. Kontrolliere jeden Wert und wiederhole den Ablauf im vorgesehenen Zielsystem ohne echte Daten. Prüfe auch, was bei einem Einfügefehler im Verlauf oder in der Zwischenablage verbleibt.",
+      "avoid": "AInauten Voice hat keine hier nachgewiesene Abnahme als medizinisches Dokumentationssystem. Die nicht notarisierte Beta und die Bibliotheksausnahme können mit Praxisrichtlinien kollidieren. Wähle für Patientendaten einen tatsächlich freigegebenen Prozess statt unserer kostenlosen App aus Kostengründen.",
+      "faq": "Empfehlt ihr diese Apps für Patientendaten?",
+      "answer": "Nicht pauschal. Wir haben weder klinische Eignung noch eine datenschutzrechtliche Freigabe für deinen Einsatz geprüft. Nutze zuerst fiktive Daten und den Freigabeprozess deiner Organisation.",
+      "pickReasons": [
+        "Teste ausschließlich fiktive Dokumentation und einen lokalen Datenweg, bevor die Organisation entscheidet.",
+        "Prüfe kontrollierte Rohtexte statt frei umformulierter klinischer Aussagen.",
+        "Für allgemeine unvertrauliche Texte ist dies eine Ausgangsbasis ohne weiteren Installer."
+      ]
+    },
+    "en": {
+      "audience": "doctors",
+      "title": "Best dictation apps for doctors on Mac",
+      "summary": "For non-confidential general writing, evaluate local VoiceInk or Superwhisper workflows and Apple Dictation. We recommend no app on this list for patient documentation without organizational approval. AInauten Voice is not our default recommendation for that use.",
+      "scene": "A practice note contains doses, units, laterality and negations. Automatic polishing can make a seemingly small change that distorts meaning. Nicely formatted text and clinically correct documentation are different goals.",
+      "criteria": [
+        "Check numbers, units and negations reliably.",
+        "Do not send sensitive test data to unreviewed services.",
+        "Evaluate retention and destination systems together.",
+        "Obtain responsible organizational and IT approval before production use."
+      ],
+      "workflow": "Start with general text without patient data. Specialist documentation needs vocabulary, templates and review procedures suited to the practice. Do not choose cloud rewriting merely because it produces clearer phrasing. This guide evaluates workflows, not medical correctness.",
+      "test": "Dictate fictional terms, numbers and units into an isolated field. Check every value, then repeat in the intended destination without real data. Check what remains in history or on the clipboard after an insertion failure.",
+      "avoid": "AInauten Voice has no demonstrated approval here as a medical documentation system. Its non-notarized beta and library exception may conflict with practice policies. For patient data, choose an actually approved workflow instead of our app just to save money.",
+      "faq": "Do you recommend these apps for patient data?",
+      "answer": "Not generally. We have not assessed clinical suitability or data-protection approval for your deployment. Start with fictional data and your organization's approval process.",
+      "pickReasons": [
+        "Use fictional documentation and a local data route before organizational review.",
+        "Evaluate controlled raw capture rather than freely rewritten clinical statements.",
+        "For general non-confidential writing, this is a baseline without another installer."
+      ]
+    }
+  },
+  {
+    "id": "journalists",
+    "picks": [
+      "macwhisper",
+      "voiceink",
+      "ainauten"
+    ],
+    "de": {
+      "audience": "Journalisten",
+      "title": "Die besten Diktier-Apps für Journalisten auf dem Mac",
+      "summary": "Für Interviewdateien und Untertitel ist MacWhisper die erste Vorauswahl. VoiceInk und AInauten Voice kommen für eigene lokale Textentwürfe infrage. Keine automatisch optimierte Ausgabe sollte ungeprüft zum wörtlichen Zitat werden.",
+      "scene": "Nach einem Interview brauchst du einen durchsuchbaren Text, beim Schreiben dagegen einen schnellen Rohentwurf. Das sind verschiedene Produkteigenschaften. Bei Quellenarbeit zählt außerdem, dass du eine Aussage am Original nachvollziehen kannst; ein sauberer Satz ist noch kein korrekt belegtes Zitat.",
+      "criteria": [
+        "Dateitranskription und eigenes Diktat getrennt bewerten.",
+        "Zitate gegen die originale Aufnahme prüfen.",
+        "Quellenschutz über den gesamten Datenweg betrachten.",
+        "Namen, Ortsangaben und Zahlen gezielt testen."
+      ],
+      "workflow": "Behalte die Originalaufnahme in deinem freigegebenen Archiv. Nutze ein Transkript für die Suche, aber prüfe veröffentlichte Zitate am Original. Diktiere eigene Verbindungstexte in einem getrennten Schritt, damit Rohquelle und redaktionelle Formulierung nicht vermischt werden.",
+      "test": "Nutze eine erlaubte Beispielaufnahme mit zwei Stimmen sowie einen selbst diktierten Absatz. Prüfe Export, Wiederauffindbarkeit und Eigennamen. Vergleiche, wie viele Korrekturen jeder der beiden Abläufe braucht. Ein Diktier-App-Kürzel ist kein Ersatz für einen Archivprozess.",
+      "avoid": "Bei schutzbedürftigen Quellen reicht die Aussage „lokal“ nicht aus. Prüfe optionale Cloud-Schritte, Aufbewahrung und Gerätesicherheit. Unsere Beta ist nicht Apple-notarisiert; wenn die Redaktion das untersagt, scheidet sie aus.",
+      "faq": "Kann ich optimierten Text als Zitat veröffentlichen?",
+      "answer": "Nicht ungeprüft. Sprachoptimierung kann Formulierungen ändern. Wörtliche Zitate brauchen die Kontrolle am Original und deine redaktionellen Regeln.",
+      "pickReasons": [
+        "Dateien und Untertitel passen zur Interviewnachbereitung; Zitate prüfst du trotzdem am Original.",
+        "Für eigene lokale Texte ist ein gesonderter Diktierablauf sinnvoll, statt Quellenmaterial zu überschreiben.",
+        "Für einen kostenlosen Rohentwurf auf einem Mac bleibt die Beta ein zusätzlicher, getrennt zu prüfender Ablauf."
+      ]
+    },
+    "en": {
+      "audience": "journalists",
+      "title": "Best dictation apps for journalists on Mac",
+      "summary": "MacWhisper is the first shortlist choice for interview files and subtitles. VoiceInk and AInauten Voice are candidates for your own local drafts. Automatically polished output should never become an unchecked direct quotation.",
+      "scene": "After an interview you need searchable text; while writing you need a quick rough draft. These are different product capabilities. Source work also requires tracing a statement back to the original; a clean sentence is not a verified quotation.",
+      "criteria": [
+        "Evaluate file transcription and your own dictation separately.",
+        "Check quotations against the original recording.",
+        "Consider source protection across the entire data route.",
+        "Test names, places and numbers deliberately."
+      ],
+      "workflow": "Keep the original recording in your approved archive. Use a transcript for searching but verify published quotations against the original. Dictate your own connecting prose separately so raw sources and editorial wording remain distinct.",
+      "test": "Use an authorized sample recording with two speakers and a paragraph you dictate yourself. Check exports, retrieval and proper names. Compare correction effort for each workflow. A dictation shortcut is not an archival process.",
+      "avoid": "For vulnerable sources, “local” alone is insufficient. Check optional cloud steps, retention and device security. Our beta is not Apple-notarized; if newsroom policy disallows that, exclude it.",
+      "faq": "Can I publish optimized text as a quotation?",
+      "answer": "Not unchecked. Polishing may change wording. Direct quotations need verification against the original and your editorial standards.",
+      "pickReasons": [
+        "Files and subtitles fit interview follow-up; quotations still need original verification.",
+        "A separate local drafting workflow keeps your prose apart from source material.",
+        "For a free rough draft on one Mac, the beta is an additional workflow to evaluate separately."
+      ]
+    }
+  },
+  {
+    "id": "freelancers",
+    "picks": [
+      "ainauten",
+      "voiceink",
+      "wispr-flow"
+    ],
+    "de": {
+      "audience": "Freelancer",
+      "title": "Die besten Diktier-Apps für Freelancer auf dem Mac",
+      "summary": "AInauten Voice ist ein kostenloser lokaler Testkandidat für Entwürfe auf einem Mac. VoiceInk ist die Einmalkauf-Option auf dieser Testliste. Wispr Flow passt besser, wenn du zwischen mehreren Betriebssystemen und dem Telefon wechselst.",
+      "scene": "Du wechselst zwischen Angebot, Kundenantwort und Projektbriefing. Nicht jede Nachricht braucht denselben Ton, aber Preise, Termine und zugesagte Leistungen müssen unverändert bleiben. Die günstigste App kann teuer werden, wenn du jede Ausgabe lange nachbearbeitest.",
+      "criteria": [
+        "Preise, Termine und Leistungsumfang vor Versand prüfen.",
+        "E-Mail und lockeren Chat als unterschiedliche Textaufgaben testen.",
+        "Abo, Einmalkauf und mögliche API-Kosten getrennt rechnen.",
+        "Vertraulichkeit nach dem konkreten Kundenauftrag bewerten."
+      ],
+      "workflow": "Diktiere erst den Inhalt eines Angebots ohne verbindliche Zahlen. Ergänze Beträge und Termine kontrolliert. Teste E-Mail- und Chatmodus mit denselben Informationen und wähle den Ablauf, der den Inhalt zuverlässig bewahrt. Versand bleibt deine Entscheidung.",
+      "test": "Erstelle drei fiktive Nachrichten: Angebot, Terminverschiebung und Projektstatus. Prüfe Ton, Betrag, Datum und Einfügen in deinem Mailprogramm. Notiere Korrekturzeit. Rechne erst danach den Preis gegen den tatsächlichen Nutzen, statt eine pauschale Zeitersparnis anzunehmen.",
+      "avoid": "Wenn du viel am Telefon oder auf Windows arbeitest, ersetzt die Mac-Beta deinen ganzen Ablauf nicht. Wenn dein Kunde freigegebene Software verlangt, entscheidet diese Vorgabe. Wir versprechen keine feste Zeitersparnis oder automatische Freigabe für Kundendaten.",
+      "faq": "Lohnt sich ein bezahltes Tool gegenüber der kostenlosen Beta?",
+      "answer": "Ja, wenn es auf deinen Geräten und in deinen Ziel-Apps weniger Nacharbeit verursacht oder benötigte Funktionen bietet. Vergleiche deinen Arbeitsablauf statt nur den Listenpreis.",
+      "pickReasons": [
+        "Bei einem einzelnen passenden Mac kannst du zuerst prüfen, ob der kostenlose Ablauf deinen Mailentwurf abdeckt.",
+        "Einmalkauf ist interessant, wenn du wiederkehrende App-Kosten vermeiden möchtest.",
+        "Für Kundenarbeit auf Telefon und mehreren Betriebssystemen zählt die Geräteabdeckung mehr als der Nullpreis."
+      ]
+    },
+    "en": {
+      "audience": "freelancers",
+      "title": "Best dictation apps for freelancers on Mac",
+      "summary": "AInauten Voice is a free local trial candidate for drafting on one Mac. VoiceInk is the one-time-purchase option on this shortlist. Wispr Flow is a better fit when work spans operating systems and your phone.",
+      "scene": "You switch between proposals, client replies and project briefs. The tone may change, but prices, dates and promised deliverables must not. The cheapest app can cost more if every result takes substantial editing.",
+      "criteria": [
+        "Check prices, dates and scope before sending.",
+        "Test email and informal chat as different writing tasks.",
+        "Calculate subscriptions, one-time purchases and possible API fees separately.",
+        "Assess confidentiality against the actual client engagement."
+      ],
+      "workflow": "Dictate the content of a proposal before adding binding figures. Enter amounts and dates carefully. Test email and chat styles using the same information and choose the workflow that preserves content. Sending remains your decision.",
+      "test": "Create three fictional messages: a proposal, a rescheduled appointment and a project update. Check tone, amount, date and insertion in your mail app. Record correction time. Then compare cost with actual benefit instead of assuming a fixed time saving.",
+      "avoid": "If you work extensively on a phone or Windows, a Mac beta will not replace the whole workflow. Client requirements for approved software take priority. We promise neither fixed time savings nor automatic approval for client data.",
+      "faq": "Can a paid tool be worth more than the free beta?",
+      "answer": "Yes, if it reduces correction effort on your devices and destination apps or supplies features you need. Compare workflows, not just list prices.",
+      "pickReasons": [
+        "On one suitable Mac, first test whether the free workflow covers mail drafting.",
+        "A one-time purchase is worth considering if you want to avoid recurring app fees.",
+        "For client work across phones and operating systems, device coverage matters more than a zero price."
+      ]
+    }
+  },
+  {
+    "id": "support-teams",
+    "picks": [
+      "wispr-flow",
+      "superwhisper",
+      "ainauten"
+    ],
+    "de": {
+      "audience": "Support-Teams",
+      "title": "Die besten Diktier-Apps für Support-Teams auf dem Mac",
+      "summary": "Für gemeinsame Wörterbücher und zentrale Abrechnung ist Wispr Flow die erste Vorauswahl. Superwhisper gehört auf die Liste für eigene Promptabläufe. AInauten Voice passt eher zu einzelnen Mac-Arbeitsplätzen als zu einer zentral verwalteten Teaminstallation.",
+      "scene": "Eine freundliche Antwort kann trotzdem falsch sein, wenn sie eine Erstattung verspricht, die nicht freigegeben ist. Support braucht wiederholbare Sprache und konkrete Informationen. Diktat kann das Formulieren erleichtern, übernimmt aber weder Richtlinienkontrolle noch Kundenzuordnung.",
+      "criteria": [
+        "Gemeinsame Terminologie und Freigaben bewerten.",
+        "Im echten Ticketsystem Einfügen und Feldwechsel testen.",
+        "Kontonummern und personenbezogene Daten bewusst behandeln.",
+        "Teamkosten und Verwaltung statt nur Einzelplatzpreise vergleichen."
+      ],
+      "workflow": "Beginne mit freigegebenen Vorlagen und ergänze den individuellen Fall. Diktiere keine unbestätigten Zusagen. Für mehrere Mitarbeiter prüfe, wer Wörterbücher pflegt, wer Konten verwaltet und wie neue Kollegen eingerichtet werden. Ein einzelner gut funktionierender Mac ist noch kein Teamrollout.",
+      "test": "Verwende drei fiktive Tickets: Rückfrage, Lieferverzögerung und Rückerstattungsanfrage. Prüfe Produktnamen, Ton und verbindliche Aussagen. Wechsle zwischen Antwort- und interner Notizfläche und kontrolliere, dass der Text im richtigen Feld landet.",
+      "avoid": "Für zentrale Verwaltung und verbindliche Serviceanforderungen empfehlen wir unsere Beta nicht pauschal. Die Website dokumentiert keinen Enterprise-Supportvertrag für AInauten Voice. Datenschutz und die Freigabe des Ticketsystems bleiben Teil deiner Einführung.",
+      "faq": "Kann die App Supportantworten automatisch versenden?",
+      "answer": "Dieser Vergleich behandelt Diktat und Texterstellung, keine automatische Kundenkommunikation. Prüfe Inhalt und Zielfeld vor dem Versand; ein Diktier-Tool ersetzt keine Freigabe.",
+      "pickReasons": [
+        "Gemeinsame Begriffe und Abrechnung sind konkrete Gründe für eine Team-Auswahl.",
+        "Eigene Promptabläufe können bei konsistenten Entwürfen helfen, ersetzen aber keine Richtlinienkontrolle.",
+        "Einzelplatztest ja, pauschaler Rollout ohne zentrale Abnahme nein."
+      ]
+    },
+    "en": {
+      "audience": "customer support teams",
+      "title": "Best dictation apps for customer support teams on Mac",
+      "summary": "Shortlist Wispr Flow first for shared dictionaries and centralized billing, and Superwhisper for custom prompt workflows. AInauten Voice is better suited to individual Mac workstations than a centrally administered team deployment.",
+      "scene": "A friendly reply can still be wrong if it promises an unauthorized refund. Support needs repeatable wording and concrete information. Dictation can help phrasing, but it does not enforce policy or identify the correct customer.",
+      "criteria": [
+        "Evaluate shared terminology and approvals.",
+        "Test insertion and field switching in the real ticket system.",
+        "Handle account numbers and personal data deliberately.",
+        "Compare team costs and administration, not just single-user prices."
+      ],
+      "workflow": "Start from approved templates and add case-specific details. Do not dictate unconfirmed promises. For multiple staff, establish who maintains vocabulary, manages accounts and onboards colleagues. One working Mac is not a team rollout.",
+      "test": "Use three fictional tickets: a follow-up question, delayed delivery and refund request. Check product names, tone and binding statements. Switch between the reply and internal-note fields and verify text lands in the intended field.",
+      "avoid": "We do not generally recommend our beta for central management and contractual service requirements. The website documents no enterprise support contract for AInauten Voice. Privacy and approval of the ticket system remain part of rollout.",
+      "faq": "Can the app send support replies automatically?",
+      "answer": "This comparison covers dictation and drafting, not automatic customer communication. Check content and destination before sending; a dictation tool does not replace approval.",
+      "pickReasons": [
+        "Shared terminology and billing are concrete reasons to shortlist a team option.",
+        "Custom prompt workflows can support consistent drafts, but do not enforce policy.",
+        "An individual workstation trial is reasonable; an unreviewed team rollout is not."
+      ]
+    }
+  },
+  {
+    "id": "multilingual-users",
+    "picks": [
+      "wispr-flow",
+      "superwhisper",
+      "ainauten"
+    ],
+    "de": {
+      "audience": "mehrsprachige Nutzer",
+      "title": "Die besten Diktier-Apps für mehrsprachige Nutzer auf dem Mac",
+      "summary": "Wispr Flow und Superwhisper gehören für breite Sprach- und Geräteanforderungen auf die Testliste. AInauten Voice ist ein kostenloser lokaler Kandidat für ausgewählte Sprachen auf Apple Silicon. Keine Sprachenzahl beweist gute Erkennung deines Akzents.",
+      "scene": "Ein deutscher Satz enthält einen englischen Produktnamen und einen Fachbegriff. Du willst, dass beides erhalten bleibt, ohne dass das Tool die ganze Aussage übersetzt. Sprachwechsel innerhalb eines Satzes, Übersetzung und eine englische Bedienoberfläche sind drei unterschiedliche Anforderungen.",
+      "criteria": [
+        "Erkennungssprache, Übersetzung und GUI-Sprache getrennt prüfen.",
+        "Eigennamen und Sprachwechsel in einem Satz testen.",
+        "Den persönlichen Akzent statt eine Standarddemo bewerten.",
+        "Modellwahl, Internetbedarf und Zielgerät berücksichtigen."
+      ],
+      "workflow": "Wähle zunächst nur die tatsächlich benötigten Sprachen. Teste einen einsprachigen Text, dann einen Satz mit Produktnamen, dann einen echten Sprachwechsel. Prüfe jedes Mal, ob der Inhalt bewahrt oder übersetzt wurde. Ergänze wiederkehrende Namen kontrolliert im Wörterbuch.",
+      "test": "Sprich jeweils denselben kurzen Text in Deutsch und Englisch und danach eine gemischte Passage. Nutze identisches Mikrofon und Zielfeld. Zähle falsche Wörter und sinnverändernde Korrekturen getrennt. Ein Modell, das einen Text gut versteht, muss beim Sprachwechsel nicht ebenso gut sein.",
+      "avoid": "Wenn du zuverlässige Erkennung einer nicht geprüften Sprache oder eines Dialekts brauchst, verlange einen eigenen Versuch. Unsere deutsch-englische Oberfläche ist kein Beleg für gleiche Erkennungsqualität in allen Sprachen. Wir veröffentlichen keine allgemeine Akzent-Rangliste.",
+      "faq": "Bedeutet eine englische Oberfläche auch englische Erkennung?",
+      "answer": "Nein. Bedienoberfläche, Erkennungssprache und Übersetzung sind getrennte Einstellungen oder Fähigkeiten. Prüfe deinen gewünschten Ablauf mit eigenen Beispielen.",
+      "pickReasons": [
+        "Breite Geräteabdeckung ist relevant, wenn du zwischen Telefon und Arbeitsplatz sprichst.",
+        "Modell- und Übersetzungswahl sind hilfreich, wenn du diese Aufgaben bewusst trennen willst.",
+        "Für ausgewählte Sprachen auf einem passenden Mac kannst du die lokale Beta mit deinen eigenen Sprachwechseln testen."
+      ]
+    },
+    "en": {
+      "audience": "multilingual users",
+      "title": "Best dictation apps for multilingual users on Mac",
+      "summary": "Shortlist Wispr Flow and Superwhisper for broad language and device requirements. AInauten Voice is a free local candidate for selected languages on Apple Silicon. A language count does not prove accurate recognition of your accent.",
+      "scene": "A German sentence includes an English product name and technical terminology. You want both preserved without the whole statement being translated. Switching languages mid-sentence, translation and an English interface are three different requirements.",
+      "criteria": [
+        "Check recognition language, translation and interface language separately.",
+        "Test names and language switches within a sentence.",
+        "Evaluate your accent, not a standard demo.",
+        "Account for model choice, connectivity and destination device."
+      ],
+      "workflow": "Select only the languages you actually need first. Test one language, a sentence with product names and then a genuine language switch. Check whether content was preserved or translated each time. Add recurring names deliberately to the dictionary.",
+      "test": "Speak the same short text in German and English, then a mixed passage. Keep the microphone and destination field unchanged. Count wrong words separately from corrections that change meaning. A model that handles one text well may not handle language switching equally well.",
+      "avoid": "If you need reliable recognition of an untested language or dialect, require your own trial. Our German-English interface does not prove equal recognition quality across languages. We publish no general accent ranking.",
+      "faq": "Does an English interface mean English recognition?",
+      "answer": "No. Interface language, recognition language and translation are separate settings or capabilities. Test the intended workflow with your own examples.",
+      "pickReasons": [
+        "Broad device coverage matters when you move between a phone and workstation.",
+        "Model and translation selection help when you deliberately separate those tasks.",
+        "On a suitable Mac, test selected languages and your own language switches with the local beta."
+      ]
+    }
+  }
+]

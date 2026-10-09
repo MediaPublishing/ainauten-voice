@@ -5,9 +5,10 @@
   "scripts": {
     "dev:local": "python3 -m http.server 8916 --bind 127.0.0.1",
     "dev:preview": "python3 -m http.server 8916 --bind 127.0.0.1 --directory dist",
-    "check": "node scripts/check-shell.mjs && python3 check.py",
+    "check": "node scripts/check-shell.mjs && python3 check.py && python3 scripts/check-content.py",
     "build:shell": "node scripts/build-shell.mjs",
-    "check:shell": "node scripts/check-shell.mjs"
+    "check:shell": "node scripts/check-shell.mjs",
+    "build:content": "python3 scripts/build-content.py"
   },
   "type": "module",
   "dependencies": {

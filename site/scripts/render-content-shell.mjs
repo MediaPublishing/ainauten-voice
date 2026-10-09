@@ -1,0 +1,10 @@
+import {build} from 'esbuild';
+import {execFileSync} from 'node:child_process';
+import {mkdirSync} from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const cache=path.join(root,'.shell-build');mkdirSync(cache,{recursive:true});
+const output=path.join(cache,'content-render.cjs');
+await build({absWorkingDir:root,stdin:{contents:`import React from 'react'; import {renderToStaticMarkup} from 'react-dom/server'; import {Footer} from '@ainauten/ui/Footer'; console.log(JSON.stringify({de:renderToStaticMarkup(<Footer locale="de" showAppMap={false} showNewsletter={false}/>),en:renderToStaticMarkup(<Footer locale="en" showAppMap={false} showNewsletter={false}/>)}));`,resolveDir:root,loader:'jsx'},bundle:true,jsx:'automatic',platform:'node',format:'cjs',outfile:output,logLevel:'warning',define:{'process.env.NODE_ENV':'"production"'}});
+process.stdout.write(execFileSync(process.execPath,[output],{encoding:'utf8'}));

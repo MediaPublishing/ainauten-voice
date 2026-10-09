@@ -24,3 +24,13 @@ DMG und Prüfsummen werden beim Build in dist/downloads eingefügt und nicht ins
 Vor Publish Signatur/DMG prüfen, vollständigen öffentlichen Download per SHA256 zurücklesen. Videowiedergabe, Untertitel, Range-Request und Desktop-/Tablet-/Mobileansichten prüfen. Custom-Domain nur dem zugehörigen Pages-Projekt zuordnen; vorhandene DNS-Zustände vorher sichern. Rückweg: vorheriges Pages-Deployment aktivieren bzw. neu deployen. Diese grafische Überarbeitung benötigt keine DNS-Änderung.
 
 Cloudflare Pages beantwortet Range-Anfragen derzeit mit der vollständigen Datei (HTTP 200); ein 206-Teilabruf wurde nicht erreicht. Die öffentliche Videowiedergabe und unveränderte Dateien sind geprüft. Keine zusätzliche Runtime für diese Plattformgrenze.
+
+## Vergleiche und Zielgruppen-Ratgeber (DE/EN)
+
+`content/competitors/profiles.yaml` ist die datierte gemeinsame Faktenbasis (JSON ist hier gültiges YAML). `content/guides.json` enthält die zehn eigenständigen Zielgruppen-Briefings in beiden Sprachen. Herstellerangaben und Empfehlungen bleiben getrennt; Preis-, Geräte- oder Datenwegänderungen zuerst dort pflegen. Für VoiceInk gilt `tryvoiceink.com` / Beingpax, nicht die ähnlich benannte andere App.
+
+`npm run build:content` erzeugt 40 Artikel und zwei Einstiegseiten unter `/de/` und `/en/`, Sitemap und Manifest. Der Generator verwendet den vorhandenen, lokal gerenderten gemeinsamen Footer; er benötigt die bereits installierten Site-Abhängigkeiten. `npm run check` prüft Sprachpaare, interne Links, Canonicals, Beschreibungslängen, Quellen-/Datumskennzeichnung und die zentralen Hinweise. Ein vollständiger `build.py`-Paketlauf ruft den Content-Generator automatisch für `dist` auf.
+
+Bei einer reinen Content-Veröffentlichung kein neues App-Paket erzeugen. Nur das bereits verifizierte eigene `site/dist` aktualisieren, eigene Textänderungen vorher sichern und Prüfsummen von Installer-Metadaten, Update-Feed und Reporting-Routen davor/danach vergleichen. Keine beliebigen fremden Website-Bäume übernehmen. Vor dem Deploy `python3 check.py --root dist` und `python3 scripts/check-content.py --root dist` ausführen. Die Content-Sitemap wird reproduzierbar ergänzt, ohne doppelte URLs.
+
+Methodik: keine behauptete Marktanteils- oder Suchvolumen-Rangliste, keine erfundenen Praxistests oder Wechselzitate. Apple Dictation ist als integrierte Alternative gekennzeichnet. Fachliche Ratgeber ersetzen keine Arbeitsplatzfreigabe und behaupten keine klinische Wirksamkeit oder Compliance-Abnahme. Der aktuelle Sicherheitsprüfstand der Beta wird nicht zugunsten einer Empfehlung verschwiegen.

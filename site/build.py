@@ -135,4 +135,6 @@ if args.updates:
 if redirects:
     (dist/'_redirects').write_text('\n'.join(redirects)+'\n')
 
+subprocess.run(['python3', str(root/'scripts/build-content.py'), '--output', str(dist)], cwd=root, check=True)
+subprocess.run(['python3', str(root/'scripts/check-content.py'), '--root', str(dist)], cwd=root, check=True)
 subprocess.run(['python3', str(root/'check.py'), '--root', str(dist)], cwd=root, check=True)
