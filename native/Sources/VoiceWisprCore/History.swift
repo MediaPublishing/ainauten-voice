@@ -32,6 +32,9 @@ public struct HistoryEntry: Identifiable, Codable, Equatable, Sendable {
 
 public enum HistoryWords {
     private static let expression = try! NSRegularExpression(pattern: #"[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*"#)
+    public static func ranges(_ text: String) -> [NSRange] {
+        expression.matches(in: text, range: NSRange(text.startIndex..., in: text)).map(\.range)
+    }
     public static func count(_ text: String) -> Int {
         expression.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text))
     }
