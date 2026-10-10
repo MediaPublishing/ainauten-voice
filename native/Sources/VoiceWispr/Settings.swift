@@ -209,7 +209,7 @@ struct SettingsView: View {
                         if let next { step = next } else { model.completeSetup() }
                     }.buttonStyle(.borderedProminent)
                 }
-                else if let next = SetupStep(rawValue: step.rawValue + 1) { Button(L10n.text("common.next")) { step = next }.buttonStyle(.borderedProminent) }
+                else if let next = SetupStep(rawValue: step.rawValue + 1) { Button(L10n.text(step == .wispr ? "common.skip" : "common.next")) { step = next }.buttonStyle(.borderedProminent) }
                 else { Button(L10n.text("setup.finish")) { model.completeSetup(); if model.document.settings.onboardingComplete { section = .dictation } }.buttonStyle(.borderedProminent).disabled(!model.canCompleteSetup) }
             }
         }
@@ -434,6 +434,7 @@ struct SettingsView: View {
     private var migrationPreview: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(L10n.text("import.title")).font(.system(size: 19, weight: .semibold))
+            Text(L10n.text("import.optional")).foregroundStyle(.secondary)
             if model.isUIPreview { Text(L10n.text("import.preview")).foregroundStyle(.secondary) }
             else if model.importRefreshing || !model.importPreviewLoaded { ProgressView(L10n.text("import.checking")) }
             else if model.importPreview.isPartial { ForEach(model.importPreview.errors, id: \.self) { Text(L10n.diagnostic($0)).foregroundStyle(.secondary) } }

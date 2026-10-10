@@ -72,7 +72,8 @@
 "import.retry" = "Check again and import";
 "import.saved" = "Saved in AInauten Voice: %@ dictionary entries. Languages: %@. Shortcut: %@.";
 "import.supported" = "Import supported settings";
-"import.title" = "Import your Wispr Flow settings";
+"import.title" = "Import Wispr Flow settings (optional)";
+"import.optional" = "Importing settings, shortcuts and dictionary entries is not required to use AInauten Voice. You can safely skip this step and import them later.";
 "import.undo" = "Undo last Wispr import";
 "import.unique" = "Import unique entries";
 "import.unknownFormat" = "Unknown text format";
@@ -219,3 +220,4 @@
 "settings.interfaceLanguage.system" = "Automatic (system language)";
 "settings.interfaceLanguage.help" = "Changes only the interface. Your dictation languages stay the same.";
 "settings.interfaceLanguage.saveFailed" = "The interface language could not be saved. Your previous choice is still active.";
+"common.skip" = "Skip";

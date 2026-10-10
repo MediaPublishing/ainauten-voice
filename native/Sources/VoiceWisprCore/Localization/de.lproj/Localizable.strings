@@ -72,7 +72,8 @@
 "import.retry" = "Erneut prüfen und importieren";
 "import.saved" = "In AInauten Voice gespeichert: %@ Wörterbucheinträge. Sprachen: %@. Tastenkürzel: %@.";
 "import.supported" = "Unterstützte Einstellungen importieren";
-"import.title" = "Deine Wispr-Flow-Einstellungen übernehmen";
+"import.title" = "Wispr-Flow-Einstellungen übernehmen (optional)";
+"import.optional" = "Die Übernahme von Einstellungen, Tastenkürzeln und Wörterbucheinträgen ist für den Betrieb nicht nötig. Du kannst diesen Schritt bedenkenlos überspringen und den Import später nachholen.";
 "import.undo" = "Letzten Wispr-Import rückgängig machen";
 "import.unique" = "Eindeutige Einträge übernehmen";
 "import.unknownFormat" = "Unbekanntes Textformat";
@@ -219,3 +220,4 @@
 "settings.interfaceLanguage.system" = "Automatisch (Systemsprache)";
 "settings.interfaceLanguage.help" = "Ändert nur die Oberfläche. Deine Diktatsprachen bleiben erhalten.";
 "settings.interfaceLanguage.saveFailed" = "Die Oberflächensprache konnte nicht gespeichert werden. Die bisherige Auswahl bleibt erhalten.";
+"common.skip" = "Überspringen";
