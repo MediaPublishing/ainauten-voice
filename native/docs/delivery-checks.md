@@ -19,3 +19,7 @@ Diese Einfügekorrekturen sind im veröffentlichten Installer 0.1.5 (Build 9) en
 
 
 Diese Einfüge-Fixes werden mit Beta **0.1.5, Build 9** ausgeliefert. Der öffentliche Download, der signierte Updatekanal und die lokale Installation wurden separat auf denselben Build geprüft. Einstellungen und Verlauf bleiben erhalten. Die vollständige Sprach- und Hardwareabnahme bleibt offen.
+
+Für die Regression am leeren WhatsApp-Nachrichtenfeld WhatsApp mit einem leeren Composer im Vordergrund vorbereiten und `swift run VoiceWisprProbe whatsapp-empty-focus-check` ausführen. Der lesende Test verlangt den ursprünglichen Fehlerzustand: `AXValue` liefert `noValue`, während `AXNumberOfCharacters` ausdrücklich 0 meldet. Er prüft die erfolgreiche Zielerfassung samt unverändertem Fokus, liest keine Nachrichten und verändert weder Feld noch Zwischenablage. Er startet keine Aufnahme und fügt keinen Text ein. Fehlende oder unlesbare Zeichenanzahlen gelten weiterhin nicht als leeres Feld. Tatsächliches Einfügen und Erhalt bestehender Entwürfe werden separat in der lokalen App geprüft.
+
+Am 7. Oktober 2026 scheiterte dieser Test am selben leeren WhatsApp-Feld ohne Korrektur und bestand mit Korrektur. 60 gezielte Contract-Prüfungen zu Zustellung, Fehlerfeedback, Migration und Zwischenablage bestanden. Nach Austausch und Neustart des lokal signierten Dev-Builds bestätigte die lokale Nutzerprüfung das automatische Einfügen eines echten Diktats in WhatsApp. Das belegt den beobachteten leeren Composer; bestehende Entwürfe und weitere WhatsApp-Zustände bleiben eigene Prüfungen.
