@@ -23,13 +23,22 @@ def check(root):
         for other in ['de','en']:
             assert [a['href'] for t,a in p.tags if t=='link' and a.get('hreflang')==other]==['https://voice.ainauten.com/'+other+route[3:]]
         descriptions=[a['content'] for t,a in p.tags if t=='meta' and a.get('name')=='description'];assert len(descriptions)==1 and 60<=len(descriptions[0])<=165
-        schemas=re.findall(r'<script type="application/ld\+json">(.*?)</script>',doc);assert len(schemas)==1 and json.loads(schemas[0])['inLanguage']==lang
-        assert '2026-10-09' in doc and 'id="method"' in doc and 'https://voice.ainauten.com'+route in urls
+        schemas=re.findall(r'<script type="application/ld\+json">(.*?)</script>',doc);assert len(schemas)==1
+        graph=json.loads(schemas[0])['@graph']; primary=graph[0]
+        assert primary['inLanguage']==lang and primary['datePublished']=='2026-10-09' and primary['dateModified']=='2026-10-10'
+        assert primary['@type']==('CollectionPage' if '/compare/' in route else 'Article')
+        assert graph[1]['@type']=='BreadcrumbList' and graph[1]['itemListElement'][-1]['item']=='https://voice.ainauten.com'+route
+        assert 'id="content-theme"' in doc and '/content-theme.js' in doc and '/assets/shell/theme-init.js' in doc
+        assert '2026-10-10' in doc and 'id="method"' in doc and 'https://voice.ainauten.com'+route in urls
         assert not any(s in doc for s in ['/Users/','[TODO]','Lorem ipsum','—'])
         if '/vs/' in route or '/alternatives/' in route:
             assert ('id="competitor"' in doc and 'id="migration"' in doc) if '/vs/' in route else ('id="transfer"' in doc and 'id="stay"' in doc)
             assert ('Bibliotheksvalidierung' if lang=='de' else 'library-validation') in doc
-        if '/best/' in route:assert all('id="'+id+'"' in doc for id in ['test','avoid','workflow','criteria','shortlist'])
+        if '/best/' in route:
+            assert all('id="'+id+'"' in doc for id in ['test','avoid','workflow','criteria','shortlist'])
+            if 'href="/#download">AInauten Voice' in doc:
+                assert ('Bibliotheksvalidierung' if lang=='de' else 'library-validation') in doc
+        assert len([t for t,a in p.tags if t=='footer'])==1
         for href in p.links:
             if href.startswith('#'):assert href[1:] in p.ids,(route,href)
             elif href.startswith('/'):

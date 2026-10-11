@@ -34,3 +34,9 @@ Cloudflare Pages beantwortet Range-Anfragen derzeit mit der vollständigen Datei
 Bei einer reinen Content-Veröffentlichung kein neues App-Paket erzeugen. Nur das bereits verifizierte eigene `site/dist` aktualisieren, eigene Textänderungen vorher sichern und Prüfsummen von Installer-Metadaten, Update-Feed und Reporting-Routen davor/danach vergleichen. Keine beliebigen fremden Website-Bäume übernehmen. Vor dem Deploy `python3 check.py --root dist` und `python3 scripts/check-content.py --root dist` ausführen. Die Content-Sitemap wird reproduzierbar ergänzt, ohne doppelte URLs.
 
 Methodik: keine behauptete Marktanteils- oder Suchvolumen-Rangliste, keine erfundenen Praxistests oder Wechselzitate. Apple Dictation ist als integrierte Alternative gekennzeichnet. Fachliche Ratgeber ersetzen keine Arbeitsplatzfreigabe und behaupten keine klinische Wirksamkeit oder Compliance-Abnahme. Der aktuelle Sicherheitsprüfstand der Beta wird nicht zugunsten einer Empfehlung verschwiegen.
+
+### Content review and themes (2026-10-10)
+
+Comparisons and guides share the homepage preference (`theme`: `light`, `dark`, absence = System) and `.dark` class. Their native selector uses `content-theme.js`, a small local controller; the initial head script is the shared `assets/shell/theme-init.js`. The choice survives navigation and reload, follows live OS changes only in System, and remains usable when storage is blocked. No new dependency or tracking is loaded. Run `npm run check` to cover the theme regressions and all bilingual pages.
+
+Edit `content/competitors/profiles.yaml` and `content/guides.json`, then run `npm run build:content`. Publication date is fixed at the original launch; update `UPDATED` when editorial content changes. Vendor check dates remain separate. Preserve honest beta caveats alongside every AInauten recommendation and unknown competitor signing status. Hubs use CollectionPage, articles Article, and all have BreadcrumbList.

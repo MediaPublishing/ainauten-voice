@@ -26,7 +26,8 @@
         "workflow": "Mehrgerätebetrieb spart dir unterschiedliche Diktierabläufe. Pro listet gemeinsame Wörterbücher und zentrale Abrechnung. Das ist ein konkreter Vorteil gegenüber unserer Beta für einzelne Macs, aber kein Beleg für höhere Erkennungsgenauigkeit.",
         "switch": "AInauten Voice bietet einen Wispr-Flow-Import. Prüfe die Vorschau und das Import-Ergebnis, insbesondere Fachbegriffe. Konten, Abonnements, Teamverwaltung und geräteübergreifende Einstellungen werden dadurch nicht ersetzt.",
         "alternative": "Eine Wispr-Flow-Alternative lohnt sich vor allem, wenn du auf einem Apple-Silicon-Mac bleiben und lokal diktieren möchtest. Für einen gemischten Gerätepark kann der Wechsel Funktionen verlieren, die wichtiger sind als der Preis.",
-        "cost": "Pro bei jährlicher Abrechnung entspricht 144 USD pro Person und Jahr, bei zehn Personen 1.440 USD. Das ist kein Europreis und keine Aussage über Steuern oder Zusatzpakete."
+        "cost": "Pro bei jährlicher Abrechnung entspricht 144 USD pro Person und Jahr, bei zehn Personen 1.440 USD. Das ist kein Europreis und keine Aussage über Steuern oder Zusatzpakete.",
+        "status": "Signatur und Apple-Notarisierung wurden von uns nicht geprüft."
       },
       "en": {
         "position": "Cross-device dictation with team features.",
@@ -38,8 +39,19 @@
         "workflow": "A shared workflow across devices reduces setup differences. Pro lists shared dictionaries and centralized billing. That is a concrete benefit over our single-Mac beta, not proof of more accurate recognition.",
         "switch": "AInauten Voice includes a Wispr Flow import. Review the preview and import result, especially specialist terms. This does not replace accounts, subscriptions, team management or cross-device settings.",
         "alternative": "A Wispr Flow alternative makes most sense if you can stay on an Apple Silicon Mac and want local dictation. For a mixed device setup, switching may lose features that matter more than price.",
-        "cost": "Annually billed Pro is USD 144 per person per year, or USD 1,440 for ten people. This is not a euro price and excludes any tax or additional bundles."
-      }
+        "cost": "Annually billed Pro is USD 144 per person per year, or USD 1,440 for ten people. This is not a euro price and excludes any tax or additional bundles.",
+        "status": "We have not verified signing or Apple notarization."
+      },
+      "alternatives": [
+        "superwhisper",
+        "voiceink",
+        "apple-dictation"
+      ],
+      "sourceLabelsDe": {
+        "Pricing and platforms": "Preise und Geräte",
+        "Processing and privacy": "Verarbeitung und Datenschutz"
+      },
+      "checked": "2026-10-10"
     },
     {
       "id": "superwhisper",
@@ -73,7 +85,8 @@
         "workflow": "Für verschiedene Aufgaben kannst du eigene Anweisungen und Modelle einsetzen. Das ist sinnvoll, wenn du Rohtext, Übersetzung und Umarbeitung bewusst trennen möchtest. Unser kostenloser Einstieg richtet sich eher an lokale Alltagsdiktate.",
         "switch": "Eine direkte Superwhisper-Migration bieten wir nicht an. Übertrage wichtige Begriffe bewusst ins Wörterbuch und richte Kürzel und Textmodi neu ein. Sichere eigene Prompts separat und vergleiche deren Wirkung mit Beispielen.",
         "alternative": "Eine Superwhisper-Alternative sollte nicht nur billiger sein. Wenn deine Prompts und Modellkombinationen den Arbeitsablauf tragen, teste zuerst, ob ein einfacherer lokaler Ablauf tatsächlich ausreicht.",
-        "cost": "Pro im Jahresplan kostet 84,99 USD pro Person und Jahr; zehn einzelne Jahreslizenzen entsprechen 849,90 USD. Zwölf Monatszahlungen kosten 101,88 USD pro Person. Das ist keine Enterprise-Offerte; Steuern und eigene API-Nutzung sind nicht enthalten."
+        "cost": "Pro im Jahresplan kostet 84,99 USD pro Person und Jahr; zehn einzelne Jahreslizenzen entsprechen 849,90 USD. Zwölf Monatszahlungen kosten 101,88 USD pro Person. Das ist keine Enterprise-Offerte; Steuern und eigene API-Nutzung sind nicht enthalten.",
+        "status": "Signatur und Apple-Notarisierung wurden von uns nicht geprüft."
       },
       "en": {
         "position": "Dictation with selectable local and cloud models and custom prompts.",
@@ -85,8 +98,21 @@
         "workflow": "Different tasks can use different instructions and models. This is useful when you deliberately separate raw transcription, translation and rewriting. Our free starting point is aimed more at everyday local dictation.",
         "switch": "We do not offer a direct Superwhisper migration. Add important vocabulary deliberately and configure shortcuts and text modes again. Back up custom prompts separately and compare their effects on examples.",
         "alternative": "A Superwhisper alternative should offer more than a lower price. If prompts and model combinations drive your workflow, first test whether a simpler local workflow actually covers it.",
-        "cost": "Annual Pro costs USD 84.99 per person per year; ten separate annual licenses total USD 849.90. Twelve monthly payments cost USD 101.88 per person. This is not an enterprise quote; taxes and your own API usage are excluded."
-      }
+        "cost": "Annual Pro costs USD 84.99 per person per year; ten separate annual licenses total USD 849.90. Twelve monthly payments cost USD 101.88 per person. This is not an enterprise quote; taxes and your own API usage are excluded.",
+        "status": "We have not verified signing or Apple notarization."
+      },
+      "alternatives": [
+        "voiceink",
+        "apple-dictation",
+        "wispr-flow"
+      ],
+      "sourceLabelsDe": {
+        "Features and plans": "Funktionen und Tarife",
+        "Product documentation": "Produktdokumentation",
+        "Offline processing": "Offline-Verarbeitung",
+        "Plans and pricing": "Tarife und Preise"
+      },
+      "checked": "2026-10-10"
     },
     {
       "id": "voiceink",
@@ -108,28 +134,41 @@
       ],
       "de": {
         "position": "Lokales Mac-Diktat mit Einmalkauf und öffentlich lizenziertem Quellcode.",
-        "price": "Solo: 25 USD für einen Mac. Personal: 39 USD für zwei Macs. Extended: 49 USD für drei Macs. Einmalkauf; Teamangebote separat prüfen. Cloud-Textoptimierung kann eigene Anbietergebühren haben.",
+        "price": "Kostenlose Testversion laut Anbieter. Solo: 25 USD für einen Mac. Personal: 39 USD für zwei Macs. Extended: 49 USD für drei Macs. Einmalkauf; Teamangebote separat prüfen. Cloud-Textoptimierung kann eigene Anbietergebühren haben.",
         "platform": "Mac: Apple Silicon und macOS 14.4 oder neuer laut Anforderungen. Der Anbieter verlinkt zusätzlich eine iOS-App; gleicher Funktionsumfang ist damit nicht belegt.",
         "processing": "Spracherkennung laut Anbieter lokal; optionale Cloud-Optimierung verarbeitet transkribierten Text.",
         "better": "Wenn du lokal diktieren und eine ausdrücklich lizenzierte Open-Source-Basis prüfen oder selbst bauen möchtest, ist VoiceInk die passendere Vorauswahl.",
-        "tradeoff": "Der kostenpflichtige Mac-Download hat Gerätelimits. Cloud-Optimierung ist ein eigener Datenweg; lokal erkannte Sprache macht nachgelagerte Cloud-Verarbeitung nicht lokal.",
+        "tradeoff": "Der Mac-Kauf nach der kostenlosen Testversion hat Gerätelimits. Cloud-Optimierung ist ein eigener Datenweg; lokal erkannte Sprache macht nachgelagerte Cloud-Verarbeitung nicht lokal.",
         "workflow": "Einmalkauf und Gerätezahl sind konkret kalkulierbar. Der GPL-3.0-Quellcode bietet andere Nutzungsrechte als unser nur öffentlich einsehbarer App-Code. Lokalität ist hier kein Alleinstellungsmerkmal von AInauten Voice.",
         "switch": "Eine direkte VoiceInk-Migration bieten wir nicht an. Übernimm Fachbegriffe und Kürzel einzeln, teste Textmodi neu und prüfe die Ziel-App. Eine vorhandene VoiceInk-Lizenz wird nicht übertragen.",
-        "alternative": "Eine VoiceInk-Alternative ist interessant, wenn du zunächst nichts bezahlen und die AInauten-Beta ausprobieren möchtest. Wenn Open-Source-Rechte entscheidend sind, ist VoiceInk die bessere Wahl; ein öffentliches Repository allein genügt dafür nicht.",
-        "cost": "Zehn getrennte Solo-Lizenzen kosten zum angezeigten Preis 250 USD einmalig. Das ist keine Teamofferte. Prüfe Geräteumfang, Steuer und Checkout statt diesen Preis mit einer jährlichen Teamlizenz gleichzusetzen."
+        "alternative": "Eine VoiceInk-Alternative ist interessant, wenn du dauerhaft ohne Kauf diktieren und die AInauten-Beta ausprobieren möchtest. VoiceInk bietet selbst eine kostenlose Testversion. Wenn Open-Source-Rechte entscheidend sind, ist VoiceInk die bessere Wahl; ein öffentliches Repository allein genügt dafür nicht.",
+        "cost": "Zehn getrennte Solo-Lizenzen kosten zum angezeigten Preis 250 USD einmalig. Das ist keine Teamofferte. Prüfe Geräteumfang, Steuer und Checkout statt diesen Preis mit einer jährlichen Teamlizenz gleichzusetzen.",
+        "status": "Signatur und Apple-Notarisierung wurden von uns nicht geprüft."
       },
       "en": {
         "position": "Local Mac dictation with a one-time purchase and openly licensed source code.",
-        "price": "Solo: USD 25 for one Mac. Personal: USD 39 for two Macs. Extended: USD 49 for three Macs. One-time purchase; check team offers separately. Cloud text enhancement may involve provider fees.",
+        "price": "The vendor offers a free trial. Solo: USD 25 for one Mac. Personal: USD 39 for two Macs. Extended: USD 49 for three Macs. One-time purchase; check team offers separately. Cloud text enhancement may involve provider fees.",
         "platform": "Mac: Apple Silicon and macOS 14.4 or later in the requirements. The vendor also links an iOS app; this does not establish feature parity.",
         "processing": "Voice recognition is local according to the vendor; optional cloud enhancement processes transcribed text.",
         "better": "VoiceInk is the stronger shortlist choice if you want local dictation and an explicitly licensed open-source codebase to inspect or build.",
-        "tradeoff": "The paid Mac download has device limits. Cloud enhancement is a separate data route; locally recognized speech does not make subsequent cloud processing local.",
+        "tradeoff": "The Mac purchase after the free trial has device limits. Cloud enhancement is a separate data route; locally recognized speech does not make subsequent cloud processing local.",
         "workflow": "One-time pricing and device allowances are straightforward to calculate. GPL-3.0 source offers different usage rights from our publicly viewable app code. Local processing is not unique to AInauten Voice here.",
         "switch": "We do not offer a direct VoiceInk migration. Move specialist vocabulary and shortcuts individually, retest text modes and check the target app. An existing VoiceInk license does not transfer.",
-        "alternative": "A VoiceInk alternative is worth exploring if you want to try the AInauten beta without paying first. If open-source rights matter, VoiceInk is the better choice; a public repository alone is not enough.",
-        "cost": "Ten separate Solo licenses cost USD 250 once at the displayed price. This is not a team quote. Check devices, tax and checkout rather than equating it with an annual team license."
-      }
+        "alternative": "A VoiceInk alternative is worth exploring if you want to try a free beta with no purchase requirement. VoiceInk itself offers a free trial. If open-source rights matter, VoiceInk is the better choice; a public repository alone is not enough.",
+        "cost": "Ten separate Solo licenses cost USD 250 once at the displayed price. This is not a team quote. Check devices, tax and checkout rather than equating it with an annual team license.",
+        "status": "We have not verified signing or Apple notarization."
+      },
+      "alternatives": [
+        "superwhisper",
+        "apple-dictation",
+        "wispr-flow"
+      ],
+      "sourceLabelsDe": {
+        "Features, requirements and pricing": "Funktionen, Voraussetzungen und Preise",
+        "Source and license": "Quellcode und Lizenz",
+        "GPL-3.0 license": "GPL-3.0-Lizenz"
+      },
+      "checked": "2026-10-10"
     },
     {
       "id": "macwhisper",
@@ -147,28 +186,40 @@
       ],
       "de": {
         "position": "Mac-App für Datei- und Meetingtranskription, Untertitel und Diktat.",
-        "price": "Kostenloser Einstieg und Pro-Kauf werden angeboten. Ein eindeutiger aktueller Pro-Endpreis ließ sich aus der geprüften Seite nicht zuverlässig bestimmen; prüfe den verlinkten Checkout. Optionale eigene API-Dienste kosten separat.",
+        "price": "Kostenloser Einstieg. Pro wurde am 10. Oktober 2026 mit 64 EUR pro Lizenz als Einmalkauf inklusive dauerhafter Updates angezeigt. Prüfe Währung, Steuer und Endpreis im Checkout. Optionale eigene API-Dienste kosten separat.",
         "platform": "Mac; prüfe Systemanforderungen und Modellgröße für dein Gerät.",
         "processing": "Lokale Transkriptionsmodelle; optionale AI-Dienste mit eigenen API-Schlüsseln und lokale Textmodelle werden beschrieben.",
         "better": "Für Interviews, bestehende Audio- und Videodateien, Untertitel oder Meetingaufnahmen ist MacWhisper die passendere Vorauswahl.",
         "tradeoff": "Der genaue Modell- und Tarifumfang gehört zum Test. Optionale Cloud-Dienste sind ein anderer Datenweg als lokale Transkription. Unser Vergleich behauptet keine generelle Genauigkeitsüberlegenheit.",
-        "workflow": "Dateiimport, Stapelverarbeitung und Untertitel stehen auf der Produktseite. Diese Aufgaben gehen über den primären AInauten-Voice-Ablauf für Texte im aktiven Feld hinaus. Für den Schnitt eines Interviews ist der Transkriptionsworkflow meist wichtiger als das Diktierkürzel.",
+        "workflow": "Dateiimport, Stapelverarbeitung und Untertitel stehen auf der Produktseite. Diese Aufgaben gehen über den primären AInauten-Voice-Ablauf für Texte im aktiven Feld hinaus. Für den Schnitt eines Interviews ist der Transkriptionsworkflow meist wichtiger als das Diktierkürzel. Die Produktseite nennt Pro-Funktionen wie Stapelverarbeitung, AI-Prompts und automatische Meetingaufnahme; prüfe die benötigte Funktion im konkreten Tarif.",
         "switch": "Eine direkte MacWhisper-Migration bieten wir nicht an. Behalte vorhandene Audiodateien und exportierte Transkripte in deinem eigenen Archiv. AInauten Voice ist kein Ersatz für ein Datei- oder Untertitelarchiv.",
         "alternative": "Eine MacWhisper-Alternative für kurze Textdiktate ist nicht automatisch eine Alternative für Interviews und Untertitel. Trenne beide Aufgaben, bevor du wechselst; du kannst einen Dateitranskriptor und eine Diktier-App parallel verwenden.",
-        "cost": "Ohne belastbaren aktuellen Pro-Endpreis veröffentlichen wir keine Jahres- oder Zehn-Personen-Sparrechnung. Berücksichtige Kaufpreis, optionale API-Nutzung und den konkreten Funktionsumfang."
+        "cost": "Zum angezeigten Pro-Preis entsprechen zehn einzelne Lizenzen 640 EUR einmalig. Das ist keine Teamofferte. Prüfe Steuer, Checkout und optionale API-Kosten; vergleiche einen Einmalkauf nicht ungeprüft mit einem Jahresabo.",
+        "status": "Signatur und Apple-Notarisierung wurden von uns nicht geprüft."
       },
       "en": {
         "position": "Mac app for file and meeting transcription, subtitles and dictation.",
-        "price": "A free starting point and Pro purchase are offered. We could not reliably establish one current final Pro price from the checked page; check its linked checkout. Optional API services are billed separately.",
+        "price": "Free entry tier. On October 10, 2026, Pro was listed at EUR 64 per license, a one-time purchase including lifetime updates. Check currency, tax and the final checkout price. Optional API services cost extra.",
         "platform": "Mac; check device requirements and model size for your machine.",
         "processing": "Local transcription models; optional AI services with your own API keys and local text models are documented.",
         "better": "MacWhisper is the stronger shortlist choice for interviews, existing audio and video files, subtitles or meeting recordings.",
         "tradeoff": "Test the specific model and plan. Optional cloud services take a different data route from local transcription. This comparison does not claim general accuracy superiority.",
-        "workflow": "File import, batch processing and subtitles are listed on the product page. Those jobs extend beyond AInauten Voice's main workflow of entering text in the active field. For interview editing, the transcription workflow usually matters more than the dictation shortcut.",
+        "workflow": "File import, batch processing and subtitles are listed on the product page. Those jobs extend beyond AInauten Voice's main workflow of entering text in the active field. For interview editing, the transcription workflow usually matters more than the dictation shortcut. The product page lists Pro capabilities such as batch processing, AI prompts and automatic meeting recording; verify your required capability in the actual tier.",
         "switch": "We do not offer a direct MacWhisper migration. Keep existing audio files and exported transcripts in your own archive. AInauten Voice is not a replacement for a file or subtitle archive.",
         "alternative": "A MacWhisper alternative for short dictated text is not automatically an alternative for interviews and subtitles. Separate those jobs before switching; a file transcription app and a dictation app can coexist.",
-        "cost": "Without a reliable current Pro checkout price, we do not publish yearly or ten-person savings figures. Consider the purchase price, optional API usage and the specific feature set."
-      }
+        "cost": "At the displayed Pro price, ten separate licenses total EUR 640 once. This is not a team quote. Check tax, checkout and optional API fees; do not equate a one-time purchase with an annual subscription.",
+        "status": "We have not verified signing or Apple notarization."
+      },
+      "alternatives": [
+        "superwhisper",
+        "wispr-flow",
+        "apple-dictation"
+      ],
+      "sourceLabelsDe": {
+        "Product and pricing": "Produkt und Preise",
+        "Official documentation": "Offizielle Dokumentation"
+      },
+      "checked": "2026-10-10"
     },
     {
       "id": "apple-dictation",
@@ -190,7 +241,8 @@
         "workflow": "Aktiviere Diktat unter Tastatur und wähle ein Kürzel. So erhältst du ohne weiteren Installer einen echten Ausgangswert für deinen Vergleich. Erst wenn dir Wörterbuch, Textmodi oder Verlauf fehlen, lohnt sich der zusätzliche App-Test.",
         "switch": "Es gibt keinen Apple-Dictation-Import. Richte ein anderes Kürzel ein, damit beide Funktionen nicht gleichzeitig starten. Teste zuerst ein nicht vertrauliches Textfeld und behalte macOS-Diktat als Vergleichsbasis.",
         "alternative": "Eine Alternative zur Mac-Diktierfunktion sollte einen konkreten zusätzlichen Nutzen haben. Nur für einen gelegentlichen Satz ist ein weiterer Installer oft unnötig; für eigene Begriffe, Textmodi und lokalen Verlauf kann AInauten Voice einen Versuch wert sein.",
-        "cost": "Der zusätzliche App-Preis ist für eine Person und zehn vorhandene Mac-Arbeitsplätze null. Das ist keine Gesamtkostenrechnung für Hardware, IT oder Betreuung."
+        "cost": "Der zusätzliche App-Preis ist für eine Person und zehn vorhandene Mac-Arbeitsplätze null. Das ist keine Gesamtkostenrechnung für Hardware, IT oder Betreuung.",
+        "status": "Bestandteil von macOS, keine separate App-Installation."
       },
       "en": {
         "position": "Built-in macOS dictation as a no-extra-cost baseline.",
@@ -202,7 +254,16 @@
         "workflow": "Enable Dictation in Keyboard settings and pick a shortcut. This gives you a real baseline without another installer. Only add an app trial when vocabulary, text modes or history solve a concrete missing step.",
         "switch": "There is no Apple Dictation import. Configure a different shortcut so both features do not start together. Test a non-sensitive text field first and keep macOS dictation as your baseline.",
         "alternative": "An alternative to Mac dictation should add something specific. Another installer is often unnecessary for an occasional sentence; custom vocabulary, text modes and local history may justify an AInauten Voice trial.",
-        "cost": "The additional app price is zero for one person or ten existing Mac workstations. This is not a total-cost calculation for hardware, IT or support."
+        "cost": "The additional app price is zero for one person or ten existing Mac workstations. This is not a total-cost calculation for hardware, IT or support.",
+        "status": "Built into macOS; no separate app installation."
+      },
+      "alternatives": [
+        "voiceink",
+        "superwhisper",
+        "wispr-flow"
+      ],
+      "sourceLabelsDe": {
+        "Mac Dictation and data processing": "Mac-Diktierfunktion und Datenverarbeitung"
       }
     }
   ]

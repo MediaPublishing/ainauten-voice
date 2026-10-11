@@ -49,7 +49,10 @@
         "A cross-device option helps if you dictate the same project descriptions on Mac and elsewhere.",
         "Try a natural-language bug report locally at no charge; enter code characters deliberately."
       ]
-    }
+    },
+    "relatedGuides": [
+      "freelancers"
+    ]
   },
   {
     "id": "writers",
@@ -101,7 +104,10 @@
         "Custom prompts are worth evaluating when different writing forms need deliberate processing.",
         "For an occasional paragraph, first check whether the built-in feature is sufficient."
       ]
-    }
+    },
+    "relatedGuides": [
+      "journalists"
+    ]
   },
   {
     "id": "students",
@@ -153,7 +159,10 @@
         "On a suitable Mac, test the free beta for local drafts with specialist terms.",
         "When the starting material is a file, you need a file workflow, not just a dictation shortcut."
       ]
-    }
+    },
+    "relatedGuides": [
+      "multilingual-users"
+    ]
   },
   {
     "id": "adhd",
@@ -164,7 +173,7 @@
     ],
     "de": {
       "audience": "Menschen mit ADHS",
-      "title": "Die besten Diktier-Apps für Menschen mit ADHS auf dem Mac",
+      "title": "Diktier-Apps bei ADHS: passende Abläufe auf dem Mac",
       "summary": "Es gibt keinen belegten Diktier-App-Sieger für ADHS in diesem Vergleich. Probiere Apples Diktat für den kleinsten Einrichtungsaufwand, Wispr Flow für wechselnde Geräte und AInauten Voice für lokale Gedankennotizen auf einem Mac.",
       "scene": "Ein Gedanke ist da, während das leere Textfeld noch vor dir liegt. Eine kurze Sprachaufnahme kann den Einstieg erleichtern. Ob das im Alltag hilft, hängt von dir und deinem Umfeld ab: Im Großraumbüro ist Sprechen vielleicht unpraktischer als Tippen, und ein weiterer Einstellungsdialog kann zusätzliche Reibung erzeugen.",
       "criteria": [
@@ -186,7 +195,7 @@
     },
     "en": {
       "audience": "people with ADHD",
-      "title": "Best dictation apps for people with ADHD on Mac",
+      "title": "Dictation apps for ADHD: finding a Mac workflow",
       "summary": "This comparison establishes no proven ADHD-specific winner. Try Apple Dictation for minimal setup, Wispr Flow for mixed devices and AInauten Voice for local thought capture on one Mac.",
       "scene": "An idea arrives while the empty text box is still in front of you. Speaking a short note may make starting easier. Whether it helps depends on you and your surroundings: speaking in an open office may be less practical than typing, and another settings dialog may add friction.",
       "criteria": [
@@ -205,7 +214,10 @@
         "This option fits better when you capture thoughts across devices.",
         "Local history may help recover thoughts on one Mac; enable it deliberately."
       ]
-    }
+    },
+    "relatedGuides": [
+      "writers"
+    ]
   },
   {
     "id": "lawyers",
@@ -216,7 +228,7 @@
     ],
     "de": {
       "audience": "Anwälte",
-      "title": "Die besten Diktier-Apps für Anwälte auf dem Mac",
+      "title": "Diktier-Apps für Anwälte: Einsatz auf dem Mac prüfen",
       "summary": "Für unvertrauliche Entwürfe kommen lokal konfigurierte VoiceInk- oder Superwhisper-Abläufe infrage. AInauten Voice ist nur ein Beta-Testkandidat mit bekannten Sicherheitsgrenzen. Für echte Mandatsdaten ist die Freigabe der Kanzlei entscheidend, nicht unsere Rangfolge.",
       "scene": "Du diktierst einen Entwurf mit Namen, Fristen und einer ausdrücklichen Verneinung. Ein einziges falsches Datum oder ein weggelassenes „nicht“ kann wichtiger sein als hundert korrekt erkannte Wörter. Gleichzeitig endet der Datenweg nicht am Mikrofon: Textverlauf, Zwischenablage, Zielsoftware und Cloud-Umarbeitung gehören dazu.",
       "criteria": [
@@ -238,7 +250,7 @@
     },
     "en": {
       "audience": "lawyers",
-      "title": "Best dictation apps for lawyers on Mac",
+      "title": "Dictation apps for lawyers: assess Mac use",
       "summary": "Locally configured VoiceInk or Superwhisper workflows can be evaluated for non-confidential drafts. AInauten Voice is only a beta test candidate with known security limits. Firm approval, not our ordering, determines suitability for real client data.",
       "scene": "You dictate a draft with names, deadlines and an explicit negation. One wrong date or missing “not” may matter more than a hundred correctly recognized words. The data route also extends beyond the microphone: history, clipboard, destination software and cloud rewriting all matter.",
       "criteria": [
@@ -257,7 +269,10 @@
         "Test models and prompts on fictional specialist text; rewriting must not alter facts.",
         "Only for an approved beta trial with fictional data, not as the default for confidential matters."
       ]
-    }
+    },
+    "relatedGuides": [
+      "freelancers"
+    ]
   },
   {
     "id": "doctors",
@@ -268,7 +283,7 @@
     ],
     "de": {
       "audience": "Ärzte",
-      "title": "Die besten Diktier-Apps für Ärzte auf dem Mac",
+      "title": "Diktier-Apps für Ärzte: Einsatz auf dem Mac prüfen",
       "summary": "Für unvertrauliche allgemeine Texte kannst du lokale VoiceInk- oder Superwhisper-Abläufe und Apples Diktat prüfen. Für Patientendokumentation empfehlen wir keine App aus dieser Liste ohne organisatorische Freigabe. AInauten Voice ist dafür derzeit keine Standardempfehlung.",
       "scene": "Eine Praxisnotiz enthält Dosierungen, Einheiten, Seitenangaben und Verneinungen. Automatische Sprachglättung kann eine scheinbar kleine Änderung erzeugen, die den Inhalt verfälscht. Deshalb ist „schön formatiert“ ein anderes Ziel als „fachlich korrekt dokumentiert“.",
       "criteria": [
@@ -290,7 +305,7 @@
     },
     "en": {
       "audience": "doctors",
-      "title": "Best dictation apps for doctors on Mac",
+      "title": "Dictation apps for doctors: assess Mac use",
       "summary": "For non-confidential general writing, evaluate local VoiceInk or Superwhisper workflows and Apple Dictation. We recommend no app on this list for patient documentation without organizational approval. AInauten Voice is not our default recommendation for that use.",
       "scene": "A practice note contains doses, units, laterality and negations. Automatic polishing can make a seemingly small change that distorts meaning. Nicely formatted text and clinically correct documentation are different goals.",
       "criteria": [
@@ -309,7 +324,10 @@
         "Evaluate controlled raw capture rather than freely rewritten clinical statements.",
         "For general non-confidential writing, this is a baseline without another installer."
       ]
-    }
+    },
+    "relatedGuides": [
+      "multilingual-users"
+    ]
   },
   {
     "id": "journalists",
@@ -361,7 +379,10 @@
         "A separate local drafting workflow keeps your prose apart from source material.",
         "For a free rough draft on one Mac, the beta is an additional workflow to evaluate separately."
       ]
-    }
+    },
+    "relatedGuides": [
+      "writers"
+    ]
   },
   {
     "id": "freelancers",
@@ -413,7 +434,10 @@
         "A one-time purchase is worth considering if you want to avoid recurring app fees.",
         "For client work across phones and operating systems, device coverage matters more than a zero price."
       ]
-    }
+    },
+    "relatedGuides": [
+      "developers"
+    ]
   },
   {
     "id": "support-teams",
@@ -465,7 +489,10 @@
         "Custom prompt workflows can support consistent drafts, but do not enforce policy.",
         "An individual workstation trial is reasonable; an unreviewed team rollout is not."
       ]
-    }
+    },
+    "relatedGuides": [
+      "multilingual-users"
+    ]
   },
   {
     "id": "multilingual-users",
@@ -517,6 +544,10 @@
         "Model and translation selection help when you deliberately separate those tasks.",
         "On a suitable Mac, test selected languages and your own language switches with the local beta."
       ]
-    }
+    },
+    "relatedGuides": [
+      "students",
+      "support-teams"
+    ]
   }
 ]
