@@ -5,6 +5,7 @@
 "capture.convertFailed" = "Could not convert audio to 16 kHz";
 "capture.limit" = "The 20-minute dictation limit has been reached";
 "capture.deviceChanged" = "The microphone changed. The current dictation will finish.";
+"capture.startTimedOut" = "The microphone is not providing audio. Check the input device and start dictation again.";
 "capture.recordingAX" = "Recording in progress";
 "camera.permission" = "Allow camera access for the lip-reading beta.";
 "camera.running" = "A camera recording is already running.";

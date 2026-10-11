@@ -3,6 +3,8 @@ import AVFoundation
 import CryptoKit
 import FluidAudio
 import VoiceWisprCore
+import AppKit
+import ApplicationServices
 
 private struct OriginalFormatter: TextFormatting {
     func prepare() async throws {}
@@ -125,6 +127,10 @@ private struct StageFormatter: TextFormatting {
     static func main() async {
         do {
             let arguments = CommandLine.arguments
+            if arguments.dropFirst().first == "whatsapp-empty-focus-check" {
+                try checkEmptyWhatsAppFocus()
+                return
+            }
             if arguments.dropFirst().first == "camera-check" {
                 // Explicit local hardware check. No requestAccess, file/video
                 // export, model, transcript, history or target-app insertion.
@@ -232,7 +238,7 @@ private struct StageFormatter: TextFormatting {
                 return
             }
             guard arguments.count >= 3, arguments[1] == "transcribe" else {
-                print("Usage: VoiceWisprProbe download | migration-preview | migration-check <settings-file> | speech-config-check [--encoder-v2] [--dual-decode] | transcribe <audio-file> [original|cleaned|email|chat] [stream] | suite <manifest> [repeat=3] [--ids=id,id] [--styles=original,cleaned] [--stream] [--long] [--encoder-v2] [--dual-decode] | inspect-seams <synthetic manifest> <fixture-id> | inspect-window <synthetic manifest> <fixture-id> <start-sec> <end-sec> [--repeat=3] [--sdk-workers=1|2] [--dual-decode] [--reconcile-block-seconds=30...120] [--reconcile-context-seconds=2...10]")
+                print("Usage: VoiceWisprProbe download | migration-preview | migration-check <settings-file> | whatsapp-empty-focus-check | speech-config-check [--encoder-v2] [--dual-decode] | transcribe <audio-file> [original|cleaned|email|chat] [stream] | suite <manifest> [repeat=3] [--ids=id,id] [--styles=original,cleaned] [--stream] [--long] [--encoder-v2] [--dual-decode] | inspect-seams <synthetic manifest> <fixture-id> | inspect-window <synthetic manifest> <fixture-id> <start-sec> <end-sec> [--repeat=3] [--sdk-workers=1|2] [--dual-decode] [--reconcile-block-seconds=30...120] [--reconcile-context-seconds=2...10]")
                 exit(2)
             }
             let style = arguments.count > 3 ? TextStyle(rawValue: arguments[3]) ?? .original : .original
@@ -314,6 +320,32 @@ private struct StageFormatter: TextFormatting {
         try emit(["event": "feed-pacing-check", "passed": true, "scope": "synthetic clock/transport test only; no models, microphone or insertion", "frames": frames,
                   "captureSeconds": 0.34, "deliveredBlockFrames": arrivals.map(\.frames), "arrivalSeconds": arrivals.map { $0.time - began },
                   "maxEarlyFeedSeconds": feed.maxEarly, "lastBlockDeadlineSeconds": feed.scheduledStop - began, "delayedFinalAppendSeconds": delayed.completed - delayed.scheduledStop])
+    }
+    /// Read-only regression check of the originally failing empty composer.
+    @MainActor private static func checkEmptyWhatsAppFocus() throws {
+        guard AXIsProcessTrusted() else { throw VoiceError.message("Existing Accessibility permission unavailable for the probe") }
+        guard let app = NSWorkspace.shared.frontmostApplication,
+              app.bundleIdentifier == "net.whatsapp.WhatsApp" else { throw VoiceError.message("WhatsApp must be the frontmost app for focus capture") }
+        let application = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(application, 0.2)
+        var rawField: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(application, kAXFocusedUIElementAttribute as CFString, &rawField) == .success,
+              let rawField, CFGetTypeID(rawField) == AXUIElementGetTypeID() else { throw VoiceError.message("WhatsApp focused field unavailable") }
+        let field = rawField as! AXUIElement
+        AXUIElementSetMessagingTimeout(field, 0.2)
+        var identifier: CFTypeRef?, count: CFTypeRef?, value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(field, kAXIdentifierAttribute as CFString, &identifier) == .success,
+              identifier as? String == "ChatBar_ComposerTextView",
+              AXUIElementCopyAttributeValue(field, kAXNumberOfCharactersAttribute as CFString, &count) == .success,
+              (count as? NSNumber)?.intValue == 0 else { throw VoiceError.message("Empty WhatsApp composer not prepared; no other control inspected") }
+        let valueError = AXUIElementCopyAttributeValue(field, kAXValueAttribute as CFString, &value)
+        guard valueError == .noValue, value == nil else { throw VoiceError.message("WhatsApp no-value regression precondition unavailable") }
+        guard let snapshot = FocusSnapshot.capture(), snapshot.pid == app.processIdentifier, snapshot.baseline.isEmpty,
+              snapshot.selectedRange == NSRange(location: 0, length: 0), CFEqual(snapshot.element, field),
+              snapshot.isUnchanged() else { throw VoiceError.message("Empty WhatsApp composer rejected by focus capture") }
+        try emit(["event": "whatsapp-empty-focus-check", "passed": true, "sourceValueError": valueError.rawValue,
+                  "characterCount": 0, "snapshotCaptured": true, "focusUnchanged": true,
+                  "scope": "Read-only empty composer capture; no paste, microphone, models, messages or clipboard access"])
     }
     private static func emit(_ value: [String: Any]) throws {
         let data = try JSONSerialization.data(withJSONObject: value, options: [.prettyPrinted, .sortedKeys])

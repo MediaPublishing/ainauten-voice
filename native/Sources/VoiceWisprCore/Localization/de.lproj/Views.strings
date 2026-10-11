@@ -169,3 +169,9 @@
 "history.stats.dayHelp" = "%@: %@ Wörter, %@ Diktate";
 "history.stats.dayAX" = "%@, %@ Wörter";
 "recovery.result" = "%@. Ergebnis";
+
+"dictionary.lastMessage" = "Letzte Nachricht";
+"dictionary.lastMessage.help" = "Klicke auf ein Wort und trage die gewünschte Ersetzung ein.";
+"dictionary.lastMessage.empty" = "Nach deinem nächsten Diktat kannst du hier ein Wort übernehmen.";
+"dictionary.message.older" = "Ältere Nachricht";
+"dictionary.message.newer" = "Neuere Nachricht";

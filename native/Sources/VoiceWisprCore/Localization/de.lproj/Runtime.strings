@@ -36,8 +36,11 @@
 "menu.settings" = "Einstellungen …";
 "menu.checkUpdates" = "Nach Updates suchen …";
 "menu.report" = "Fehler melden …";
+"menu.hide" = "AInauten Voice ausblenden";
 "menu.quit" = "AInauten Voice beenden";
 "menu.file" = "Ablage";
+"menu.window" = "Fenster";
+"window.minimize" = "Minimieren";
 "menu.edit" = "Bearbeiten";
 "menu.undo" = "Rückgängig";
 "menu.cut" = "Ausschneiden";
@@ -62,6 +65,10 @@
 "status.processing" = "Text wird aufbereitet …";
 "status.inserting" = "Text wird eingefügt …";
 "status.modelsLoading" = "Modelle werden geladen …";
+"status.starting" = "App wird gestartet …";
+"status.modelsChecking" = "Modelle werden geprüft …";
+"status.speechLoading" = "Spracherkennung wird vorbereitet …";
+"status.formatterLoading" = "Textoptimierung wird vorbereitet …";
 "status.modelsCheck" = "Modelle prüfen";
 "status.practiceRecognized" = "Probediktat erkannt";
 "status.practiceIncomplete" = "Probediktat unvollständig";

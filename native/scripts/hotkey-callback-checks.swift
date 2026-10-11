@@ -10,6 +10,7 @@ final class CallbackFixture {
     let paste: CGEvent
     let down: CGEvent
     let up: CGEvent
+    let release: CGEvent
     var actions: [DictationGesture] = []
     var events = 0
     var pulses = 0
@@ -26,6 +27,7 @@ final class CallbackFixture {
         down = CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: true)!
         up = CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: false)!
         down.flags = .maskCommand; up.flags = .maskCommand
+        release = CGEvent(keyboardEventSource: nil, virtualKey: 55, keyDown: false)!; release.flags = []
         hotkey.onGesture = { [weak self] action in
             Self.require(Thread.isMainThread, "gesture delivered off the main thread")
             self?.actions.append(action)
@@ -52,6 +54,10 @@ final class CallbackFixture {
             }
         } else if waitingSince == nil {
             actions.removeAll(); send(.keyDown, down); send(.keyUp, up)
+            Self.require(actions == [.start], "character release stopped modifier hold")
+            let result = GlobalHotkey.eventCallback(.flagsChanged, event: release,
+                pointer: Unmanaged.passUnretained(hotkey).toOpaque())
+            Self.require(result?.takeUnretainedValue() === release, "modifier release was consumed")
             Self.require(actions == [.start], "short tap stopped immediately")
             waitingSince = ProcessInfo.processInfo.systemUptime
         } else if ProcessInfo.processInfo.systemUptime - waitingSince! > 0.7 {

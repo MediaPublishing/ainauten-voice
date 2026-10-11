@@ -16,6 +16,9 @@ final class HistoryTests: XCTestCase {
         XCTAssertEqual(HistoryWords.count("„Übermäßig schön“: E-Mail, OpenAI und l’été – 42."), 7)
         XCTAssertEqual(HistoryWords.count("… \n • --"), 0)
         XCTAssertEqual(HistoryWords.count("one-two don't zweimal"), 3)
+        let message = "😀 Hallo, E-Mail und l’été!\nOpenAI?"
+        XCTAssertEqual(HistoryWords.ranges(message).map { (message as NSString).substring(with: $0) }, ["Hallo", "E-Mail", "und", "l’été", "OpenAI"])
+        XCTAssertTrue(HistoryWords.ranges("… \n • --").isEmpty)
         XCTAssertEqual(entry("Drei kleine Wörter", original: "").wordCount, 3)
         XCTAssertEqual(entry("Kurz", original: "Fünf Wörter sind hier gesprochen").wordCount, 5)
     }

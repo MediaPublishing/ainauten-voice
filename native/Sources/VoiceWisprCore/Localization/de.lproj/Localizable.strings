@@ -30,7 +30,7 @@
 "common.cancel" = "Abbrechen";
 "common.copy" = "Kopieren";
 "common.next" = "Weiter";
-"dictation.help" = "Cursor ins Textfeld setzen, Kürzel halten, sprechen und loslassen. Doppeltipp startet freihändig; erneutes Drücken stoppt. Die Pill erscheint nur während des Diktats.";
+"dictation.help" = "Cursor ins Textfeld setzen, Kürzel halten, sprechen und loslassen. Doppeltipp startet freihändig; erneutes Drücken stoppt. Das Overlay erscheint beim App-Start und während des Diktats.";
 "dictation.language.addAX" = "%@, hinzufügen";
 "dictation.language.removeAX" = "%@, ausgewählt. Entfernen";
 "dictation.languageBrief" = "Automatische Erkennung, auch bei Sprachwechseln.";
@@ -72,7 +72,8 @@
 "import.retry" = "Erneut prüfen und importieren";
 "import.saved" = "In AInauten Voice gespeichert: %@ Wörterbucheinträge. Sprachen: %@. Tastenkürzel: %@.";
 "import.supported" = "Unterstützte Einstellungen importieren";
-"import.title" = "Deine Wispr-Flow-Einstellungen übernehmen";
+"import.title" = "Wispr-Flow-Einstellungen übernehmen (optional)";
+"import.optional" = "Die Übernahme von Einstellungen, Tastenkürzeln und Wörterbucheinträgen ist für den Betrieb nicht nötig. Du kannst diesen Schritt bedenkenlos überspringen und den Import später nachholen.";
 "import.undo" = "Letzten Wispr-Import rückgängig machen";
 "import.unique" = "Eindeutige Einträge übernehmen";
 "import.unknownFormat" = "Unbekanntes Textformat";
@@ -216,6 +217,12 @@
 "switch.title" = "Von Wispr Flow zu AInauten Voice wechseln";
 "window.close" = "Fenster schließen";
 "settings.interfaceLanguage" = "Oberflächensprache";
+"settings.menuBarOnly" = "Nur in der Menüleiste anzeigen";
 "settings.interfaceLanguage.system" = "Automatisch (Systemsprache)";
 "settings.interfaceLanguage.help" = "Ändert nur die Oberfläche. Deine Diktatsprachen bleiben erhalten.";
 "settings.interfaceLanguage.saveFailed" = "Die Oberflächensprache konnte nicht gespeichert werden. Die bisherige Auswahl bleibt erhalten.";
+"common.skip" = "Überspringen";
+
+"permissions.accessibility.macOS27" = "Gerätesteuerung und Datenzugriff";
+"permissions.accessibility.allow.macOS27" = "Gerätesteuerung freigeben";
+"permissions.steps.macOS27" = "1. Öffne „Datenschutz & Sicherheit → Gerätesteuerung und Datenzugriff“.\n2. Aktiviere „AInauten Voice“. Fehlt der Eintrag, füge die App über + aus „Programme“ hinzu.\n3. Nach einem Signaturwechsel entferne den alten Eintrag mit − und füge die App erneut hinzu.";

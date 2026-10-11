@@ -4,6 +4,15 @@ import Darwin
 @testable import VoiceWisprCore
 
 final class SecuritySettingsTests: XCTestCase {
+    func testPrivacySettingsKeepVersionSpecificPermissionNamesAndTCCDestinations() {
+        XCTAssertEqual(PrivacySettings.accessibilityKey("permissions.accessibility", modern: false), "permissions.accessibility")
+        XCTAssertEqual(PrivacySettings.accessibilityKey("permissions.steps", modern: true), "permissions.steps.macOS27")
+        for permission in ["Accessibility", "Microphone", "Camera"] {
+            let destination = PrivacySettings.destination(permission)
+            XCTAssertEqual(destination.scheme, "x-apple.systempreferences")
+            XCTAssertEqual(destination.absoluteString, "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_" + permission)
+        }
+    }
     func testClipboardRequiresExplicitOptInForNewAndLegacySettings() throws {
         XCTAssertFalse(Settings().usesClipboardForInsertion)
         let legacy = try JSONDecoder().decode(Settings.self, from: JSONEncoder().encode(Settings()))
@@ -19,6 +28,22 @@ final class SecuritySettingsTests: XCTestCase {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("voice-security-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+    func testMenuBarOnlyPreservesLegacyDefaultAndSurvivesSave() async throws {
+        let legacy = try JSONDecoder().decode(Settings.self, from: JSONEncoder().encode(Settings()))
+        XCTAssertNil(legacy.menuBarOnly)
+        let root = try directory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = SettingsStore(url: root.appendingPathComponent("settings.json"))
+        for enabled in [true, false] {
+            var document = ExportDocument(settings: legacy)
+            document.settings.menuBarOnly = enabled
+            try await store.save(document)
+            let restored = try await store.load()
+            XCTAssertEqual(restored.settings.menuBarOnly, enabled)
+            XCTAssertEqual(restored.settings.shortcut, legacy.shortcut)
+            XCTAssertEqual(restored.settings.languages, legacy.languages)
+        }
     }
     func testBoundedLoaderRejectsSparseOversizedFilesLinksAndPipes() throws {
         let root = try directory(), large = root.appendingPathComponent("large.json")

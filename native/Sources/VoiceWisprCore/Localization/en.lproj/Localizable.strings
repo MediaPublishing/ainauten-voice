@@ -30,7 +30,7 @@
 "common.cancel" = "Cancel";
 "common.copy" = "Copy";
 "common.next" = "Next";
-"dictation.help" = "Place the cursor in a text field, hold the shortcut, speak and release. Double-tap to go hands-free; press again to stop. The pill only appears during dictation.";
+"dictation.help" = "Place the cursor in a text field, hold the shortcut, speak and release. Double-tap to go hands-free; press again to stop. The overlay appears during app startup and dictation.";
 "dictation.language.addAX" = "%@, add";
 "dictation.language.removeAX" = "%@, selected. Remove";
 "dictation.languageBrief" = "Automatic detection, even when you switch languages.";
@@ -72,7 +72,8 @@
 "import.retry" = "Check again and import";
 "import.saved" = "Saved in AInauten Voice: %@ dictionary entries. Languages: %@. Shortcut: %@.";
 "import.supported" = "Import supported settings";
-"import.title" = "Import your Wispr Flow settings";
+"import.title" = "Import Wispr Flow settings (optional)";
+"import.optional" = "Importing settings, shortcuts and dictionary entries is not required to use AInauten Voice. You can safely skip this step and import them later.";
 "import.undo" = "Undo last Wispr import";
 "import.unique" = "Import unique entries";
 "import.unknownFormat" = "Unknown text format";
@@ -216,6 +217,12 @@
 "switch.title" = "Switch from Wispr Flow to AInauten Voice";
 "window.close" = "Close window";
 "settings.interfaceLanguage" = "Interface language";
+"settings.menuBarOnly" = "Show only in the menu bar";
 "settings.interfaceLanguage.system" = "Automatic (system language)";
 "settings.interfaceLanguage.help" = "Changes only the interface. Your dictation languages stay the same.";
 "settings.interfaceLanguage.saveFailed" = "The interface language could not be saved. Your previous choice is still active.";
+"common.skip" = "Skip";
+
+"permissions.accessibility.macOS27" = "Device control and data access";
+"permissions.accessibility.allow.macOS27" = "Allow device control";
+"permissions.steps.macOS27" = "1. Open Privacy & Security → Device control and data access.\n2. Enable AInauten Voice. If missing, add the app from Applications using +.\n3. After a signing identity change, remove the old entry using − and add the app again.";

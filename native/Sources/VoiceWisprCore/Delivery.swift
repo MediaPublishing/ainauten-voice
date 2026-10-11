@@ -11,6 +11,21 @@ public struct ClipboardOwnership: Sendable, Equatable {
 }
 
 public enum DeliveryVerification {
+    public static func insertionText(_ text: String, baseline: String, selection: NSRange) -> String {
+        let value = baseline as NSString
+        guard let first = text.first, !first.isWhitespace,
+              selection.location != NSNotFound, selection.location > 0,
+              selection.location <= value.length,
+              [0x2E, 0x3F, 0x21].contains(value.character(at: selection.location - 1)) else { return text }
+        if value.character(at: selection.location - 1) == 0x2E {
+            let prefix = value.substring(to: selection.location)
+            // A decimal point or unfinished URL is not a sentence boundary.
+            if first.isNumber, prefix.dropLast().last?.isNumber == true { return text }
+            let token = prefix.split(whereSeparator: { $0.isWhitespace }).last?.lowercased() ?? ""
+            if token.contains("://") || token.hasPrefix("www.") { return text }
+        }
+        return " " + text
+    }
     public static func expectedValue(baseline: String, selection: NSRange, insertion: String) -> String? {
         let value = baseline as NSString
         guard selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,
@@ -47,11 +62,9 @@ public enum DeliveryVerification {
 /// assistive client that asks for it. Without it the focused text field has no
 /// readable value and every dictation there ends in the recovery window.
 @MainActor public enum WebAccessibility {
-    private static var enabled = Set<pid_t>()
     public static func enable(for app: NSRunningApplication?) {
-        guard let app, AXIsProcessTrusted(), !enabled.contains(app.processIdentifier),
+        guard let app, AXIsProcessTrusted(),
               app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
-        enabled.insert(app.processIdentifier)
         let element = AXUIElementCreateApplication(app.processIdentifier)
         AXUIElementSetMessagingTimeout(element, 0.05)
         // Unsupported apps return an error; the attribute has no other effect.
@@ -67,8 +80,9 @@ public enum DeliveryVerification {
     public let selectedRange: NSRange
     public let baseline: String
     public let secure: Bool
-    public static func capture() -> FocusSnapshot? {
+    public static func capture(expectedPID: pid_t? = nil) -> FocusSnapshot? {
         guard AXIsProcessTrusted(), let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        guard expectedPID == nil || app.processIdentifier == expectedPID else { return nil }
         WebAccessibility.enable(for: app)
         let application = AXUIElementCreateApplication(app.processIdentifier)
         AXUIElementSetMessagingTimeout(application, 0.05)
@@ -88,6 +102,14 @@ public enum DeliveryVerification {
               DeliveryVerification.expectedValue(baseline: baseline, selection: range, insertion: "") != nil else { return nil }
         return FocusSnapshot(pid: app.processIdentifier, bundleID: app.bundleIdentifier, window: window, element: field, selectedRange: range, baseline: baseline, secure: secure)
     }
+    /// Chromium constructs its accessibility tree asynchronously. Never sleep in
+    /// the event tap or adopt a different foreground app while waiting.
+    public static func captureWithRetry(expectedPID: pid_t) async -> FocusSnapshot? {
+        await FocusCaptureRetry.capture(expectedPID: expectedPID,
+            foregroundPID: { NSWorkspace.shared.frontmostApplication?.processIdentifier },
+            capture: { capture(expectedPID: expectedPID) })
+    }
+
     public func isUnchanged() -> Bool {
         guard !secure, !IsSecureEventInputEnabled(), let current = Self.capture() else { return false }
         return !current.secure && current.pid == pid && current.bundleID == bundleID && CFEqual(current.window, window)
@@ -107,6 +129,8 @@ public enum DeliveryVerification {
     static func fullRangeText(_ element: AXUIElement) -> String? {
         guard let count = value(element, kAXNumberOfCharactersAttribute) as? NSNumber,
               count.intValue >= 0, count.intValue <= 4_000_000 else { return nil }
+        // WhatsApp reports zero characters but no value for its empty range.
+        if count.intValue == 0 { return "" }
         var range = CFRange(location: 0, length: count.intValue)
         guard let parameter = AXValueCreate(.cfRange, &range) else { return nil }
         for attribute in [kAXStringForRangeParameterizedAttribute, kAXAttributedStringForRangeParameterizedAttribute] {
@@ -289,6 +313,7 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         guard !text.isEmpty, let target, target.isUnchanged() else {
             return DeliveryOutcome(.notAttempted, reason: "Fokus, Auswahl oder Textfeld haben sich verändert. Text aus dem Wiederherstellungsfenster verwenden.")
         }
+        let text = DeliveryVerification.insertionText(text, baseline: target.baseline, selection: target.selectedRange)
         let role = AXAccess.string(target.element, kAXRoleAttribute)
         let selected = AXAccess.string(target.element, kAXSelectedTextAttribute)
         let expectedSelected = (target.baseline as NSString).substring(with: target.selectedRange)
@@ -389,5 +414,24 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         }
         if focusChanged { return DeliveryOutcome(.uncertain, reason: "Fokus während der Zustellung verändert. Keine automatische Wiederholung.", inputWasSubmitted: true) }
         return DeliveryOutcome(.uncertain, reason: "Das Einfügen konnte nicht bestätigt werden. Prüfe das Textfeld, bevor du den Text erneut einfügst.", inputWasSubmitted: true)
+    }
+}
+
+/// Bounded async retries; never switch destinations or block the event-tap callback.
+@MainActor enum FocusCaptureRetry {
+    static func capture<Value>(expectedPID: pid_t, foregroundPID: () -> pid_t?,
+                              capture: () -> Value?,
+                              pause: () async throws -> Void = { try await Task.sleep(nanoseconds: 40_000_000) }) async -> Value? {
+        for attempt in 0..<6 {
+            guard !Task.isCancelled, foregroundPID() == expectedPID else { return nil }
+            if let value = capture() {
+                guard !Task.isCancelled, foregroundPID() == expectedPID else { return nil }
+                return value
+            }
+            if attempt < 5 {
+                do { try await pause() } catch { return nil }
+            }
+        }
+        return nil
     }
 }
