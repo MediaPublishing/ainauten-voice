@@ -10,6 +10,6 @@ Zusätzliche Korrekturen:
 - Satzabstände werden nicht in Dezimalzahlen oder angefangenen URLs ergänzt.
 - Fehlerempfang akzeptiert zusätzlich die gültigen Paare 0.1.11 (15) und 0.1.12 (16); unbekannte und falsch kombinierte Versionen bleiben abgewiesen.
 
-Die Spracherkennung bleibt automatisch und mehrsprachig. Eine gespeicherte Sprachauswahl erzwingt keine bestimmte Erkennungssprache. Unerwartete Sprachwechsel sind ohne reproduzierbares Audio nicht als behoben bestätigt. Es werden keine Texte übersetzt oder fremdsprachigen Ergebnisse stillschweigend verworfen.
+Dieser Abschnitt beschreibt 0.1.12: Die Sprachauswahl wirkte noch nicht auf die Erkennung. Die anschließende Korrektur in 0.1.13 ist unter `speech-language-selection.md` dokumentiert. Keine Behauptung, dass die ursprüngliche Nutzeraufnahme ohne Reproduktion geprüft wurde.
 
 Prüfungen umfassen native Vertragsfälle, echte Event-Tap-Callbacks, deutsche/englische Sprachdateien, den Release-Build und synthetische Berichte. Die Freigabelinks und Einfügekorrekturen ersetzen keine vollständige praktische Hardware-/Ziel-App-Matrix. Apple-Notarisierung und aktive Bibliotheksvalidierung bleiben für die lokal signierte Beta offen.

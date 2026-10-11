@@ -21,3 +21,7 @@ KSCrash 2.5.1 (`95a8895d75f3`): MIT. Local crash capture for the consent-based e
 uv 0.12.5 (Astral): MIT or Apache 2.0. Bundled only as the installer for the optional, disabled research feature; its license files are bundled next to it during packaging.
 
 The executable package includes the original code licenses and pinned model cards. Models are downloaded separately after user initiation, with SHA256 verification. No model weights are committed to source control.
+
+Whisper.cpp 1.9.2 (`306c88f4d1286aec1bf96e544632897886af5501`): MIT. Isolated, statically linked offline helper; original float PCM is passed through pipes, never audio files. Source archive SHA256 `f3585ebf64df3e41b26c45d93bdb38b423ca1de0bf40cc4b6d320254867a75df`.
+
+OpenAI Whisper small, quantized to q5_1 by the whisper.cpp project: MIT. Converted model pinned to `ggerganov/whisper.cpp` revision `5359861c739e955e79d9a303bcbc70fb988958b1`, SHA256 `ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb` (190085487 bytes). Credit OpenAI and whisper.cpp contributors. No retraining. https://huggingface.co/ggerganov/whisper.cpp/tree/5359861c739e955e79d9a303bcbc70fb988958b1

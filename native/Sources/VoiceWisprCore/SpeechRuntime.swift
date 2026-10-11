@@ -37,10 +37,15 @@ public struct SpeechRuntimeConfiguration: Sendable {
 }
 
 /// In-process Core ML recognition. Loading never downloads models or sends audio.
-public actor SpeechRuntime: SpeechTranscribing, SpeechActivityDetecting, SpeechSessionReconciling {
+public actor SpeechRuntime: SpeechTranscribing, SpeechActivityDetecting, SpeechSessionReconciling, SpeechLanguageConfiguring {
     private let configuration: SpeechRuntimeConfiguration
     private var manager: AsrManager?
     private let activity: VadRuntime
+    private var languageSession: UUID?
+    private var languagePolicy = SpeechLanguagePolicy([])
+    public func configureLanguages(_ languages: [String], sessionID: UUID) {
+        languageSession = sessionID; languagePolicy = SpeechLanguagePolicy(languages)
+    }
     public init(configuration: SpeechRuntimeConfiguration = .init()) {
         self.configuration = configuration; self.activity = VadRuntime(modelDirectory: configuration.activityModelDirectory, minSilenceDuration: configuration.activitySilenceDuration)
     }
@@ -90,6 +95,7 @@ public actor SpeechRuntime: SpeechTranscribing, SpeechActivityDetecting, SpeechS
         return try await transcribe(samples: samples, sessionID: sessionID, index: 0, offset: 0)
     }
     public func transcribe(samples: [Float], sessionID: UUID, index: Int, offset: Double) async throws -> TranscriptSegment {
+        let policy = languageSession == sessionID ? languagePolicy : SpeechLanguagePolicy([])
         try Task.checkCancellation()
         guard let manager else { throw VoiceError.message("Spracherkennung ist nicht vorbereitet") }
         guard samples.count <= configuration.sampleRate * configuration.maxSessionSeconds else { throw VoiceError.message("Das Diktat überschreitet 20 Minuten") }
@@ -104,7 +110,10 @@ public actor SpeechRuntime: SpeechTranscribing, SpeechActivityDetecting, SpeechS
         try Task.checkCancellation()
         let words = Self.words(from: result.tokenTimings ?? [], offset: offset)
         guard result.text.isEmpty || !words.isEmpty else { throw VoiceError.message("Spracherkennung hat keine Wortzeitstempel geliefert") }
-        return .init(sessionID: sessionID, index: index, text: result.text, words: words)
+        let candidate = TranscriptSegment(sessionID: sessionID, index: index, text: result.text, words: words)
+        return try await policy.resolve(candidate) { language in
+            try await WhisperLanguageFallback.bundled.transcribe(samples, language: language, sessionID: sessionID, index: index, offset: offset)
+        }
     }
     static func validateInput(_ sampleCount: Int) throws {
         guard sampleCount >= ASRConstants.minimumRequiredSamples(forSampleRate: 16_000) else { throw SpeechInputError.tooShort }

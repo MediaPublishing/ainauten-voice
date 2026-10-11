@@ -33,8 +33,8 @@
 "dictation.help" = "Cursor ins Textfeld setzen, Kürzel halten, sprechen und loslassen. Doppeltipp startet freihändig; erneutes Drücken stoppt. Das Overlay erscheint beim App-Start und während des Diktats.";
 "dictation.language.addAX" = "%@, hinzufügen";
 "dictation.language.removeAX" = "%@, ausgewählt. Entfernen";
-"dictation.languageBrief" = "Automatische Erkennung, auch bei Sprachwechseln.";
-"dictation.languageHelp" = "Die Erkennung findet die Sprache automatisch, auch beim Wechsel mitten im Satz.";
+"dictation.languageBrief" = "Erkennung in deinen ausgewählten Sprachen.";
+"dictation.languageHelp" = "Nur Deutsch gewählt: Auffällige fremdsprachige Ergebnisse werden lokal mit festem Deutsch erneut erkannt. Mehrere Sprachen erlauben Sprachwechsel. Namen und Fachbegriffe bleiben erhalten.";
 "dictation.languageQuestion" = "Welche Sprachen sprichst du?";
 "dictation.languages" = "Sprachen";
 "dictation.languages.add" = "Weitere Sprachen hinzufügen";
@@ -226,3 +226,5 @@
 "permissions.accessibility.macOS27" = "Gerätesteuerung und Datenzugriff";
 "permissions.accessibility.allow.macOS27" = "Gerätesteuerung freigeben";
 "permissions.steps.macOS27" = "1. Öffne „Datenschutz & Sicherheit → Gerätesteuerung und Datenzugriff“.\n2. Aktiviere „AInauten Voice“. Fehlt der Eintrag, füge die App über + aus „Programme“ hinzu.\n3. Nach einem Signaturwechsel entferne den alten Eintrag mit − und füge die App erneut hinzu.";
+
+"speech.languageMismatch" = "Die erkannte Sprache passt nicht zur Auswahl. Der Text wurde nicht eingefügt. Prüfe die Diktatsprachen und sprich den Abschnitt erneut.";

@@ -33,6 +33,9 @@ if CommandLine.arguments.contains("--check-bundled-resources") {
             throw VoiceError.message("Packaged interface resources are missing or unavailable.")
         }
         let manifest = try ModelManifest.bundled()
+        let fallback = resources.appendingPathComponent("SpeechFallback")
+        guard FileManager.default.isExecutableFile(atPath: fallback.appendingPathComponent("AInautenSpeechFallback").path),
+              try ModelDownloader.digest(fallback.appendingPathComponent("ggml-small-q5_1.bin")) == "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb" else { throw VoiceError.message("Offline language fallback missing or invalid") }
         guard !manifest.files.isEmpty else { throw VoiceError.message("Packaged model manifest is empty.") }
         print("BUNDLED_RESOURCES_PASS english=true german=true plurals=true diagnostics=true modelManifest=true")
         exit(0)

@@ -33,8 +33,8 @@
 "dictation.help" = "Place the cursor in a text field, hold the shortcut, speak and release. Double-tap to go hands-free; press again to stop. The overlay appears during app startup and dictation.";
 "dictation.language.addAX" = "%@, add";
 "dictation.language.removeAX" = "%@, selected. Remove";
-"dictation.languageBrief" = "Automatic detection, even when you switch languages.";
-"dictation.languageHelp" = "The language is detected automatically, even if you switch mid-sentence.";
+"dictation.languageBrief" = "Recognition in your selected languages.";
+"dictation.languageHelp" = "With only German selected, unexpected foreign-language output is re-recognized locally with German fixed. Selecting multiple languages allows switching. Names and technical terms are preserved.";
 "dictation.languageQuestion" = "Which languages do you speak?";
 "dictation.languages" = "Languages";
 "dictation.languages.add" = "Add more languages";
@@ -226,3 +226,5 @@
 "permissions.accessibility.macOS27" = "Device control and data access";
 "permissions.accessibility.allow.macOS27" = "Allow device control";
 "permissions.steps.macOS27" = "1. Open Privacy & Security → Device control and data access.\n2. Enable AInauten Voice. If missing, add the app from Applications using +.\n3. After a signing identity change, remove the old entry using − and add the app again.";
+
+"speech.languageMismatch" = "The recognized language does not match your selection. No text was inserted. Check your dictation languages and repeat this section.";

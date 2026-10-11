@@ -98,7 +98,7 @@ public actor ProcessingPipeline {
         self.observeCheckpoint = observeCheckpoint
     }
 
-    public func start(sessionID: UUID = UUID(), style: TextStyle, dictionary entries: [DictionaryEntry] = []) async throws {
+    public func start(sessionID: UUID = UUID(), style: TextStyle, dictionary entries: [DictionaryEntry] = [], languages: [String] = []) async throws {
         cancel()
         let token = UUID(); generation = token; self.sessionID = sessionID; self.style = style
         samples = []; jobs = []; formats = []; raw = []; rendered = []; fallback = false; failure = nil; replacedSamples = 0
@@ -109,6 +109,7 @@ public actor ProcessingPipeline {
         previousWindow = []
         originalRequested = false
         matcher = StreamingDictionaryMatcher(entries); dictionary = DictionaryMatcher(entries)
+        if let configurable = speech as? any SpeechLanguageConfiguring { await configurable.configureLanguages(languages, sessionID: sessionID); try ensure(token) }
         try await speech.prepare(); try ensure(token)
         formatterReady = style == .original
         if style != .original {

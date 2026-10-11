@@ -902,6 +902,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         }
         #endif
         let dictionary = document.dictionary
+        let languages = document.settings.languages
         operation = Task {
             do {
                 guard sessionID == id, !Task.isCancelled else { return }
@@ -921,12 +922,12 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 let pipeline = ProcessingPipeline(speech: speech, formatter: selectedFormatter); self.pipeline = pipeline
                 // An immediate release still needs pipeline initialization so Stop can finish.
                 if state != .recording {
-                    try await pipeline.start(sessionID: id, style: style, dictionary: dictionary)
+                    try await pipeline.start(sessionID: id, style: style, dictionary: dictionary, languages: languages)
                     return
                 }
                 #if DEBUG
                 if practice && practiceFixture != nil {
-                    try await pipeline.start(sessionID: id, style: style, dictionary: dictionary)
+                    try await pipeline.start(sessionID: id, style: style, dictionary: dictionary, languages: languages)
                     guard sessionID == id, state == .recording else { return }
                     captureReady = true; level = 0.65; return
                 }
@@ -960,7 +961,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                     if self.practiceSession && self.practiceStopper.shouldStop(level: self.level, elapsed: self.elapsed) { self.stop(); return }
                     if self.elapsed >= 1200 { self.stop() } else if self.elapsed >= 1140 { self.status = "Noch eine Minute bis zum Aufnahmelimit" }
                 } }
-                try await pipeline.start(sessionID: id, style: style, dictionary: dictionary)
+                try await pipeline.start(sessionID: id, style: style, dictionary: dictionary, languages: languages)
                 guard sessionID == id else { await pipeline.cancel(); return }
             } catch { if sessionID == id { fail(error.localizedDescription) } }
         }
