@@ -566,7 +566,13 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 if document.settings.cloudEnabled {
                     if let endpoint = URL(string: document.settings.cloudEndpoint), (try? CloudRecipient.isApproved(endpoint)) == true {} else { document.settings.cloudEnabled = false }
                 }
-            } catch { errorMessage = "Einstellungen konnten nicht geladen werden: \(error.localizedDescription)"; reports.record(component: .settings, code: .settingsLoadFailed) }
+            } catch {
+                // Loading an existing profile failed: never apply the new
+                // installation default to an unknown previous privacy choice.
+                document.settings.clipboardCompatibility = false
+                errorMessage = "Einstellungen konnten nicht geladen werden: \(error.localizedDescription)"
+                reports.record(component: .settings, code: .settingsLoadFailed)
+            }
             updateActivationPolicy()
             loading = false; preparing = true
             preparationStatusMessage = .key("status.modelsChecking", [])

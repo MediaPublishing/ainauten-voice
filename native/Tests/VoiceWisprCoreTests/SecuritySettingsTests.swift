@@ -68,6 +68,21 @@ final class SecuritySettingsTests: XCTestCase {
             XCTAssertEqual(restored.settings.languages, legacy.languages)
         }
     }
+    func testQuarantinedProfileDoesNotEnableClipboardOnRelaunch() async throws {
+        let root = try directory(), url = root.appendingPathComponent("settings.json")
+        try Data("{\"settings\":{\"clipboardCompatibility\":false}".utf8).write(to: url)
+        let store = SettingsStore(url: url)
+        do { _ = try await store.load(); XCTFail("Malformed settings accepted") } catch {}
+        let fallback = try await store.load()
+        XCTAssertFalse(fallback.settings.usesClipboardForInsertion)
+        let relaunched = SettingsStore(url: url)
+        let restored = try await relaunched.load()
+        XCTAssertFalse(restored.settings.usesClipboardForInsertion)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+        let quarantine = try FileManager.default.contentsOfDirectory(atPath: root.path)
+        XCTAssertEqual(quarantine.count, 1)
+        XCTAssertTrue(quarantine[0].hasPrefix("settings-quarantine-"))
+    }
     func testBoundedLoaderRejectsSparseOversizedFilesLinksAndPipes() throws {
         let root = try directory(), large = root.appendingPathComponent("large.json")
         FileManager.default.createFile(atPath: large.path, contents: Data())
