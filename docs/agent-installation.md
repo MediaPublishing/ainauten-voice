@@ -26,9 +26,13 @@ Die Beta ist noch nicht Apple-notarisiert. Falls macOS „Apple konnte die App n
 
 Danach Mikrofon und Bedienungshilfen für die tatsächlich installierte App erlauben. Bei abweichenden Warnungen über eine beschädigte oder schädliche App stoppen und Ursache prüfen. Keine globalen Sicherheitsregeln abschalten.
 
+## Kompatibles Einfügen
+
+Bei neuen Installationen ab 0.1.14 ist kompatibles Einfügen eingeschaltet. Dafür liegt diktierter Text kurz in der systemweiten Zwischenablage; andere lokale Apps können ihn dort lesen. Der vorherige Inhalt wird wiederhergestellt, solange keine neuere Kopieraktion erfolgt. Unter **Einstellungen → Datenschutz** kannst du die Option ausschalten. Gespeicherte Einstellungen bleiben erhalten, auch eine frühere Abschaltung oder ein älteres Profil ohne Freigabe. Ohne die Option werden nicht direkt unterstützte Textfelder nicht automatisch befüllt. Ein Agent darf eine vorhandene Wahl nicht still ändern.
+
 ## Updates und Entwicklungsbuilds
 
-Der öffentliche Download **0.1.13, Build 17** enthält den signierten Updater. Automatische Suche und Downloads sind für neue Installationen standardmäßig aktiv; ein ausdrücklich gespeichertes Nein bleibt erhalten. Die App prüft täglich, installiert beim Beenden und unterbricht laufende Diktate nicht. Unter **Einstellungen → Updates** lassen sich die Automatik ausschalten und Updates sofort prüfen. Einstellungen, Wörterbuch und Verlauf bleiben erhalten.
+Der öffentliche Download **0.1.14, Build 18** enthält den signierten Updater. Automatische Suche und Downloads sind für neue Installationen standardmäßig aktiv; ein ausdrücklich gespeichertes Nein bleibt erhalten. Die App prüft täglich, installiert beim Beenden und unterbricht laufende Diktate nicht. Unter **Einstellungen → Updates** lassen sich die Automatik ausschalten und Updates sofort prüfen. Einstellungen, Wörterbuch und Verlauf bleiben erhalten.
 
 Apps ohne Updater, insbesondere die frühere Beta 0.1.1, Build 2, benötigen einmalig den aktuellen Installer. Ein Git-Push oder eine Änderung der Website allein verteilt kein Update; dafür wird ein geprüftes App-Paket im signierten Kanal veröffentlicht. Apple-Notarisierung bleibt ein separater Schritt.
 

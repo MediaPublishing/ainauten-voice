@@ -49,3 +49,11 @@ Auf ausdrücklichen Betreiberauftrag wird die nicht notarisierte Beta weitergef�
 Die Beta prüft weiterhin den vorhandenen Publisher-Fingerprint, alle tatsächlichen Mach-O-Dateien, Hardened Runtime, Bundle-Identität und interne Links. Nur die bestehende Bibliotheksvalidierungs-Ausnahme des Hauptprogramms ist erlaubt; weitere Code-Injection-Ausnahmen und solche Ausnahmen in verschachtelten Komponenten werden abgewiesen. Dieser Paketnachweis verhindert keine Code-Injection zur Laufzeit und ersetzt keine aktive Apple-Bibliotheksvalidierung.
 
 Die automatische Zwischenablage-Nutzung ist im ausgelieferten Quellstand standardmäßig aus. Eine vorher ausdrücklich gespeicherte Aktivierung bleibt erhalten. Bibliotheksvalidierung und Apple-Notarisierung bleiben in diesem Zwischenrelease offen; Website, README, Nutzerprüfbericht und Release-Hinweise benennen dies.
+
+## Betreiberentscheidung für 0.1.14 (18), 11. Oktober 2026
+
+Auf ausdrücklichen Betreiberauftrag ist kompatibles Einfügen bei neuen Installationen wieder eingeschaltet. Es nutzt kurz die systemweite Zwischenablage und stellt deren vorherigen Inhalt wieder her, solange keine neuere Kopieraktion erfolgt. Andere lokale Apps können den Text währenddessen lesen. Die deutsche und englische Datenschutzseite erklärt diesen Datenweg und erlaubt das Ausschalten. Diese Änderung verbessert die standardmäßige Unterstützung von Browser- und Electron-Textfeldern; sie ist keine Verbesserung der Zwischenablagen-Isolation.
+
+Bereits gespeicherte `true`- und `false`-Werte bleiben erhalten. Auch fehlende oder `null`-Werte aus älteren Profilen bleiben ausgeschaltet; ein Update aktiviert sie nicht still. Neue Profile setzen `clipboardCompatibility = true`. Wispr-Import und Import-Undo bewahren die aktuelle Wahl. Der Standard des Zustellungs-API bleibt ausgeschaltet; die App übergibt ausschließlich ihre tatsächliche Einstellung. Der signierte Bundle-Wert `AInautenClipboardCompatibilityDefault` wird beim Ressourcencheck mit dem frischen Einstellungsstandard verglichen und dient als Quelle für die öffentlichen Release-Metadaten.
+
+Die Abschnitte oben dokumentieren den damaligen Prüfstand und die frühere Entscheidung. Bibliotheksvalidierungs-Ausnahme und fehlende Apple-Notarisierung bleiben separat offen.

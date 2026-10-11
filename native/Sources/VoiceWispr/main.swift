@@ -27,6 +27,7 @@ if CommandLine.arguments.contains("--check-bundled-resources") {
               core.deletingLastPathComponent().standardizedFileURL == resources.standardizedFileURL,
               L10n.template("settings.interfaceLanguage", language: .en) == "Interface language",
               L10n.template("settings.interfaceLanguage", language: .de) == "Oberflächensprache",
+              Bundle.main.object(forInfoDictionaryKey: "AInautenClipboardCompatibilityDefault") as? Bool == Settings().usesClipboardForInsertion,
               L10n.plural("history.count", count: 1, language: .en) == "1 dictation",
               L10n.plural("history.count", count: 2, language: .de) == "2 Diktate",
               L10n.message("No speech detected") == .key("status.noSpeech", []) else {

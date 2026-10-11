@@ -92,6 +92,9 @@ public actor SettingsStore {
         // Neither does it touch setup progress, pause or history. Undo must not re-enable a history the user turned off.
         document.settings.onboardingComplete = current.onboardingComplete; document.settings.practiceCompleted = current.practiceCompleted
         document.settings.paused = current.paused; document.settings.historyEnabled = current.historyEnabled
+        // The Wispr import never changes clipboard access; undo must retain a
+        // later user choice, including a withdrawal or an old disabled profile.
+        document.settings.clipboardCompatibility = current.clipboardCompatibility
         try write(document, provenance: snapshot.wisprImport)
         // One undo per import; repeating it would roll back later edits again.
         try? FileManager.default.removeItem(at: backup)

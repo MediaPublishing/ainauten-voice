@@ -467,12 +467,15 @@ final class MigrationDeliveryTests: XCTestCase {
         before.settings.lipReadingEnabled = true; before.settings.lipReadingLanguage = "en"
         try await store.save(before)
         _ = try await store.applyWisprImport(WisprMigrationService(configURL: config, databaseURL: root.appendingPathComponent("flow.sqlite")))
-        // After the import the user withdraws both consents and clears the endpoint.
+        XCTAssertTrue(before.settings.usesClipboardForInsertion)
+        // After the import the user withdraws consents, disables clipboard
+        // compatibility and clears the endpoint.
         var current = try await store.load()
         XCTAssertTrue(current.settings.languages != before.settings.languages) // The import did change settings.
         current.settings.cloudEnabled = false; current.settings.cloudEndpoint = ""; current.settings.cloudModel = "lokal"
         current.settings.lipReadingEnabled = false; current.settings.lipReadingLanguage = "de"
         current.settings.historyEnabled = false; current.settings.paused = true
+        current.settings.clipboardCompatibility = false
         try await store.save(current)
         try await store.undoWisprImport()
         let restored = try await store.load()
@@ -481,6 +484,7 @@ final class MigrationDeliveryTests: XCTestCase {
         XCTAssertFalse(restored.settings.cloudEnabled); XCTAssertEqual(restored.settings.cloudEndpoint, ""); XCTAssertEqual(restored.settings.cloudModel, "lokal")
         XCTAssertEqual(restored.settings.lipReadingEnabled, false); XCTAssertEqual(restored.settings.lipReadingLanguage, "de")
         XCTAssertEqual(restored.settings.historyEnabled, false); XCTAssertTrue(restored.settings.paused)
+        XCTAssertFalse(restored.settings.usesClipboardForInsertion)
         XCTAssertFalse(FileManager.default.fileExists(atPath: undo.path))
         let after = try Data(contentsOf: url)
         do { try await store.undoWisprImport(); XCTFail("A second undo must not roll back later edits") } catch {}

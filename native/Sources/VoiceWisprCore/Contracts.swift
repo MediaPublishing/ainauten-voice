@@ -83,8 +83,9 @@ public struct Settings: Codable, Equatable, Sendable {
     public var defaultStyle: TextStyle = .cleaned
     public var manualStyle: TextStyle?
     public var appStyles: [String: TextStyle] = [:]
-    /// Only an explicit opt-in may expose automatic dictation to the system clipboard.
-    public var clipboardCompatibility: Bool?
+    /// New profiles enable compatible insertion. Codable decodes a missing or
+    /// null legacy value as nil, preserving the previous disabled choice.
+    public var clipboardCompatibility: Bool? = true
     public var usesClipboardForInsertion: Bool { clipboardCompatibility == true }
     /// Older profiles retain their Dock icon until this option is enabled.
     public var menuBarOnly: Bool?

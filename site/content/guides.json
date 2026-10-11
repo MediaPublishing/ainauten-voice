@@ -19,7 +19,7 @@
       ],
       "workflow": "Sprich zuerst Ziel, Einschränkungen und Abnahmekriterium. Ergänze Pfade, Befehle und Variablennamen anschließend mit der Tastatur. Für einen Agenten ist ein präziser Auftrag nützlicher als ein langer, automatisch umformulierter Monolog.",
       "test": "Diktiere ein Bug-Ticket mit „nicht löschen“, einem gemischten deutschen und englischen Fachbegriff und einer Versionsnummer. Prüfe danach denselben Text im Editor und im Browser. Miss auch Korrekturzeit und Einfügefehler, nicht nur die Dauer bis zum ersten Text.",
-      "avoid": "Wenn exakte Codezeichen oder ein Firmenstandard zwingend sind, nimm keine App allein aufgrund ihrer Diktierdemo. AInauten Voice garantiert kein korrektes Einfügen in jedes Editorfeld; kompatibles Einfügen über die Zwischenablage ist eine bewusste Option.",
+      "avoid": "Wenn exakte Codezeichen oder ein Firmenstandard zwingend sind, nimm keine App allein aufgrund ihrer Diktierdemo. AInauten Voice garantiert kein korrektes Einfügen in jedes Editorfeld; kompatibles Einfügen über die Zwischenablage ist bei neuen Installationen eingeschaltet und lässt sich unter Datenschutz ausschalten.",
       "faq": "Kann ich damit Code diktieren?",
       "answer": "Beschreibungen und Prompts sind ein sinnvoller Einstieg. Für ausführbaren Code musst du Zeichen, Einrückung und Syntax separat prüfen; wir haben keine Genauigkeitsrangliste für Code gemessen.",
       "pickReasons": [
@@ -41,7 +41,7 @@
       ],
       "workflow": "Speak the goal, constraints and acceptance criterion first. Add paths, commands and variable names with the keyboard afterwards. A precise instruction is more useful to an agent than a long monologue that has been rewritten automatically.",
       "test": "Dictate a bug ticket with “do not delete,” a mixed-language technical term and a version number. Check the same text in your editor and browser. Measure correction time and insertion errors, not just time until text appears.",
-      "avoid": "If exact code characters or a workplace standard are mandatory, do not choose from a dictation demo alone. AInauten Voice does not guarantee insertion into every editor field; clipboard-compatible insertion is an explicit option.",
+      "avoid": "If exact code characters or a workplace standard are mandatory, do not choose from a dictation demo alone. AInauten Voice does not guarantee insertion into every editor field; clipboard-compatible insertion is enabled for new installations and can be disabled under Privacy.",
       "faq": "Can I dictate code?",
       "answer": "Descriptions and prompts are a useful starting point. Check characters, indentation and syntax separately for executable code; we have not measured an accuracy ranking for code.",
       "pickReasons": [
