@@ -18,6 +18,8 @@ python3 -m unittest discover -s automation/pr-review -p 'test_*.py' -v
 
 CI is triggered by PRs into `main` and by pushes to the setup/fix branches. It must be merged after owner approval for future unrelated PRs to inherit these checks. GitHub may require approval before running a first-time fork contributor's workflow; do not bypass this safeguard. Until checks are available, label the result as pending rather than claiming tests passed.
 
+The fresh macOS runner loads Apple's German lexical assets before running the existing formatter fast-path tests. The prerequisite has a timeout and fails visibly if unavailable; no tests are skipped or weakened. Download fixtures reset between cases so XCTest's execution order cannot leak a deliberately invalid HTTP response into the next test.
+
 If a PR has no actionable defect, save the review receipt without manufacturing a fix. Recheck after head/base changes. Existing pending fixes are reused, preventing duplicate PRs. Never include private support reports, user dictation/history, contact details, tokens or local paths in public PRs or logs.
 
 To pause automatic review, pause the named Codex automation. Pausing review does not disable CI or affect the installed app.

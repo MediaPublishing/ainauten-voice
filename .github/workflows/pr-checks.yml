@@ -32,6 +32,9 @@ jobs:
           printf 'VOICE_TEST_PYTHON=%s\n' "$(command -v python3)" >> "$GITHUB_ENV"
       - name: Verify embedded framework provenance
         run: python3 native/scripts/bootstrap.py
+      - name: Prepare German linguistic test assets
+        timeout-minutes: 4
+        run: swift automation/pr-review/prepare-linguistic-assets.swift
       - name: Run Swift regression contracts
         run: swift test --package-path native --jobs 3
 
