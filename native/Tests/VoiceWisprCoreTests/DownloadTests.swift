@@ -69,9 +69,11 @@ final class DownloadTests: XCTestCase {
         let manifest = ModelManifest(version: 1, files: [file]); let destination = root.appendingPathComponent(file.path)
         try payload.write(to: destination); try Data(file.sha256.utf8).write(to: URL(fileURLWithPath: destination.path + ".verified"))
         let downloader = ModelDownloader(root: root, manifest: manifest)
-        XCTAssertTrue(try await downloader.installed())
+        let validInstalled = try await downloader.installed()
+        XCTAssertTrue(validInstalled)
         try Data(repeating: 0xFF, count: payload.count).write(to: destination)
-        XCTAssertFalse(try await downloader.installed())
+        let corruptedInstalled = try await downloader.installed()
+        XCTAssertFalse(corruptedInstalled)
     }
 
     func testHTTP200ResetsAStalePartialAndCompletes() async throws {
