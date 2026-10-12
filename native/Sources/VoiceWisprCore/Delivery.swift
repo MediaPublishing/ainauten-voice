@@ -176,6 +176,137 @@ public enum DeliveryVerification {
     }
 }
 
+enum TypingProbeVerification {
+    // Invisible separator: one UTF-16 unit, with no visible glyph or width.
+    static let marker = "\u{2063}"
+    static func containsProbe(_ marker: String, value: String, selection: NSRange) -> Bool {
+        let text = value as NSString, length = (marker as NSString).length
+        guard length == 1, selection.length == 0, selection.location > 0,
+              selection.location <= text.length else { return false }
+        let range = NSRange(location: selection.location - length, length: length)
+        return text.substring(with: range) == marker
+            && text.range(of: marker).location == range.location
+            && text.range(of: marker, options: .backwards).location == range.location
+    }
+    static func restored(_ marker: String, probed: String, value: String, selection: NSRange) -> Bool {
+        // Undo must restore the insertion point, including any replaced selection.
+        guard !value.contains(marker),
+              let expected = DeliveryVerification.expectedValue(baseline: value, selection: selection, insertion: marker) else { return false }
+        // Empty web editors may expose a trailing paragraph separator only
+        // after undo. Use the same representation tolerance as text delivery.
+        return DeliveryVerification.normalized(expected) == DeliveryVerification.normalized(probed)
+    }
+}
+
+/// An explicit typing attempt stays bound to the original app, window and control.
+/// Unlike a readable text snapshot, this may initially refer to a button.
+@MainActor public struct InputFocusProbe {
+    private static var running = false
+    let pid: pid_t
+    let window: AXUIElement
+    let element: AXUIElement
+
+    public static func capture(expectedPID: pid_t? = nil) -> InputFocusProbe? {
+        guard AXIsProcessTrusted(), !IsSecureEventInputEnabled(),
+              let app = NSWorkspace.shared.frontmostApplication,
+              app.bundleIdentifier != Bundle.main.bundleIdentifier,
+              expectedPID == nil || app.processIdentifier == expectedPID else { return nil }
+        let root = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(root, 0.05)
+        guard let window = AXAccess.element(root, kAXFocusedWindowAttribute),
+              let element = AXAccess.element(root, kAXFocusedUIElementAttribute) else { return nil }
+        AXUIElementSetMessagingTimeout(element, 0.05)
+        guard AXAccess.string(element, kAXSubroleAttribute) != kAXSecureTextFieldSubrole,
+              AXAccess.string(element, kAXRoleAttribute) != kAXSecureTextFieldSubrole else { return nil }
+        return InputFocusProbe(pid: app.processIdentifier, window: window, element: element)
+    }
+    private func isUnchanged() -> Bool {
+        guard let current = Self.capture(expectedPID: pid) else { return false }
+        return CFEqual(current.window, window) && CFEqual(current.element, element)
+    }
+    public func prepare() async -> FocusSnapshot? {
+        guard await DeliveryKeyboard.waitForModifiers(), isUnchanged() else { return nil }
+        if let target = FocusSnapshot.capture(expectedPID: pid) { return target }
+        // Finish the reversible probe even if the dictation is cancelled after
+        // key-down. The caller still checks cancellation before inserting text.
+        return await Task { @MainActor in await runProbe() }.value
+    }
+    private func runProbe() async -> FocusSnapshot? {
+        guard !Self.running, isUnchanged(), DeliveryKeyboard.modifiersReleased else { return nil }
+        Self.running = true
+        defer { Self.running = false }
+        // A single BMP character also has JavaScript key.length == 1.
+        let marker = TypingProbeVerification.marker
+        guard DeliveryKeyboard.post(key: 0, text: marker, pid: pid) else { return nil }
+        for _ in 0..<30 {
+            try? await Task.sleep(for: .milliseconds(50))
+            guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid,
+                  !IsSecureEventInputEnabled() else { return nil }
+            guard let target = FocusSnapshot.capture(expectedPID: pid) else { continue }
+            guard CFEqual(target.window, window) else { return nil }
+            guard TypingProbeVerification.containsProbe(marker, value: target.baseline, selection: target.selection) else { continue }
+            guard target.isUnchanged(), DeliveryKeyboard.modifiersReleased,
+                  let undoKey = DeliveryKeyboard.undoKeyCode(),
+                  DeliveryKeyboard.post(key: undoKey, flags: .maskCommand, pid: pid) else { return nil }
+            for _ in 0..<30 {
+                try? await Task.sleep(for: .milliseconds(50))
+                guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid,
+                      !IsSecureEventInputEnabled() else { return nil }
+                guard let restored = FocusSnapshot.capture(expectedPID: pid) else { continue }
+                guard CFEqual(restored.window, window), CFEqual(restored.element, target.element) else { return nil }
+                if TypingProbeVerification.restored(marker, probed: target.baseline,
+                    value: restored.baseline, selection: restored.selection) { return restored }
+            }
+            return nil
+        }
+        return nil
+    }
+}
+
+@MainActor enum DeliveryKeyboard {
+    static func undoKeyCode() -> CGKeyCode? {
+        let source = TISCopyCurrentKeyboardLayoutInputSource().takeRetainedValue()
+        guard let raw = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
+        let data = Unmanaged<CFData>.fromOpaque(raw).takeUnretainedValue()
+        let layout = UnsafeRawPointer(CFDataGetBytePtr(data)).assumingMemoryBound(to: UCKeyboardLayout.self)
+        // Virtual key 6 means Y on German keyboards. Translate with Command
+        // held because some layouts change their mapping for menu shortcuts.
+        for key: CGKeyCode in 0..<128 {
+            var dead: UInt32 = 0, length = 0
+            var characters = [UniChar](repeating: 0, count: 8)
+            let status = UCKeyTranslate(layout, key, UInt16(kUCKeyActionDown), UInt32(cmdKey >> 8),
+                UInt32(LMGetKbdType()), OptionBits(kUCKeyTranslateNoDeadKeysMask), &dead,
+                characters.count, &length, &characters)
+            if status == noErr, String(utf16CodeUnits: characters, count: length) == "z" { return key }
+        }
+        return nil
+    }
+    static var modifiersReleased: Bool {
+        CGEventSource.flagsState(.hidSystemState).intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift]).isEmpty
+    }
+    static func waitForModifiers() async -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: .milliseconds(1500))
+        while !modifiersReleased {
+            guard ContinuousClock.now < deadline, !Task.isCancelled else { return false }
+            do { try await Task.sleep(for: .milliseconds(20)) } catch { return false }
+        }
+        return !Task.isCancelled
+    }
+    static func post(key: CGKeyCode, text: String? = nil, flags: CGEventFlags = [], pid: pid_t) -> Bool {
+        guard let source = CGEventSource(stateID: .hidSystemState),
+              let down = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false) else { return false }
+        if let text {
+            let units = Array(text.utf16)
+            down.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
+            up.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
+        }
+        down.flags = flags; up.flags = []
+        down.postToPid(pid); up.postToPid(pid)
+        return true
+    }
+}
+
 /// nspasteboard.org conventions: clipboard managers (Maccy, Raycast, Paste) skip
 /// marked items, so dictated text written only for insertion is never archived.
 public enum TransientPasteboard {
@@ -308,9 +439,18 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         guard targetReadable && !secure && focusUnchanged else { return DeliveryOutcome(.notAttempted, reason: "Ziel nicht sicher verifizierbar; Text steht zur Wiederherstellung bereit.") }
         return DeliveryOutcome(.uncertain, reason: "Ziel geprüft; Zustellung muss noch bestätigt werden.")
     }
-    public func deliver(text: String, to target: FocusSnapshot?, allowClipboard: Bool = false) async -> DeliveryOutcome {
+    public func deliver(text: String, to target: FocusSnapshot?, allowClipboard: Bool = false, probe: InputFocusProbe? = nil) async -> DeliveryOutcome {
         guard !Task.isCancelled else { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
-        guard !text.isEmpty, let target, target.isUnchanged() else {
+        guard !text.isEmpty else { return DeliveryOutcome(.notAttempted, reason: "Kein Text zum Einfügen") }
+        var target = target
+        if target == nil, let probe {
+            target = await probe.prepare()
+            guard !Task.isCancelled else { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
+            guard target != nil else {
+                return DeliveryOutcome(.notAttempted, reason: "Texteingabe oder Rücknahme des Probezeichens nicht bestätigt. Prüfe das Eingabefeld; der Diktattext steht zur Wiederherstellung bereit.")
+            }
+        }
+        guard let target, target.isUnchanged() else {
             return DeliveryOutcome(.notAttempted, reason: "Fokus, Auswahl oder Textfeld haben sich verändert. Text aus dem Wiederherstellungsfenster verwenden.")
         }
         let text = DeliveryVerification.insertionText(text, baseline: target.baseline, selection: target.selectedRange)
@@ -333,11 +473,8 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         #endif
         guard allowClipboard else { return DeliveryOutcome(.notAttempted, reason: "Dieses Textfeld unterstützt kein direktes Einfügen. Text bleibt in der App; die Zwischenablage bleibt unverändert.") }
         let board = NSPasteboard.general
-        let releaseDeadline = ContinuousClock.now.advanced(by: .milliseconds(1500))
-        let physicalModifiers: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift]
-        while !CGEventSource.flagsState(.hidSystemState).intersection(physicalModifiers).isEmpty {
-            guard ContinuousClock.now < releaseDeadline, !Task.isCancelled else { return DeliveryOutcome(.notAttempted, reason: "Tastenkürzel noch gehalten; Text bitte aus dem Ergebnisfenster kopieren.") }
-            do { try await Task.sleep(for: .milliseconds(20)) } catch { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
+        guard await DeliveryKeyboard.waitForModifiers() else {
+            return DeliveryOutcome(.notAttempted, reason: Task.isCancelled ? "Diktat verworfen" : "Tastenkürzel noch gehalten; Text bitte aus dem Ergebnisfenster kopieren.")
         }
         guard let saved = ClipboardSnapshot.capture(board), let source = CGEventSource(stateID: .hidSystemState),
               let down = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true),

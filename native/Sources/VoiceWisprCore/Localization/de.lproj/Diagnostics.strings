@@ -17,6 +17,8 @@
 "delivery.targetUnreadable" = "Ziel nicht sicher verifizierbar; Text steht zur Wiederherstellung bereit.";
 "delivery.pending" = "Ziel geprüft; Zustellung muss noch bestätigt werden.";
 "delivery.discarded" = "Diktat verworfen";
+"delivery.empty" = "Kein Text zum Einfügen";
+"delivery.probeFailed" = "Texteingabe oder Rücknahme des Probezeichens nicht bestätigt. Prüfe das Eingabefeld; der Diktattext steht zur Wiederherstellung bereit.";
 "delivery.focusChanged" = "Fokus, Auswahl oder Textfeld haben sich verändert. Text aus dem Wiederherstellungsfenster verwenden.";
 "delivery.targetChanged" = "Ziel verändert oder Diktat verworfen";
 "delivery.operationUnconfirmed" = "Textoperation nicht bestätigt; keine automatische Wiederholung.";
