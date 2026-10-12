@@ -1,0 +1,60 @@
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: Native contracts
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Record tested revision and toolchain
+        run: |
+          git rev-parse HEAD
+          swift --version
+          xcodebuild -version
+          printf 'VOICE_TEST_PYTHON=%s\n' "$(command -v python3)" >> "$GITHUB_ENV"
+      - name: Verify embedded framework provenance
+        run: python3 native/scripts/bootstrap.py
+      - name: Prepare German linguistic test assets
+        timeout-minutes: 4
+        run: swift automation/pr-review/prepare-linguistic-assets.swift
+      - name: Run Swift regression contracts
+        run: swift test --package-path native --jobs 3
+
+  web:
+    name: Web and review contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Record tested revision
+        run: git rev-parse HEAD
+      - name: Install pinned website dependencies
+        run: npm ci --ignore-scripts --prefix site
+      - name: Verify website shell and theme
+        run: |
+          npm run build:shell --prefix site
+          npm run check:shell --prefix site
+          node site/scripts/check-theme.mjs
+      - name: Run reporting and PR-review regression tests
+        run: |
+          node --test reporting/tests.mjs reporting/automation/tests.mjs
+          python3 -m unittest discover -s automation/pr-review -p 'test_*.py' -v
