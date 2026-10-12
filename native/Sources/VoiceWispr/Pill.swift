@@ -136,7 +136,10 @@ private final class PillHostingView: NSHostingView<PillView> {
         panel.ignoresMouseEvents = false
         panel.level = .floating; panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-        panel.contentView = PillHostingView(rootView: PillView(model: model))
+        let content = PillHostingView(rootView: PillView(model: model))
+        // Window sizing belongs to setVisible; SwiftUI must not resize it later.
+        content.sizingOptions = []
+        panel.contentView = content
         position()
     }
     func setVisible(_ visible: Bool, loading: Bool = false) {

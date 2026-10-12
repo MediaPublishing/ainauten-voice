@@ -65,6 +65,7 @@ public final class DictationGestureMachine {
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var expiry: Timer?
+    private var installing = false
     public init() {}
     // CGEventTap needs a synchronous reply (nil consumes the key). Its source
     // runs exclusively on CFRunLoopGetMain(), but a CF callback can inherit an
@@ -80,7 +81,20 @@ public final class DictationGestureMachine {
         }
     }
     public func install() -> Bool {
-        if tap != nil { return true }
+        // Failure callbacks can cancel a session and refresh hotkeys again.
+        guard !installing else { return false }
+        installing = true
+        defer { installing = false }
+        if let tap {
+            if CFMachPortIsValid(tap) {
+                if !CGEvent.tapIsEnabled(tap: tap) {
+                    recoverAfterTapTimeout()
+                    CGEvent.tapEnable(tap: tap, enable: true)
+                }
+                return CGEvent.tapIsEnabled(tap: tap)
+            }
+            retireInvalidTap()
+        }
         guard AXIsProcessTrusted() else { return false }
         let mask = [CGEventType.keyDown, .keyUp, .flagsChanged].reduce(CGEventMask(0)) { $0 | (1 << $1.rawValue) }
         let callback: CGEventTapCallBack = { _, type, event, pointer in
@@ -107,9 +121,21 @@ public final class DictationGestureMachine {
     }
     public func uninstall() {
         expiry?.invalidate(); expiry = nil
+        cancellationEnabled = false
+        removeEventTap()
+        reset(); capturedHoldKeys.removeAll()
+    }
+    // Replacing a broken transport must not discard an active hold, hands-free
+    // session or pending short tap. Explicit uninstall still clears all of them.
+    func retireInvalidTap(flags: CGEventFlags = CGEventSource.flagsState(.combinedSessionState),
+                          keyIsDown: (UInt16) -> Bool = { CGEventSource.keyState(.combinedSessionState, key: $0) }) {
+        recoverAfterTapTimeout(flags: flags, keyIsDown: keyIsDown)
+        removeEventTap()
+    }
+    private func removeEventTap() {
         if let tap { CGEvent.tapEnable(tap: tap, enable: false); CFMachPortInvalidate(tap) }
         if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
-        source = nil; tap = nil; reset(); capturedHoldKeys.removeAll()
+        source = nil; tap = nil
     }
     deinit {
         expiry?.invalidate()
@@ -185,6 +211,7 @@ public final class DictationGestureMachine {
     /// A disabled tap may miss release events. Finish a released hold without losing its audio.
     func recoverAfterTapTimeout(flags: CGEventFlags = CGEventSource.flagsState(.combinedSessionState),
                                keyIsDown: (UInt16) -> Bool = { CGEventSource.keyState(.combinedSessionState, key: $0) }) {
+        capturedHoldKeys = capturedHoldKeys.filter(keyIsDown)
         guard enabled, machine.isHoldRecording, let held = matched else { return }
         let modifierHoldMask: UInt64 = (1 << 18) | (1 << 19) | (1 << 20)
         let holdsByModifiers = held.keyCode != nil && held.modifiers & modifierHoldMask != 0
@@ -193,6 +220,6 @@ public final class DictationGestureMachine {
         guard !heldNow else { return }
         reset(); onGesture?(.stop)
     }
-    public func reset() { machine.reset(); matched = nil; previousFlags = 0 }
+    public func reset() { machine.reset(); matched = nil; chordDeadline = nil; previousFlags = 0 }
     public func beginHandsFree() { matched = nil; machine.beginHandsFree() }
 }
