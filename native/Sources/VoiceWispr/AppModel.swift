@@ -91,7 +91,7 @@ extension AppModel {
               cameraGranted, accessibilityGranted, !document.settings.paused, !conflict, !lipShortcutConflict else { return }
         let id = UUID(); sessionID = id; lipSession = true
         closeRecovery(); quietDeliveryFeedback = false; errorMessage = nil; originalRequested = false
-        practiceSession = false; inputFocusProbe = InputFocusProbe.capture(); focus = FocusSnapshot.capture(); pill?.position()
+        practiceSession = false; inputFocusRecovery = InputFocusRecovery.capture(); focus = FocusSnapshot.capture(); pill?.position()
         let style = document.settings.style(for: focus?.bundleID)
         historyContext = HistoryCaptureContext(date: Date(), style: style, bundleID: focus?.bundleID,
             appName: focus.flatMap { NSRunningApplication(processIdentifier: $0.pid)?.localizedName }, enabled: historyEnabled)
@@ -167,7 +167,7 @@ extension AppModel {
                 } else if conflict {
                     outcome = DeliveryOutcome(.notAttempted, reason: "Wispr Flow ist wieder gestartet. Der Text bleibt verfügbar.")
                 } else {
-                    outcome = await DeliveryCoordinator().deliver(text: text, to: focus, allowClipboard: document.settings.usesClipboardForInsertion, probe: inputFocusProbe)
+                    outcome = await DeliveryCoordinator().deliver(text: text, to: focus, allowClipboard: document.settings.usesClipboardForInsertion, recovery: inputFocusRecovery)
                 }
                 guard sessionID == id, !Task.isCancelled else { return }
                 if let context = historyContext { recordHistory(result, context: context, delivery: outcome.status) }
@@ -334,7 +334,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     let hotkey = GlobalHotkey()
     private var pipeline: ProcessingPipeline?
     private var focus: FocusSnapshot?
-    private var inputFocusProbe: InputFocusProbe?
+    private var inputFocusRecovery: InputFocusRecovery?
     private var sessionID: UUID?
     private var deliveryFeedbackID: UUID?
     private var quietDeliveryFeedback = false
@@ -904,7 +904,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         if practice { practiceFeedback.begin(id) }
         practiceStopper = PracticeSession()
         let targetPID = practice ? nil : NSWorkspace.shared.frontmostApplication?.processIdentifier
-        focus = nil; inputFocusProbe = nil
+        focus = nil; inputFocusRecovery = nil
         spectrumMeter = AudioSpectrumMeter()
         spectrumLevels = [Float](repeating: 0, count: AudioSpectrumMeter.bandCount)
         state = .recording; hotkey.cancellationEnabled = !practice && accessibilityGranted; level = 0; elapsed = 0; captureReady = false; captureStartupMilliseconds = nil
@@ -922,7 +922,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 guard sessionID == id, !Task.isCancelled else { return }
                 // Keep synchronous AX queries outside the event-tap callback.
                 if let targetPID {
-                    inputFocusProbe = InputFocusProbe.capture(expectedPID: targetPID)
+                    inputFocusRecovery = InputFocusRecovery.capture(expectedPID: targetPID)
                     focus = await FocusSnapshot.captureWithRetry(expectedPID: targetPID)
                 }
                 guard sessionID == id, !Task.isCancelled else { return }
@@ -1021,7 +1021,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 else if conflict { outcome = DeliveryOutcome(.notAttempted, reason: "Wispr Flow läuft wieder. Dein Diktat bleibt verfügbar, das Tastenkürzel ist pausiert.") }
                 else if !result.isComplete { outcome = DeliveryOutcome(.notAttempted, reason: "Dieses Ergebnis ist unvollständig und wird nicht automatisch eingefügt.") }
                 else if sleepInterrupted { outcome = DeliveryOutcome(.notAttempted, reason: "Der Mac ist in den Ruhezustand gegangen. Dein Diktat wurde deshalb nicht eingefügt.") }
-                else { outcome = await DeliveryCoordinator().deliver(text: result.text, to: focus, allowClipboard: document.settings.usesClipboardForInsertion, probe: inputFocusProbe) }
+                else { outcome = await DeliveryCoordinator().deliver(text: result.text, to: focus, allowClipboard: document.settings.usesClipboardForInsertion, recovery: inputFocusRecovery) }
                 guard sessionID == id else { return }
                 if !practice, let context = historyContext { recordHistory(result, context: context, delivery: outcome.status) }
                 historyContext = nil
@@ -1095,7 +1095,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         let wasLipSession = lipSession
         camera.cancel(); lipHotkey.reset(); lipHotkey.cancellationEnabled = false; lipSession = false
         if practiceSession, let id = sessionID { practiceFeedback.cancel(id) }
-        sessionID = nil; focus = nil; inputFocusProbe = nil; historyContext = nil; hotkey.cancellationEnabled = false; operation?.cancel(); appendTask?.cancel(); operation = nil; appendTask = nil
+        sessionID = nil; focus = nil; inputFocusRecovery = nil; historyContext = nil; hotkey.cancellationEnabled = false; operation?.cancel(); appendTask?.cancel(); operation = nil; appendTask = nil
         acceptedSamples = 0; pendingSamples = [:]; practiceSession = false; originalRequested = false
         _ = capture.stop(); clock?.invalidate(); clock = nil; hotkey.reset()
         if let pipeline { Task { await pipeline.cancel() } }; pipeline = nil
@@ -1206,7 +1206,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         guard sessionID == nil, !conflict, let result = results.first else { return }
         guard result.isComplete else { recoveryReason = "Dieser Teiltext wird nicht automatisch eingefügt."; showRecovery(); return }
         let target = FocusSnapshot.capture()
-        let probe = target == nil ? InputFocusProbe.capture() : nil
+        let recovery = target == nil ? InputFocusRecovery.capture() : nil
         #if DEBUG
         // Computer Use may address a background window without activating it.
         // Never let the public diagnostic insert into an unintended app.
@@ -1233,7 +1233,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             #if DEBUG
             let measurementStart = ProcessInfo.processInfo.systemUptime
             #endif
-            let outcome = await DeliveryCoordinator().deliver(text: result.text, to: target, allowClipboard: document.settings.usesClipboardForInsertion, probe: probe)
+            let outcome = await DeliveryCoordinator().deliver(text: result.text, to: target, allowClipboard: document.settings.usesClipboardForInsertion, recovery: recovery)
             #if DEBUG
             if previewMode, CommandLine.arguments.contains("--test-delivery") {
                 let trace: [String: Any] = ["status": outcome.status.rawValue, "seconds": ProcessInfo.processInfo.systemUptime - measurementStart,

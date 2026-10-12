@@ -18,7 +18,7 @@
 "delivery.pending" = "Target checked; insertion still needs confirmation.";
 "delivery.discarded" = "Dictation discarded";
 "delivery.empty" = "No text to insert";
-"delivery.probeFailed" = "Typing or undoing the probe character could not be confirmed. Check the input field; your dictation is available for recovery.";
+"delivery.focusUnavailable" = "The input target cannot be verified safely. Check the input field; your dictation is available for recovery.";
 "delivery.focusChanged" = "Focus, selection or the text field changed. Use the text in the recovery window.";
 "delivery.targetChanged" = "Target changed or dictation discarded";
 "delivery.operationUnconfirmed" = "Text operation unconfirmed; no automatic retry.";
