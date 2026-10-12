@@ -185,6 +185,7 @@ public final class DictationGestureMachine {
     /// A disabled tap may miss release events. Finish a released hold without losing its audio.
     func recoverAfterTapTimeout(flags: CGEventFlags = CGEventSource.flagsState(.combinedSessionState),
                                keyIsDown: (UInt16) -> Bool = { CGEventSource.keyState(.combinedSessionState, key: $0) }) {
+        capturedHoldKeys = capturedHoldKeys.filter(keyIsDown)
         guard enabled, machine.isHoldRecording, let held = matched else { return }
         let modifierHoldMask: UInt64 = (1 << 18) | (1 << 19) | (1 << 20)
         let holdsByModifiers = held.keyCode != nil && held.modifiers & modifierHoldMask != 0
