@@ -4,8 +4,6 @@ on:
   pull_request:
     branches: [main]
     types: [opened, reopened, synchronize, ready_for_review]
-  push:
-    branches: ['automation/pr-review-setup', 'automation/pr-fix-*']
 
 permissions:
   contents: read

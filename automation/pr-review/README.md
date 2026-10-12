@@ -16,7 +16,7 @@ Run the controller's synthetic regression tests with:
 python3 -m unittest discover -s automation/pr-review -p 'test_*.py' -v
 ```
 
-CI is triggered by PRs into `main` and by pushes to the setup/fix branches. It must be merged after owner approval for future unrelated PRs to inherit these checks. GitHub may require approval before running a first-time fork contributor's workflow; do not bypass this safeguard. Until checks are available, label the result as pending rather than claiming tests passed.
+CI is triggered by PRs into `main`, including draft PRs and subsequent changes to their branches. Each PR revision has one workflow run; separate push triggers would create duplicate/cancelled checks at the same commit. The workflow must be merged after owner approval for future unrelated PRs to inherit these checks. GitHub may require approval before running a first-time fork contributor's workflow; do not bypass this safeguard. Until checks are available, label the result as pending rather than claiming tests passed.
 
 The fresh macOS runner loads Apple's German lexical assets before running the existing formatter fast-path tests. The prerequisite has a timeout and fails visibly if unavailable; no tests are skipped or weakened. Download fixtures reset between cases so XCTest's execution order cannot leak a deliberately invalid HTTP response into the next test.
 
