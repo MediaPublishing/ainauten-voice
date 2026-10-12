@@ -93,10 +93,7 @@ public final class DictationGestureMachine {
                 }
                 return CGEvent.tapIsEnabled(tap: tap)
             }
-            recoverAfterTapTimeout()
-            let restoreCancellation = cancellationEnabled
-            uninstall()
-            cancellationEnabled = restoreCancellation
+            retireInvalidTap()
         }
         guard AXIsProcessTrusted() else { return false }
         let mask = [CGEventType.keyDown, .keyUp, .flagsChanged].reduce(CGEventMask(0)) { $0 | (1 << $1.rawValue) }
@@ -125,9 +122,20 @@ public final class DictationGestureMachine {
     public func uninstall() {
         expiry?.invalidate(); expiry = nil
         cancellationEnabled = false
+        removeEventTap()
+        reset(); capturedHoldKeys.removeAll()
+    }
+    // Replacing a broken transport must not discard an active hold, hands-free
+    // session or pending short tap. Explicit uninstall still clears all of them.
+    func retireInvalidTap(flags: CGEventFlags = CGEventSource.flagsState(.combinedSessionState),
+                          keyIsDown: (UInt16) -> Bool = { CGEventSource.keyState(.combinedSessionState, key: $0) }) {
+        recoverAfterTapTimeout(flags: flags, keyIsDown: keyIsDown)
+        removeEventTap()
+    }
+    private func removeEventTap() {
         if let tap { CGEvent.tapEnable(tap: tap, enable: false); CFMachPortInvalidate(tap) }
         if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
-        source = nil; tap = nil; reset(); capturedHoldKeys.removeAll()
+        source = nil; tap = nil
     }
     deinit {
         expiry?.invalidate()
