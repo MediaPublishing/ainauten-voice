@@ -3,6 +3,29 @@ import ApplicationServices
 @testable import VoiceWisprCore
 
 final class GestureTests: XCTestCase {
+    @MainActor func testTapTimeoutForwardsLaterOrdinaryKeyReleaseEvenWhenDisabled() throws {
+        for enabled in [true, false] {
+            let hotkey = GlobalHotkey(); hotkey.enabled = true
+            hotkey.shortcut = Shortcut(keyCode: 49, modifiers: 1 << 20)
+            let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: true)); down.flags = .maskCommand
+            XCTAssertNil(hotkey.handle(.keyDown, event: down))
+            hotkey.enabled = enabled
+            hotkey.recoverAfterTapTimeout(flags: [], keyIsDown: { _ in false })
+            down.flags = []
+            let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: false))
+            XCTAssertTrue(hotkey.handle(.keyDown, event: down)?.takeUnretainedValue() === down)
+            XCTAssertTrue(hotkey.handle(.keyUp, event: up)?.takeUnretainedValue() === up)
+        }
+    }
+    @MainActor func testTapTimeoutStillConsumesReleaseOfPhysicallyHeldShortcutKey() throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true
+        hotkey.shortcut = Shortcut(keyCode: 49, modifiers: 1 << 20)
+        let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: true)); down.flags = .maskCommand
+        XCTAssertNil(hotkey.handle(.keyDown, event: down))
+        hotkey.recoverAfterTapTimeout(flags: .maskCommand, keyIsDown: { $0 == 49 })
+        let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: false)); up.flags = .maskCommand
+        XCTAssertNil(hotkey.handle(.keyUp, event: up))
+    }
     @MainActor func testInvalidTapReplacementPreservesHeldGestureAndCapturedRelease() async throws {
         for shortcut in [Shortcut(keyCode: 49, modifiers: CGEventFlags.maskControl.rawValue),
                          Shortcut(keyCode: nil, modifiers: CGEventFlags.maskSecondaryFn.rawValue)] {
