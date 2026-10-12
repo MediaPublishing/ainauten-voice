@@ -1,0 +1,13 @@
+{
+  "repository": "MediaPublishing/ainauten-voice",
+  "base_branch": "main",
+  "fix_prefix": "automation/pr-fix-",
+  "setup_branch": "automation/pr-review-setup",
+  "max_prs_per_run": 3,
+  "max_files": 100,
+  "max_patch_bytes": 200000,
+  "required_checks": ["Native contracts", "Web and review contracts"],
+  "protected_prefixes": [".github/", "automation/", "reporting/automation/", "native/scripts/", "native/Resources/", "site/vendor/"],
+  "protected_names": ["AGENTS.md", ".gitattributes", ".gitmodules", "Package.swift", "Package.resolved", "package.json", "package-lock.json", "Info.plist", "wrangler.toml"],
+  "protected_terms": ["entitlement", "credential", "keychain", "updater", "errorreport", "settingsstore", "migration", "historystore", "security", "modeldownload"]
+}
