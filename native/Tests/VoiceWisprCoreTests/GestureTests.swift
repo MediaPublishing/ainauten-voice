@@ -3,6 +3,26 @@ import ApplicationServices
 @testable import VoiceWisprCore
 
 final class GestureTests: XCTestCase {
+    @MainActor func testUninstallClearsPendingGesturesCancellationAndCapturedKeys() throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true; hotkey.cancellationEnabled = true
+        hotkey.shortcut = Shortcut(keyCode: 16, modifiers: CGEventFlags.maskControl.rawValue)
+        var actions: [DictationGesture] = []; hotkey.onGesture = { actions.append($0) }
+        let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 16, keyDown: true))
+        down.flags = .maskControl
+        let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 16, keyDown: false))
+        _ = hotkey.handle(.keyDown, event: down)
+        _ = hotkey.handle(.flagsChanged, event: try modifierEvent())
+        XCTAssertTrue(hotkey.expiryTimerRunning)
+        hotkey.uninstall()
+        XCTAssertFalse(hotkey.expiryTimerRunning)
+        XCTAssertFalse(hotkey.cancellationEnabled)
+        XCTAssertTrue(hotkey.handle(.keyUp, event: up) != nil)
+        let escape = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 53, keyDown: true))
+        XCTAssertTrue(hotkey.handle(.keyDown, event: escape) != nil)
+        _ = hotkey.handle(.keyDown, event: down)
+        XCTAssertEqual(actions, [.start, .start])
+        hotkey.uninstall()
+    }
     @MainActor func testTapTimeoutFinishesAReleasedHoldExactlyOnce() throws {
         let hotkey = GlobalHotkey(); hotkey.enabled = true
         hotkey.shortcut = Shortcut(keyCode: 49, modifiers: 1 << 20)

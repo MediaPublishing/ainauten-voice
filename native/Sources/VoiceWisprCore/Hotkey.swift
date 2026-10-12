@@ -65,6 +65,7 @@ public final class DictationGestureMachine {
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var expiry: Timer?
+    private var installing = false
     public init() {}
     // CGEventTap needs a synchronous reply (nil consumes the key). Its source
     // runs exclusively on CFRunLoopGetMain(), but a CF callback can inherit an
@@ -80,7 +81,23 @@ public final class DictationGestureMachine {
         }
     }
     public func install() -> Bool {
-        if tap != nil { return true }
+        // Failure callbacks can cancel a session and refresh hotkeys again.
+        guard !installing else { return false }
+        installing = true
+        defer { installing = false }
+        if let tap {
+            if CFMachPortIsValid(tap) {
+                if !CGEvent.tapIsEnabled(tap: tap) {
+                    recoverAfterTapTimeout()
+                    CGEvent.tapEnable(tap: tap, enable: true)
+                }
+                return CGEvent.tapIsEnabled(tap: tap)
+            }
+            recoverAfterTapTimeout()
+            let restoreCancellation = cancellationEnabled
+            uninstall()
+            cancellationEnabled = restoreCancellation
+        }
         guard AXIsProcessTrusted() else { return false }
         let mask = [CGEventType.keyDown, .keyUp, .flagsChanged].reduce(CGEventMask(0)) { $0 | (1 << $1.rawValue) }
         let callback: CGEventTapCallBack = { _, type, event, pointer in
@@ -107,6 +124,7 @@ public final class DictationGestureMachine {
     }
     public func uninstall() {
         expiry?.invalidate(); expiry = nil
+        cancellationEnabled = false
         if let tap { CGEvent.tapEnable(tap: tap, enable: false); CFMachPortInvalidate(tap) }
         if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
         source = nil; tap = nil; reset(); capturedHoldKeys.removeAll()
@@ -193,6 +211,6 @@ public final class DictationGestureMachine {
         guard !heldNow else { return }
         reset(); onGesture?(.stop)
     }
-    public func reset() { machine.reset(); matched = nil; previousFlags = 0 }
+    public func reset() { machine.reset(); matched = nil; chordDeadline = nil; previousFlags = 0 }
     public func beginHandsFree() { matched = nil; machine.beginHandsFree() }
 }
