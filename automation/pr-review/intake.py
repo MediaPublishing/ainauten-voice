@@ -120,6 +120,9 @@ def tree_check(sha):
 def scan(state):
     queue = []
     all_prs = pages('pulls?state=open&sort=created&direction=asc')
+    # Pending jobs must not occupy every slot forever and starve new PRs.
+    all_prs.sort(key=lambda p: (identity(p) in state,
+                               state.get(identity(p), {}).get('recorded_at', '')))
     for summary in all_prs:
         ref = summary['head']['ref']
         # Only skip our own generated branches in our own repository, not a fork
@@ -128,6 +131,8 @@ def scan(state):
         if own and (ref.startswith(POLICY['fix_prefix']) or ref == POLICY['setup_branch']):
             continue
         detail = api(f"pulls/{summary['number']}")
+        if detail['state'] != 'open':
+            continue
         key = identity(detail)
         previous = state.get(key)
         if previous and previous.get('status') in FINAL:

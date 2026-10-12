@@ -59,6 +59,12 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(len(result['candidates']), 3)
         self.assertTrue(result['candidates'][0]['draft'])
 
+    def test_three_pending_prs_do_not_starve_a_new_submission(self):
+        items = [pr(number=n) for n in range(10, 14)]
+        previous = {subject.identity(p): {'status': 'waiting_checks'} for p in items[:3]}
+        result = self.scan(items, previous)
+        self.assertEqual(result['candidates'][0]['number'], 13)
+
     def test_unsafe_and_control_plane_changes_require_a_human(self):
         for path in ('../escape.swift', '/absolute', 'a/../b', 'a\\b', 'a\nb',
                      '.github/workflows/test.yml', 'nested/AGENTS.md', '.gitattributes',
