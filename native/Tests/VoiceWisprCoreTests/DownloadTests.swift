@@ -3,6 +3,50 @@ import Foundation
 @testable import VoiceWisprCore
 
 final class DownloadTests: XCTestCase {
+    func testOptionalSwissGroupDoesNotChangeDefaultInstallation() async throws {
+        Self.FixtureProtocol.reset()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("swiss-groups-\(UUID())")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let hash = root.appendingPathComponent("hash"); try Self.FixtureProtocol.payload.write(to: hash)
+        let sha = try ModelDownloader.digest(hash)
+        let base = ModelFile(path: "base.bin", url: URL(string: "fixture://base")!, sha256: sha, size: 10, group: "vad")
+        let formatter = ModelFile(path: "formatter.bin", url: URL(string: "fixture://formatter")!, sha256: sha, size: 10, group: "qwen")
+        let swiss = ModelFile(path: "swiss/model.bin", url: URL(string: "fixture://swiss")!, sha256: sha, size: 10, group: SwissGermanModel.group)
+        let cfg = URLSessionConfiguration.ephemeral; cfg.protocolClasses = [Self.FixtureProtocol.self]
+        let downloader = ModelDownloader(root: root, manifest: .init(version: 1, files: [base, formatter, swiss]), sessionConfiguration: cfg)
+        try await downloader.install(includeFormatter: false) { _, _, _ in }
+        let originalReady = try await downloader.installed(includeFormatter: false)
+        XCTAssertTrue(originalReady)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent(swiss.path).path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent(formatter.path).path))
+        try await downloader.install(groups: [SwissGermanModel.group]) { _, _, group in XCTAssertEqual(group, SwissGermanModel.group) }
+        let swissReady = try await downloader.installed(groups: [SwissGermanModel.group])
+        XCTAssertTrue(swissReady)
+        let empty = try await downloader.installed(groups: [])
+        let unknown = try await downloader.installed(groups: [SwissGermanModel.group, "missing"])
+        XCTAssertFalse(empty); XCTAssertFalse(unknown)
+        do { try await downloader.install(groups: ["missing"]) { _, _, _ in }; XCTFail("Unknown group must not succeed") } catch { }
+        try await downloader.install { _, _, group in XCTAssertFalse(group == SwissGermanModel.group) }
+        let defaultReady = try await downloader.installed()
+        XCTAssertTrue(defaultReady)
+    }
+    func testConcurrentInstallCannotReplaceTheCancelableTransfer() async throws {
+        Self.FixtureProtocol.reset(); Self.FixtureProtocol.delay = true
+        defer { Self.FixtureProtocol.reset() }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("swiss-concurrent-\(UUID())")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let hash = root.appendingPathComponent("hash"); try Self.FixtureProtocol.payload.write(to: hash)
+        let file = ModelFile(path: "model.bin", url: URL(string: "fixture://concurrent")!, sha256: try ModelDownloader.digest(hash), size: 10, group: "vad")
+        let cfg = URLSessionConfiguration.ephemeral; cfg.protocolClasses = [Self.FixtureProtocol.self]
+        let downloader = ModelDownloader(root: root, manifest: .init(version: 1, files: [file]), sessionConfiguration: cfg)
+        let first = Task { try await downloader.install { _, _, _ in } }
+        try await Task.sleep(for: .milliseconds(40))
+        do { try await downloader.install { _, _, _ in }; XCTFail("Concurrent transfer must be rejected") } catch { }
+        await downloader.cancel()
+        do { try await first.value; XCTFail("Expected cancellation of the original transfer") } catch { XCTAssertTrue(error is CancellationError) }
+    }
     final class FixtureProtocol: URLProtocol {
         static var payload = Data("0123456789".utf8)
         static var wrongRange = false

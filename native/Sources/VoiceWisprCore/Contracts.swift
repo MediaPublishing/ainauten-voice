@@ -101,10 +101,31 @@ public struct Settings: Codable, Equatable, Sendable {
     public var lipReadingEnabled: Bool?
     public var lipReadingLanguage: String?
     public var lipReadingShortcut: Shortcut?
+    /// Optional for legacy profiles. Swiss German is an explicit local beta opt-in.
+    public var swissGermanEnabled: Bool?
+    public var usesSwissGerman: Bool { swissGermanEnabled == true }
+    public var swissNeedsFormatter: Bool { manualStyle.map { $0 != .original } ?? (defaultStyle != .original || appStyles.values.contains { $0 != .original }) }
     public var paused = false
     public var importedWisprShortcut = false
     public init() {}
     public func style(for bundleID: String?) -> TextStyle { manualStyle ?? bundleID.flatMap { appStyles[$0] } ?? defaultStyle }
+}
+
+/// Snapshot this route at capture start. The Swiss beta never reads a cloud key
+/// or falls back to the ordinary recognizer; saved language choices are retained.
+public struct DictationProcessingRoute: Sendable {
+    public let usesSwissGerman: Bool
+    public let languages: [String]
+    public let usesCloudFormatter: Bool
+    public init(settings: Settings, style: TextStyle) {
+        usesSwissGerman = settings.usesSwissGerman
+        languages = usesSwissGerman ? ["de"] : settings.languages
+        usesCloudFormatter = !usesSwissGerman && settings.cloudEnabled && style != .original
+    }
+    public func selectFormatter(local: any TextFormatting, cloud: () throws -> any TextFormatting) throws -> any TextFormatting {
+        if usesCloudFormatter { return try cloud() }
+        return local
+    }
 }
 
 public struct ExportDocument: Codable, Equatable, Sendable {
@@ -133,6 +154,14 @@ public protocol SpeechTranscribing: Sendable {
     func prepare() async throws
     func transcribe(samples: [Float], sessionID: UUID, index: Int, offset: Double) async throws -> TranscriptSegment
 }
+
+/// Acoustic engines may need more context than the first detected brief pause.
+/// The pipeline still respects its hard window cap and flushes the complete tail.
+public protocol SpeechPipelinePreferences: Sendable {
+    var minimumNaturalSegmentSamples: Int { get }
+    var allowsFormattingCheckpoints: Bool { get }
+}
+public extension SpeechPipelinePreferences { var allowsFormattingCheckpoints: Bool { true } }
 
 public protocol TextFormatting: Sendable {
     func prepare() async throws

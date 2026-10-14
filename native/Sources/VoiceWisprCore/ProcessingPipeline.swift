@@ -42,6 +42,8 @@ public actor ProcessingPipeline {
     private let observeSegment: (@Sendable (Range<Int>, TranscriptSegment) -> Void)?
     private let coreSamples: Int
     private let overlapSamples: Int
+    private let minimumNaturalSegmentSamples: Int
+    private let allowsFormattingCheckpoints: Bool
     private let checkpointMinimumSamples: Int
     private let checkpointIntervalSamples: Int
     private let observeCheckpoint: (@Sendable (Int, Bool) -> Void)?
@@ -93,6 +95,9 @@ public actor ProcessingPipeline {
         self.observeSegment = observeSegment
         self.coreSamples = coreSamples
         self.overlapSamples = overlapSamples
+        let preferences = speech as? any SpeechPipelinePreferences
+        minimumNaturalSegmentSamples = max(0, min(coreSamples, preferences?.minimumNaturalSegmentSamples ?? 0))
+        allowsFormattingCheckpoints = preferences?.allowsFormattingCheckpoints ?? true
         precondition(checkpointMinimumSamples > 240_000 && checkpointIntervalSamples > 0)
         self.checkpointMinimumSamples = checkpointMinimumSamples; self.checkpointIntervalSamples = checkpointIntervalSamples
         self.observeCheckpoint = observeCheckpoint
@@ -267,7 +272,7 @@ public actor ProcessingPipeline {
         }.map(\.value)
     }
     private func launchCheckpoint() {
-        guard accepting, !originalRequested, style != .original, formatterReady,
+        guard allowsFormattingCheckpoints, accepting, !originalRequested, style != .original, formatterReady,
               checkpointTask == nil, checkpointFailures < 3, samples.count >= checkpointMinimumSamples,
               let speech = speech as? any SpeechSessionReconciling, let id = sessionID else { return }
         // Above ten minutes, keep the heavier bounded ASR pass off the 15-second cadence.
@@ -347,7 +352,7 @@ public actor ProcessingPipeline {
                     forcedWindowUsed = true
                     enqueueAudio(commitEnd: committedSamples + coreSamples, decodeEnd: committedSamples + coreSamples + overlapSamples, overlap: true)
                 }
-                if result.speechEnded, end > committedSamples {
+                if result.speechEnded, end > committedSamples, end - committedSamples >= minimumNaturalSegmentSamples {
                     naturalPauseCount += 1
                     enqueueAudio(commitEnd: end, decodeEnd: end, overlap: committedSamples > 0)
                 }
@@ -364,7 +369,7 @@ public actor ProcessingPipeline {
             let rms = sqrt(samples[scannedSamples..<end].reduce(Float(0)) { $0 + $1 * $1 } / Float(frame))
             if rms < 0.012 { quietSamples += frame } else { quietSamples = 0; heardSpeech = true }
             scannedSamples = end
-            if heardSpeech && quietSamples >= silence {
+            if heardSpeech && quietSamples >= silence && end - committedSamples >= minimumNaturalSegmentSamples {
                 enqueueAudio(commitEnd: end, decodeEnd: end, overlap: committedSamples > 0)
                 quietSamples = 0; heardSpeech = false
             } else if end - committedSamples >= core + overlap {

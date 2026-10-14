@@ -186,6 +186,9 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
 @MainActor final class AppModel: NSObject, ObservableObject, NSWindowDelegate, NSApplicationDelegate {
     let reports = ErrorReportController()
     @Published var document = ExportDocument() { didSet {
+        if !loading, !previewMode, swissEnabled, document.settings.swissNeedsFormatter != oldValue.settings.swissNeedsFormatter {
+            speechProfileNeedsPreparation = true
+        }
         scheduleSave(); updateHotkey()
         if document.settings.menuBarOnly != oldValue.settings.menuBarOnly { updateActivationPolicy() }
     } }
@@ -248,6 +251,22 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     @Published var downloading = false
     @Published var preparing = false
     @Published var modelsReady = false
+    @Published var baseModelsReady = false
+    @Published private(set) var swissReady = false
+    @Published private(set) var swissModelInstalled = false
+    @Published private(set) var swissDownloading = false
+    @Published private(set) var swissNeedsBaseModels = false
+    @Published private(set) var swissDownloadFraction = 0.0
+    @Published private var swissStatusMessage: LocalizedMessage = .key("swiss.modelRequired", [])
+    var swissStatus: String { swissStatusMessage.text }
+    var swissEnabled: Bool { document.settings.usesSwissGerman }
+    var canChangeSpeechProfile: Bool { !loading && !preparing && !downloading && sessionID == nil && !lipPreparing && !lipSession && !quitting }
+    private let swissDownloader = ModelDownloader()
+    private let swissSpeech = SwissGermanSpeechRuntime()
+    private var swissDownloadTask: Task<Void, Never>?
+    private var swissDownloadID = UUID()
+    private var speechPreparationID = UUID()
+    private var speechProfileNeedsPreparation = false
     @Published var microphoneGranted = false
     @Published var accessibilityGranted = false
     @Published var cameraGranted = false
@@ -450,7 +469,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             guard let self else { return true }
             return UpdatePolicy.busy(recording: self.state == .recording,
                 processing: self.state == .processing,
-                setup: self.loading || self.downloading || self.preparing || self.importing || self.switchingWispr || self.lipPreparing || self.lipInstalling || !self.document.settings.onboardingComplete)
+                setup: self.loading || self.downloading || self.swissDownloading || self.preparing || self.importing || self.switchingWispr || self.lipPreparing || self.lipInstalling || !self.document.settings.onboardingComplete)
         }
         if !previewMode { updates.start() }
         hotkey.onGesture = { [weak self] gesture in switch gesture { case .start: self?.start(); case .stop: self?.stop(); case .cancel: self?.cancel(); case .handsFree: break; case .copyLast: if self?.results.isEmpty == false { self?.copyResult(at: 0) }; case .pasteLast: self?.pasteLastResult() } }
@@ -464,7 +483,15 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             #if DEBUG
             if ["overview", "history", "statistics", "dictionary", "updates", "beta", "help"].contains(preview) {
                 loadHistoryPreview(empty: CommandLine.arguments.contains("--preview-empty"))
-                document.settings.onboardingComplete = true; modelsReady = true; microphoneGranted = true; accessibilityGranted = true
+                document.settings.onboardingComplete = true; modelsReady = true; baseModelsReady = true; microphoneGranted = true; accessibilityGranted = true
+                if preview == "beta", let swissPreview = CommandLine.arguments.first(where: { $0.hasPrefix("--preview-swiss=") })?.split(separator: "=").last {
+                    document.settings.swissGermanEnabled = true
+                    swissModelInstalled = swissPreview == "ready" || swissPreview == "error"
+                    swissReady = swissPreview == "ready"; modelsReady = swissReady
+                    swissNeedsBaseModels = swissPreview == "base"
+                    swissDownloading = swissPreview == "downloading"; swissDownloadFraction = 0.48
+                    swissStatusMessage = .key(swissPreview == "ready" ? "swiss.ready" : swissPreview == "downloading" ? "swiss.downloading" : swissPreview == "error" ? "swiss.prepareFailed" : swissPreview == "base" ? "swiss.baseRequired" : "swiss.modelRequired", [])
+                }
                 settingsNavigation = SettingsNavigation(section: SettingsSection.allCases.first { $0.previewName == preview } ?? .overview, setupStep: nil)
                 showSettings()
             }
@@ -486,7 +513,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 bindings.copyLast = [Shortcut(keyCode: 8, modifiers: (1 << 18) | (1 << 20))]
                 bindings.pasteLast = [Shortcut(keyCode: 9, modifiers: (1 << 18) | (1 << 20))]
                 document.settings.shortcutBindings = bindings
-                modelsReady = true; microphoneGranted = true; accessibilityGranted = true
+                modelsReady = true; baseModelsReady = true; microphoneGranted = true; accessibilityGranted = true
                 state = .ready; status = "Bereit zum Diktieren"
                 settingsNavigation = SettingsNavigation(section: .dictation, setupStep: nil)
                 showSettings()
@@ -527,7 +554,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 recoveryPreviewStarted = ProcessInfo.processInfo.systemUptime
                 document.settings.shortcut = Shortcut(keyCode: 49, modifiers: (1 << 17) | (1 << 18) | (1 << 19))
                 document.settings.shortcutBindings = ShortcutBindings()
-                modelsReady = true; microphoneGranted = true; accessibilityGranted = AXIsProcessTrusted()
+                modelsReady = true; baseModelsReady = true; microphoneGranted = true; accessibilityGranted = AXIsProcessTrusted()
                 state = .error; results = [.init(id: UUID(), text: "Öffentlicher Prüftext.", original: "", usedFallback: false, duration: 3)]
                 recoveryReason = "Kürzelprüfung ohne Mikrofon: Control + Option + Shift + Leertaste."
                 showRecovery(activate: false)
@@ -585,7 +612,8 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             if !document.settings.onboardingComplete { showSettings() }
             let installed = (try? await downloader.installed()) == true
             preparing = false
-            if installed { await prepareModels() }
+            baseModelsReady = installed
+            if installed || swissEnabled { await prepareModels() }
             if lipEnabled { prepareLipReading() }
             updateHotkey()
         }
@@ -712,7 +740,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         // Never let its relaunch cancel an active recording or processing task.
         if updates.installingUpdate && updates.busy() { return .terminateCancel }
         if !quitting {
-            quitting = true; cancel(); downloadTask?.cancel(); refreshClock?.invalidate(); lipPreparation?.cancel()
+            quitting = true; cancel(); downloadTask?.cancel(); swissDownloadTask?.cancel(); speechPreparationID = UUID(); swissDownloadID = UUID(); refreshClock?.invalidate(); lipPreparation?.cancel()
             let pendingSave = saveTask, pendingHistory = historyWriteTask
             Task { await lipRuntime.cancel(); await lipInstaller.cancel(); await pendingSave?.value; await pendingHistory?.value; await formatter.shutdown(); shutdownComplete = true; sender.reply(toApplicationShouldTerminate: true) }
         }
@@ -737,6 +765,13 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         updateHotkey()
     }
     private func updateHotkey() {
+        if speechProfileNeedsPreparation, sessionID == nil, !loading, !quitting {
+            modelsReady = false; swissReady = false
+            if !preparing, !downloading, !swissDownloading {
+                speechProfileNeedsPreparation = false
+                Task { await prepareModels() }
+            }
+        }
         updateStatusItem()
         guard !quitting else { hotkey.enabled = false; hotkey.cancellationEnabled = false; lipHotkey.enabled = false; lipHotkey.cancellationEnabled = false; return }
         #if DEBUG
@@ -748,14 +783,14 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         hotkey.shortcut = document.settings.shortcut
         hotkey.bindings = document.settings.shortcutBindings ?? ShortcutBindings()
         updateLipHotkey()
-        let allowed = !preparing && modelsReady && microphoneGranted && accessibilityGranted && !lipSession && !conflict && !document.settings.paused && !shortcutCapture
+        let allowed = !preparing && modelsReady && (!swissEnabled || swissReady) && microphoneGranted && accessibilityGranted && !lipSession && !conflict && !document.settings.paused && !shortcutCapture
         // A result panel, including manual history/partial text, never blocks
         // a new dictation. start() closes it while retaining the hold gesture.
         hotkey.enabled = allowed && acceptsDictationGesture
         if allowed { _ = hotkey.install() }
         guard state != .recording && state != .processing && state != .success && state != .error else { return }
         let nextState: PillState = allowed ? .ready : preparing || loading ? .loading : conflict ? .conflict : document.settings.paused ? .paused : .needsSetup
-        let nextStatus = allowed ? "Bereit zum Diktieren" : preparing || loading ? preparationStatusMessage.text : conflict ? "Wispr Flow läuft. Bitte den Wechsel abschließen." : document.settings.paused ? "Tastenkürzel ausgeschaltet" : !modelsReady ? "Modelle einrichten" : !microphoneGranted ? "Mikrofon freigeben" : "Bedienungshilfen freigeben"
+        let nextStatus = allowed ? (swissEnabled ? L10n.text("swiss.ready") : "Bereit zum Diktieren") : preparing || loading ? preparationStatusMessage.text : conflict ? "Wispr Flow läuft. Bitte den Wechsel abschließen." : document.settings.paused ? "Tastenkürzel ausgeschaltet" : swissEnabled && !swissReady ? swissStatus : !modelsReady ? "Modelle einrichten" : !microphoneGranted ? "Mikrofon freigeben" : "Bedienungshilfen freigeben"
         if state != nextState { state = nextState }
         if statusMessage != L10n.message(nextStatus) { status = nextStatus }
         hotkey.enabled = allowed
@@ -771,31 +806,96 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         NSWorkspace.shared.open(PrivacySettings.destination("Accessibility"))
     }
     func installModels() {
-        guard !downloading else { return }; downloading = true; errorMessage = nil
+        guard !downloading, !swissDownloading, !preparing, sessionID == nil else { return }; downloading = true; errorMessage = nil
         downloadTask = Task {
             do {
                 try await downloader.install { [weak self] current, total, group in
                     Task { @MainActor in self?.downloadFraction = Double(current) / Double(max(1, total)); self?.downloadLabelMessage = .key("models.progress", [L10n.text(group == "parakeet" ? "models.recognition" : "models.optimization"), ByteCountFormatter.string(fromByteCount: current, countStyle: .file), ByteCountFormatter.string(fromByteCount: total, countStyle: .file)]) }
                 }
-                downloading = false; await prepareModels()
+                downloading = false; baseModelsReady = true; await prepareModels()
             } catch is CancellationError { downloading = false; downloadLabel = "Download pausiert. Beim nächsten Start geht es weiter." }
             catch { downloading = false; errorMessage = error.localizedDescription }
         }
     }
     func pauseDownload() { downloadTask?.cancel(); Task { await downloader.cancel() } }
+    func setSwissGermanEnabled(_ enabled: Bool) {
+        guard canChangeSpeechProfile, enabled != swissEnabled else { return }
+        if !enabled { pauseSwissDownload() }
+        modelsReady = false; swissReady = false
+        document.settings.swissGermanEnabled = enabled
+        Task { await prepareModels() }
+    }
+    func pauseSwissDownload() {
+        swissDownloadTask?.cancel()
+        Task { await swissDownloader.cancel() }
+    }
+    func installSwissModel() {
+        guard swissEnabled, canChangeSpeechProfile, !swissDownloading, !previewMode else { return }
+        let token = UUID(); swissDownloadID = token
+        swissDownloading = true; swissStatusMessage = .key("swiss.downloading", [])
+        swissDownloadTask = Task {
+            do {
+                try await swissDownloader.install(groups: [SwissGermanModel.group]) { [weak self] current, total, _ in
+                    Task { @MainActor in
+                        guard let self, self.swissDownloadID == token, self.swissDownloading else { return }
+                        self.swissDownloadFraction = Double(current) / Double(max(1, total))
+                        self.swissStatusMessage = .key("swiss.progress", [ByteCountFormatter.string(fromByteCount: current, countStyle: .file), ByteCountFormatter.string(fromByteCount: total, countStyle: .file)])
+                    }
+                }
+                guard swissDownloadID == token, !quitting else { return }
+                swissDownloading = false; swissModelInstalled = true
+                if swissEnabled { await prepareModels() }
+            } catch {
+                guard swissDownloadID == token, !quitting else { return }
+                swissDownloading = false
+                swissStatusMessage = error is CancellationError ? .key("swiss.paused", []) : .joined([.key("swiss.downloadFailed", []), L10n.message(error.localizedDescription)], " ")
+                updateHotkey()
+            }
+        }
+    }
     func prepareModels() async {
-        guard !quitting else { return }
+        guard !quitting, sessionID == nil, !preparing else { return }
+        let token = UUID(); speechPreparationID = token
+        speechProfileNeedsPreparation = false
+        let swiss = swissEnabled
+        modelsReady = false; swissReady = false
         preparationStatusMessage = .key("status.speechLoading", [])
         preparing = true; state = .loading; status = preparationStatusMessage.text; updateHotkey()
         do {
-            try await speech.prepare()
-            guard !quitting else { return }
-            preparationStatusMessage = .key("status.formatterLoading", []); status = preparationStatusMessage.text
-            try await formatter.prepare()
-            guard !quitting else { return }
+            if swiss {
+                swissStatusMessage = .key("swiss.checking", [])
+                swissModelInstalled = try await swissDownloader.installed(groups: [SwissGermanModel.group])
+                let needsFormatter = document.settings.swissNeedsFormatter
+                let baseGroups: Set<String> = needsFormatter ? ["vad", "qwen"] : ["vad"]
+                swissNeedsBaseModels = try await !downloader.installed(groups: baseGroups)
+                guard speechPreparationID == token, !quitting else { return }
+                if !swissModelInstalled || swissNeedsBaseModels {
+                    swissStatusMessage = .key(swissNeedsBaseModels ? "swiss.baseRequired" : "swiss.modelRequired", [])
+                    preparing = false; state = .needsSetup; updateHotkey(); return
+                }
+                try await swissSpeech.prepare()
+                if needsFormatter { try await formatter.prepare() }
+                guard speechPreparationID == token, !quitting else { return }
+                swissReady = true; swissStatusMessage = .key("swiss.ready", [])
+            } else {
+                baseModelsReady = try await downloader.installed()
+                guard speechPreparationID == token, !quitting else { return }
+                if !baseModelsReady { preparing = false; state = .needsSetup; updateHotkey(); return }
+                try await speech.prepare()
+                guard speechPreparationID == token, !quitting else { return }
+                preparationStatusMessage = .key("status.formatterLoading", []); status = preparationStatusMessage.text
+                try await formatter.prepare()
+            }
+            guard speechPreparationID == token, !quitting else { return }
             modelsReady = true; state = .paused; status = "Bereit"
         }
-        catch { modelsReady = false; errorMessage = error.localizedDescription; state = .error; status = "Modelle prüfen"; reports.record(component: .models, code: .modelLoadFailed) }
+        catch {
+            guard speechPreparationID == token, !quitting else { return }
+            modelsReady = false; swissReady = false
+            if swiss { swissStatusMessage = .joined([.key("swiss.prepareFailed", []), L10n.message(error.localizedDescription)], " "); state = .needsSetup }
+            else { errorMessage = error.localizedDescription; state = .error; status = "Modelle prüfen" }
+            reports.record(component: .models, code: .modelLoadFailed)
+        }
         preparing = false; updateHotkey()
     }
     func refreshImportPreview() {
@@ -877,7 +977,8 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         let requestedAt = ProcessInfo.processInfo.systemUptime
         guard !quitting else { return }
         guard sessionID == nil else { return }
-        guard !preparing, modelsReady, microphoneGranted else {
+        guard !preparing, modelsReady, (!swissEnabled || swissReady), microphoneGranted else {
+            if swissEnabled && !swissReady && !preparing { settingsNavigation = SettingsNavigation(section: .beta, setupStep: nil); showSettings() }
             if practice {
                 let id = UUID(); practiceFeedback.begin(id)
                 practiceFeedback.fail(id, message: !modelsReady ? "Die Modelle sind noch nicht bereit. Lade sie im Schritt „Modelle“." : "Die Mikrofonfreigabe fehlt. Öffne den Schritt „Freigaben“ und erlaube AInauten Voice den Zugriff.")
@@ -908,7 +1009,8 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         }
         #endif
         let dictionary = document.dictionary
-        let languages = document.settings.languages
+        let settings = document.settings
+        let selectedSpeech: any SpeechTranscribing = settings.usesSwissGerman ? swissSpeech : speech
         operation = Task {
             do {
                 guard sessionID == id, !Task.isCancelled else { return }
@@ -916,16 +1018,17 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 if let targetPID { focus = await FocusSnapshot.captureWithRetry(expectedPID: targetPID) }
                 guard sessionID == id, !Task.isCancelled else { return }
                 pill?.position()
-                let style = document.settings.style(for: focus?.bundleID)
+                let style = settings.style(for: focus?.bundleID)
+                let route = DictationProcessingRoute(settings: settings, style: style)
+                let languages = route.languages
                 historyContext = HistoryCaptureContext(date: Date(), style: style, bundleID: focus?.bundleID,
                     appName: focus.flatMap { NSRunningApplication(processIdentifier: $0.pid)?.localizedName }, enabled: document.settings.historyEnabled ?? true)
-                let selectedFormatter: any TextFormatting
-                if document.settings.cloudEnabled && style != .original {
-                    guard let endpoint = URL(string: document.settings.cloudEndpoint) else { throw VoiceError.message("Ungültige Cloud-Adresse") }
+                let selectedFormatter = try route.selectFormatter(local: formatter) {
+                    guard let endpoint = URL(string: settings.cloudEndpoint) else { throw VoiceError.message("Ungültige Cloud-Adresse") }
                     let key = try CloudRecipient.authorizedKey(for: endpoint)
-                    selectedFormatter = CloudFormatter(endpoint: endpoint, model: document.settings.cloudModel, key: key)
-                } else { selectedFormatter = formatter }
-                let pipeline = ProcessingPipeline(speech: speech, formatter: selectedFormatter); self.pipeline = pipeline
+                    return CloudFormatter(endpoint: endpoint, model: settings.cloudModel, key: key)
+                }
+                let pipeline = ProcessingPipeline(speech: selectedSpeech, formatter: selectedFormatter); self.pipeline = pipeline
                 // An immediate release still needs pipeline initialization so Stop can finish.
                 if state != .recording {
                     try await pipeline.start(sessionID: id, style: style, dictionary: dictionary, languages: languages)

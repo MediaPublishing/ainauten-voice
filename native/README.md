@@ -92,3 +92,11 @@ Der Prüfer aktiviert oder startet keine App und liest keine Diktate, Zwischenab
 ## Sicherheitsänderungen für den nächsten Kandidaten
 
 Der veröffentlichte Build 0.1.11 (15) ist weiterhin lokal signiert und nicht notarisiert. Apple-notarisierte Pakete benötigen eine bestehende Developer ID Application und `--notary-profile`. Die ausdrücklich freigegebene, nicht notarisierte Beta verwendet `--local-beta` in Paket-, Update- und Website-Build. Lokale Tests verwenden `--development`; dieser Modus ist kein Veröffentlichungsweg. Automatische Zwischenablage-Nutzung ist im aktuellen Quellcode standardmäßig aus und erfordert Opt-in. Details und noch offene Apple-Einrichtung: [Sicherheitsnachprüfung](docs/security-followup-2026-10-06.md).
+# Schweizerdeutsch-Beta / Swiss German beta
+
+Optionales Profil mit hochdeutscher Ausgabe und lokaler Verarbeitung, ohne
+separate Dialektauswahl. Zusatzmodell und Qualitätsgrenzen:
+[Anleitung und Modellvergleich](docs/swiss-german-beta.md).
+
+Optional profile for Swiss German speech with standard German output and local
+processing. See the [setup and model comparison](docs/swiss-german-beta.md).
