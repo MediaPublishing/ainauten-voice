@@ -13,11 +13,18 @@ p.add_argument('--jobs', type=int, default=4, help='Maximum concurrent compilati
 p.add_argument('--app-only', action='store_true', help='Development UI check only: do not create a duplicate installer')
 p.add_argument('--local-beta', action='store_true', help='Explicit locally signed public beta; no Apple notarization, existing publisher pin required')
 p.add_argument('--development', action='store_true', help='Explicit local test package only; never accepted by public distribution gates')
+p.add_argument('--development-version', help='Version label for a local development candidate; cannot override a public package')
+p.add_argument('--development-build', help='Build number for a local development candidate; requires --development-version')
 p.add_argument('--notary-profile', help='Existing notarytool Keychain profile for Apple distribution; no credentials are created')
 p.add_argument('--adhoc', action='store_true', help='Local test build only: allow ad-hoc signing without the stable identity')
 p.add_argument('--sign-identity', help='SHA-1 of an existing code-signing identity in the macOS keychain')
 p.add_argument('--install-directory', type=pathlib.Path, help='Existing installation directory; defaults to the system installation when writable')
 args = p.parse_args()
+if args.development_version or args.development_build:
+    if not args.development or not args.development_version or not args.development_build:
+        p.error('development version/build overrides require --development and both labels')
+    if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,2}', args.development_version) or not re.fullmatch(r'[1-9][0-9]*', args.development_build):
+        p.error('development version/build labels must be numeric')
 if args.jobs < 1: p.error('--jobs must be positive')
 if args.app_only and (not args.development or args.install):
     p.error('--app-only requires --development and cannot install or produce a public release')
@@ -79,6 +86,9 @@ app = out / 'AInauten Voice.app'; contents = app / 'Contents'
 for name in ['MacOS', 'Frameworks', 'Resources']: (contents/name).mkdir(parents=True)
 shutil.copy2(root/'Resources/Info.plist', contents/'Info.plist')
 info = plistlib.loads((contents/'Info.plist').read_bytes())
+if args.development_version:
+    info['CFBundleShortVersionString'] = args.development_version
+    info['CFBundleVersion'] = args.development_build
 info['AInautenDistributionMode'] = 'local-beta' if args.local_beta else ('development' if args.development else 'apple-notarized')
 (contents/'Info.plist').write_bytes(plistlib.dumps(info))
 for language in ['de', 'en']:

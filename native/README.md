@@ -66,6 +66,12 @@ Die Absatzprüfung protokolliert auch fehlgeschlagene Formatierungsversuche mit 
 
 ## Sicherheit und Zustellung
 
+Lokale Entwicklungskandidaten können mit `scripts/package.py --development
+--app-only --development-version 0.1.17 --development-build 21` eine eigene
+Versionsanzeige erhalten, ohne die Metadaten des öffentlichen Releases zu
+ändern. Beide Versionsargumente sind ausschließlich mit `--development`
+zulässig; solche Pakete dürfen nicht öffentlich ausgeliefert werden.
+
 Einfügung nur in unveränderte, lesbare AX-Ziele. Bestätigung verlangt kompletten Text-/Cursor-Readback, keine bloße Tastensimulation. Bei Zweifel vollständiges Ergebnisfenster; keine automatische Wiederholung. Zwischenablage wird byteweise gesichert, bei unlesbaren/über 64 MB großen Inhalten nicht verändert; ein neuer Benutzer-Copy gewinnt. macOS stellt keine atomare Fokus-und-Paste-Operation bereit. Verzögerte Einfügeziele können nach dem 1,5-Sekunden-Fenster unklar bleiben.
 
 Einstellungen und Wörterbuch: `~/Library/Application Support/Voice Wispr/settings.json`, atomar, versioniertes Exportformat. API-Schlüssel ausschließlich Keychain. Audio und die fünf letzten Resultate für den Schnellzugriff bleiben im Speicher. Bei eingeschaltetem Verlauf werden Diktattexte zusätzlich lokal in history.sqlite gespeichert; das lässt sich in der App abschalten. SDK-Transkript-Diagnosen und llama-Logs sind deaktiviert. Die App liest den fokussierten Text ausschließlich für lokale Zustellungsprüfung; er wird weder an ein Sprachmodell noch an Cloud gesendet.

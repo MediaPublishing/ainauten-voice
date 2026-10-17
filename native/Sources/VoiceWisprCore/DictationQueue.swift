@@ -14,6 +14,7 @@ public struct DictationQueue: Sendable {
     public let reservationBytes: Int
     public private(set) var entries: [Entry] = []
     public private(set) var overlaps = false
+    public private(set) var automaticDeliverySuppressed = false
     private var sequence: UInt64 = 0
     public init(maximumBytes: Int = 768 * 1_048_576, reservationBytes: Int = Self.captureReservationBytes) {
         precondition(maximumBytes > 0 && reservationBytes > 0)
@@ -40,10 +41,10 @@ public struct DictationQueue: Sendable {
         entries[0].phase = .processing; return first.id
     }
     public func mayAutomaticallyDeliver(_ id: UUID) -> Bool {
-        !overlaps && entries.count == 1 && entries.first?.id == id && entries.first?.phase == .processing
+        !automaticDeliverySuppressed && entries.first?.id == id && entries.first?.phase == .processing
     }
-    public mutating func suppressAutomaticDelivery() { overlaps = true }
+    public mutating func suppressAutomaticDelivery() { automaticDeliverySuppressed = true }
     public mutating func finish(_ id: UUID) { entries.removeAll { $0.id == id } }
-    public mutating func resetBatchIfIdle() { if entries.isEmpty { overlaps = false } }
-    public mutating func cancelAll() { entries.removeAll(); overlaps = true }
+    public mutating func resetBatchIfIdle() { if entries.isEmpty { overlaps = false; automaticDeliverySuppressed = false } }
+    public mutating func cancelAll() { entries.removeAll(); automaticDeliverySuppressed = true }
 }

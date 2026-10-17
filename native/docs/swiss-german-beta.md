@@ -39,6 +39,11 @@ Feature dieser Beta.
 
 ### Weiterdiktieren während der Verarbeitung
 
+Die folgende Beschreibung gilt für den veröffentlichten Stand 0.1.16. Der lokale
+Folgestand 0.1.17 (21) erweitert die Warteschlange auf alle Audiosprachen und
+fügt Ergebnisse automatisch in Reihenfolge ein, solange das ursprüngliche Ziel
+sicher unverändert bleibt: [Details und Grenzen](queued-dictation.md).
+
 Nach dem Loslassen kann eine neue Aufnahme beginnen, während die vorherige
 lokal verarbeitet wird. Die Verarbeitung läuft nacheinander. Sobald Aufnahmen
 überlappen, werden fertige Texte unter **Diktieren → Aufeinanderfolgende Diktate**

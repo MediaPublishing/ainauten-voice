@@ -6,6 +6,50 @@ import VoiceWisprCore
 
 /// Explicit UI test: only generated fixture documents, never user documents.
 @main struct TextEditDeliveryChecks {
+    @MainActor static func checkQueue(_ first: FocusSnapshot, initial: String, changeCaret: Bool) async -> (DeliveryOutcome, String, NSRange, Bool) {
+        let ids = [UUID(), UUID(), UUID()]
+        let texts = ["Erster Teil", "Second sentence.", "Troisième phrase."]
+        var queue = DictationQueue(maximumBytes: 30, reservationBytes: 10)
+        var snapshots = [first, first, first]
+        var expected = initial, expectedCaret = first.selectedRange
+        var last = DeliveryOutcome(.notAttempted, reason: "fixture")
+        var passed = queue.reserve(ids[0]) && queue.captured(ids[0]) && queue.beginNext() == ids[0]
+        // These captures finish while the first result is still processing.
+        for id in ids.dropFirst() { passed = queue.reserve(id) && queue.captured(id) && passed }
+        for index in ids.indices {
+            if index > 0 { passed = queue.beginNext() == ids[index] && passed }
+            guard passed, queue.mayAutomaticallyDeliver(ids[index]) else { return (last, expected, expectedCaret, false) }
+            let target = snapshots[index]
+            let text = index == 0 ? texts[index] : DeliveryVerification.queuedContinuationText(texts[index], baseline: target.baseline, selection: target.selectedRange)
+            last = await DeliveryCoordinator().deliver(text: text, to: target)
+            guard last.status == .confirmed else { return (last, expected, expectedCaret, false) }
+            let insertion = DeliveryVerification.insertionText(text, baseline: expected, selection: expectedCaret)
+            expected = DeliveryVerification.expectedValue(baseline: expected, selection: expectedCaret, insertion: insertion)!
+            expectedCaret = NSRange(location: expectedCaret.location + (insertion as NSString).length, length: 0)
+            if changeCaret && index == 0 {
+                var moved = CFRange(location: 0, length: 0)
+                if AXUIElementSetAttributeValue(target.element, kAXSelectedTextRangeAttribute as CFString, AXValueCreate(.cfRange, &moved)!) != .success {
+                    guard let current = FocusSnapshot.capture(), current.matches(target.afterConfirmedInsertion(texts[index]) ?? target) else { return (last, expected, expectedCaret, false) }
+                    key(126, .maskCommand) // Move only the owned fixture caret to its start.
+                }
+                try? await Task.sleep(for: .milliseconds(100))
+                passed = target.afterConfirmedInsertion(texts[index]) == nil && passed
+                // The unadvanced second snapshot must not paste into that caret.
+                last = await DeliveryCoordinator().deliver(text: texts[1], to: snapshots[1])
+                passed = last.status == .notAttempted && passed
+                queue.suppressAutomaticDelivery(); queue.finish(ids[index])
+                passed = queue.beginNext() == ids[1] && !queue.mayAutomaticallyDeliver(ids[1]) && passed
+                return (last, expected, NSRange(location: 0, length: 0), passed)
+            }
+            guard let advanced = target.afterConfirmedInsertion(text) else { return (last, expected, expectedCaret, false) }
+            for next in ids.indices where next > index {
+                passed = snapshots[next].matches(target) && passed
+                snapshots[next] = advanced
+            }
+            queue.finish(ids[index])
+        }
+        return (last, expected, expectedCaret, passed && queue.entries.isEmpty)
+    }
     @MainActor static func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
         AXUIElementSetMessagingTimeout(element, 0.05)
         var value: CFTypeRef?
@@ -41,7 +85,7 @@ import VoiceWisprCore
         let file = URL(fileURLWithPath: CommandLine.arguments[1])
         guard file.lastPathComponent.hasPrefix("AInauten-Voice-Delivery-"), file.pathExtension == "txt" else { print("{\"passed\":false,\"reason\":\"ownedFixtureRequired\"}"); return }
         let mode = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "selection"
-        guard ["selection", "caret", "long", "focus", "fullscreen"].contains(mode) else { return }
+        guard ["selection", "caret", "long", "focus", "fullscreen", "queued", "queued-focus"].contains(mode) else { return }
         let physicalModifiers: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift]
         guard CGEventSource.flagsState(.hidSystemState).intersection(physicalModifiers).isEmpty else { print("{\"passed\":false,\"reason\":\"physicalModifiersHeldBeforeOpening\"}");return }
         let initial = "Anfang ERSETZEN Ende\n"
@@ -61,7 +105,29 @@ import VoiceWisprCore
         }
         // Document activation/selection restoration is asynchronous; let the
         // owned fixture settle before setting the explicit test selection.
+        _ = app.activate(options: [.activateIgnoringOtherApps])
         try await Task.sleep(for: .seconds(1))
+        // TextEdit can retain Find-bar focus across documents. Raise and focus
+        // only the synthetic document, never another window or a user document.
+        if NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier {
+            let application = AXUIElementCreateApplication(app.processIdentifier)
+            if let windows = attribute(application, kAXWindowsAttribute) as? [AXUIElement],
+               let window = windows.first(where: { ownDocument($0, file) }) {
+                _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+                func focusText(_ element: AXUIElement, depth: Int) -> Bool {
+                    guard depth < 8 else { return false }
+                    if attribute(element, kAXRoleAttribute) as? String == kAXTextAreaRole,
+                       attribute(element, kAXValueAttribute) as? String == initial {
+                        return AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue) == .success
+                    }
+                    for child in (attribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? []).prefix(100) {
+                        if focusText(child, depth: depth + 1) { return true }
+                    }
+                    return false
+                }
+                _ = focusText(window, depth: 0)
+            }
+        }
         var target: FocusSnapshot?
         for _ in 0..<100 {
             if NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier {
@@ -90,14 +156,25 @@ import VoiceWisprCore
         let selected = mode == "caret" ? NSRange(location: (initial as NSString).length, length: 0) : (initial as NSString).range(of: "ERSETZEN")
         var range = CFRange(location: selected.location, length: selected.length)
         let setRange = AXUIElementSetAttributeValue(target.element, kAXSelectedTextRangeAttribute as CFString, AXValueCreate(.cfRange, &range)!)
+        if setRange != .success, target.isUnchanged(), ownDocument(target.window, file) {
+            // Some TextEdit versions expose a readable selection but do not
+            // implement its AX setter. Prepare the same owned fixture using
+            // ordinary navigation; never type or touch a different document.
+            if mode == "caret" { key(125, .maskCommand) }
+            else {
+                key(126, .maskCommand)
+                for _ in 0..<selected.location { key(124, []) }
+                for _ in 0..<selected.length { key(124, .maskShift) }
+            }
+        }
         var selectedReady: FocusSnapshot?
         for _ in 0..<30 {
             guard NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier else { break }
             if let candidate = FocusSnapshot.capture(), ownDocument(candidate.window, file), candidate.baseline == initial, candidate.selectedRange == selected { selectedReady = candidate; break }
             try await Task.sleep(for: .milliseconds(50))
         }
-        guard setRange == .success, let ready = selectedReady else {
-            let details: [String: Any] = ["passed": false, "reason": "selectionUnavailable", "selectionSetAccepted": setRange == .success, "foregroundMatches": NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier]
+        guard let ready = selectedReady else {
+            let details: [String: Any] = ["passed": false, "reason": "selectionUnavailable", "selectionSetAccepted": setRange == .success, "selectionSetError": setRange.rawValue, "foregroundMatches": NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier]
             print(String(decoding: try JSONSerialization.data(withJSONObject: details, options: [.sortedKeys]), as: UTF8.self)); return
         }
         let before = clipboard()
@@ -112,17 +189,27 @@ import VoiceWisprCore
                 }
                 try await Task.sleep(for: .milliseconds(50))
             }
+            guard sameWindowFocusChanged else {
+                // A missing Find-bar focus change is a test setup failure,
+                // never permission to run the negative test on the old target.
+                print("{\"passed\":false,\"reason\":\"focusChangeSetupUnavailable\",\"insertionAttempted\":false}")
+                return
+            }
         }
         var beforeDeliveryRange = CFRange(location: -1, length: -1)
         if let rawRange = attribute(ready.element, kAXSelectedTextRangeAttribute), CFGetTypeID(rawRange) == AXValueGetTypeID() { _ = AXValueGetValue(rawRange as! AXValue, .cfRange, &beforeDeliveryRange) }
         let started = ContinuousClock.now
-        let outcome = await DeliveryCoordinator().deliver(text: insertion, to: ready)
+        let queued = mode == "queued" || mode == "queued-focus"
+        let proof = queued ? await checkQueue(ready, initial: initial, changeCaret: mode == "queued-focus") : nil
+        let outcome: DeliveryOutcome
+        if let proof { outcome = proof.0 }
+        else { outcome = await DeliveryCoordinator().deliver(text: insertion, to: ready) }
         let duration = started.duration(to: .now).components
-        let expected = mode == "focus" ? initial : (initial as NSString).replacingCharacters(in: selected, with: insertion)
+        let expected = proof?.1 ?? (mode == "focus" ? initial : (initial as NSString).replacingCharacters(in: selected, with: insertion))
         let textMatches = ownDocument(ready.window, file) && (attribute(ready.element, kAXValueAttribute) as? String) == expected
         var currentRange = CFRange(location: -1, length: -1)
         if let rawRange = attribute(ready.element, kAXSelectedTextRangeAttribute), CFGetTypeID(rawRange) == AXValueGetTypeID() { _ = AXValueGetValue(rawRange as! AXValue, .cfRange, &currentRange) }
-        let expectedRange = mode == "focus" ? NSRange(location: beforeDeliveryRange.location, length: beforeDeliveryRange.length) : NSRange(location: selected.location + (insertion as NSString).length, length: 0)
+        let expectedRange = proof?.2 ?? (mode == "focus" ? NSRange(location: beforeDeliveryRange.location, length: beforeDeliveryRange.length) : NSRange(location: selected.location + (insertion as NSString).length, length: 0))
         let caretMatches = currentRange.location == expectedRange.location && currentRange.length == expectedRange.length
         let after = clipboard()
         let equal = before != nil && before == after
@@ -147,11 +234,22 @@ import VoiceWisprCore
             }
             if saved, ownDocument(ready.window, file), let rawClose = attribute(ready.window, kAXCloseButtonAttribute), CFGetTypeID(rawClose) == AXUIElementGetTypeID() {
                 let close = rawClose as! AXUIElement
-                let requested = AXUIElementPerformAction(close, kAXPressAction as CFString) == .success
+                _ = AXUIElementPerformAction(close, kAXPressAction as CFString)
                 for _ in 0..<30 {
                     let application = AXUIElementCreateApplication(app.processIdentifier)
-                    if let windows = attribute(application, kAXWindowsAttribute) as? [AXUIElement], !windows.contains(where: { ownDocument($0, file) }) { closed = requested; break }
+                    if let windows = attribute(application, kAXWindowsAttribute) as? [AXUIElement], !windows.contains(where: { ownDocument($0, file) }) { closed = true; break }
                     try await Task.sleep(for: .milliseconds(50))
+                }
+                if !closed, NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier,
+                   let current = FocusSnapshot.capture(), CFEqual(current.window, ready.window), ownDocument(current.window, file) {
+                    // A failed AX press must not close a different user window.
+                    // Only the freshly verified, saved fixture may receive Cmd-W.
+                    key(13, .maskCommand)
+                    for _ in 0..<30 {
+                        let application = AXUIElementCreateApplication(app.processIdentifier)
+                        if let windows = attribute(application, kAXWindowsAttribute) as? [AXUIElement], !windows.contains(where: { ownDocument($0, file) }) { closed = true; break }
+                        try await Task.sleep(for: .milliseconds(50))
+                    }
                 }
                 if NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier { previous?.activate(options: []) }
                 for _ in 0..<30 {
@@ -160,7 +258,8 @@ import VoiceWisprCore
                 }
             }
         }
-        let report: [String: Any] = ["passed": (mode == "focus" ? outcome.status == .notAttempted && sameWindowFocusChanged : outcome.status == .confirmed) && textMatches && caretMatches && equal && saved && closed && foregroundRestored && (!usesFullscreen || (entered && exited)),
+        let report: [String: Any] = ["passed": (mode == "queued-focus" ? outcome.status == .notAttempted : mode == "focus" ? outcome.status == .notAttempted && sameWindowFocusChanged : outcome.status == .confirmed) && (proof?.3 ?? true) && textMatches && caretMatches && equal && saved && closed && foregroundRestored && (!usesFullscreen || (entered && exited)),
+            "queueChecked": queued, "queueChecksPassed": proof?.3 ?? true,
             "mode": mode, "fullscreenChecked": usesFullscreen, "fullscreenEntered": usesFullscreen ? entered as Any : NSNull(), "fullscreenExited": usesFullscreen ? exited as Any : NSNull(), "modifiersAfterCleanup": CGEventSource.flagsState(.hidSystemState).rawValue, "sameWindowFocusChanged": sameWindowFocusChanged, "insertionUTF16Length": (insertion as NSString).length,
             "status": outcome.status.rawValue, "textMatches": textMatches, "caretMatches": caretMatches,
             "clipboardMaterialized": before != nil, "clipboardByteEqual": equal, "clipboardContentsLogged": false,

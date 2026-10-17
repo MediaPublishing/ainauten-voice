@@ -16,23 +16,30 @@ def main():
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--sdk', type=Path, help='Compatible installed SDK, used for both SwiftPM and native test compilation.')
+    parser.add_argument('--scratch-path', type=Path, help='Reuse this task-owned native SwiftPM build.')
+    parser.add_argument('--only-queue', action='store_true', help='Check ordered insertions and a changed-caret refusal.')
+    parser.add_argument('--mode', action='append', choices=['selection', 'caret', 'long', 'focus', 'queued', 'queued-focus'], help='Run explicit cases; failures are never skipped automatically.')
     parser.add_argument('--include-fullscreen', action='store_true', help='Also test and exit fullscreen in an own fixture window.')
     parser.add_argument('--output', type=Path, default=root / 'artifacts/receipts/textedit-delivery-current.json')
     args = parser.parse_args()
+    if args.only_queue and args.mode:
+        parser.error('--only-queue and --mode are mutually exclusive')
+    args.output = args.output.resolve()
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    out = root / 'artifacts/textedit-delivery-checks'
+    out = args.output.parent / 'textedit-driver'
     out.mkdir(parents=True, exist_ok=True)
     started = datetime.now(timezone.utc).isoformat()
     # Use the native debug object layout already used by portable-checks.py.
     # Do not rebuild or replace a possibly running release speech Probe.
     build_run = subprocess.run(['swift', 'build', '--build-system', 'native'] +
                                (['--sdk', str(args.sdk)] if args.sdk else []) +
+                               (['--scratch-path', str(args.scratch_path.resolve())] if args.scratch_path else []) +
                                ['--target', 'VoiceWisprCore', '--jobs', '4'],
                                cwd=root, capture_output=True, text=True)
     (out / 'build.log').write_text(build_run.stdout + build_run.stderr)
     if build_run.returncode:
         raise SystemExit(build_run.returncode)
-    build = root / '.build/arm64-apple-macosx/debug'
+    build = (args.scratch_path.resolve() if args.scratch_path else root / '.build') / 'arm64-apple-macosx/debug'
     command = ['xcrun', 'swiftc', '-parse-as-library', '-swift-version', '5', '-target', 'arm64-apple-macosx14.0',
                '-I', str(build / 'Modules'), '-I', str(root / 'Sources/CSQLite'),
                '-I', str(build / 'FastClusterWrapper.build'), '-I', str(build / 'MachTaskSelfWrapper.build'),
@@ -54,7 +61,7 @@ def main():
     if compile_run.returncode:
         raise SystemExit(compile_run.returncode)
     cases = []
-    modes = ['selection', 'caret', 'long', 'focus'] + (['fullscreen'] if args.include_fullscreen else [])
+    modes = (args.mode or (['queued', 'queued-focus'] if args.only_queue else ['selection', 'caret', 'long', 'focus', 'queued', 'queued-focus'])) + (['fullscreen'] if args.include_fullscreen else [])
     for mode in modes:
         file = out / ('AInauten-Voice-Delivery-' + mode + '-' + str(uuid.uuid4()) + '.txt')
         case_started = datetime.now(timezone.utc).isoformat()

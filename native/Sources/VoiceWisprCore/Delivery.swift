@@ -11,6 +11,29 @@ public struct ClipboardOwnership: Sendable, Equatable {
 }
 
 public enum DeliveryVerification {
+    /// Adjacent recordings are separate utterances. Preserve punctuation and
+    /// decimal continuations, but do not glue unpunctuated words together.
+    public static func queuedContinuationText(_ text: String, baseline: String, selection: NSRange) -> String {
+        let value = baseline as NSString
+        guard let first = text.first, first.isLetter || first.isNumber,
+              selection.length == 0, selection.location > 0, selection.location <= value.length,
+              let previous = value.substring(to: selection.location).last else { return text }
+        if previous.isLetter || previous.isNumber { return " " + text }
+        if previous == "," || previous == ";" || previous == ":" {
+            let prefix = value.substring(to: selection.location).dropLast()
+            if previous == ",", first.isNumber, prefix.last?.isNumber == true { return text }
+            return " " + text
+        }
+        return text
+    }
+    /// Queue rebasing is stricter than a one-off paste acknowledgement. A late
+    /// caret or a user's cursor move must not redirect the following snippet.
+    public static func canAdvanceQueuedInsertion(baseline: String, selection: NSRange, text: String,
+                                                 observed: String, caret: NSRange) -> Bool {
+        let insertion = insertionText(text, baseline: baseline, selection: selection)
+        return expectedValue(baseline: baseline, selection: selection, insertion: insertion) == observed
+            && caret == NSRange(location: selection.location + (insertion as NSString).length, length: 0)
+    }
     public static func insertionText(_ text: String, baseline: String, selection: NSRange) -> String {
         let value = baseline as NSString
         guard let first = text.first, !first.isWhitespace,
@@ -112,8 +135,21 @@ public enum DeliveryVerification {
 
     public func isUnchanged() -> Bool {
         guard !secure, !IsSecureEventInputEnabled(), let current = Self.capture() else { return false }
-        return !current.secure && current.pid == pid && current.bundleID == bundleID && CFEqual(current.window, window)
-            && CFEqual(current.element, element) && current.selectedRange == selectedRange && current.baseline == baseline
+        return matches(current)
+    }
+    /// Only our confirmed insertion can advance snapshots of already recorded
+    /// snippets. User edits, a moved caret, another field or app never qualify.
+    public func matches(_ other: Self) -> Bool {
+        !secure && !other.secure && other.pid == pid && other.bundleID == bundleID
+            && CFEqual(other.window, window) && CFEqual(other.element, element)
+            && other.selectedRange == selectedRange && other.baseline == baseline
+    }
+    public func afterConfirmedInsertion(_ text: String) -> Self? {
+        guard !secure, let current = Self.capture(expectedPID: pid), !current.secure,
+              current.bundleID == bundleID, CFEqual(current.window, window), CFEqual(current.element, element),
+              DeliveryVerification.canAdvanceQueuedInsertion(baseline: baseline, selection: selectedRange,
+                  text: text, observed: current.baseline, caret: current.selectedRange) else { return nil }
+        return current
     }
     public var selection: NSRange { selectedRange }
 }
