@@ -58,7 +58,7 @@ python3 scripts/check-human-suite.py --manifest artifacts/fixtures/fleurs/balanc
 
 Die lokalen Optimierungsfälle sind ausdrücklich synthetische Texte. Die öffentliche FLEURS-Auswahl verwendet einen festen Datenstand; Quell-/PCM-Prüfsummen und CC-BY-4.0-Provenance liegen bei den ignorierten Fixtures. Zehn gemischte Fälle sind zusammengesetzte Lesetexte verschiedener Sprecher, keine spontanen Sprachwechsel. `--settings-dictionary` liest das lokale Wörterbuch ohne Schlüsselbundzugriff und unterdrückt alle Inhaltsfelder im Probe-Receipt. `format-cases` protokolliert nur solche deklarierten Fixtures; die App speichert keine Inhalte in Diagnoseprotokollen. Der optionale lokale Textverlauf ist davon getrennt. Die lokale Glättung ist auf die Wortfolge des aktuellen Abschnitts beschränkt. Bei Diktaten über zehn Minuten prüft der abschließende Abgleich 60-Sekunden-Blöcke mit acht Sekunden akustischem Kontext. Details und weiterhin offene praktische Abnahme stehen im Prüfbericht.
 
-Bei `SwiftUIMacros.StateMacro`-Fehlern in neuen Command Line Tools ist die passende SwiftUI-Macro-Laufzeit erforderlich. Auf dem Referenzsystem wurde der Release-Build mit `swift build --build-system native --sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -c release --jobs 4` geprüft. Nutze nur ein bereits vorhandenes, kompatibles SDK oder vollständiges passendes Xcode; ändere keine globale Toolchain-Konfiguration für eine Nutzerinstallation. Dieser Build-Befehl allein erstellt noch kein installierbares App-Bundle.
+Bei `SwiftUIMacros.StateMacro`-Fehlern in neuen Command Line Tools ist die passende SwiftUI-Macro-Laufzeit erforderlich. Auf dem Referenzsystem wurde der Release-Build mit `swift build --build-system native --sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -c release --jobs 4` geprüft. Nutze nur ein bereits vorhandenes, kompatibles SDK oder vollständiges passendes Xcode; ändere keine globale Toolchain-Konfiguration für eine Nutzerinstallation. Dieser Build-Befehl allein erstellt noch kein installierbares App-Bundle. Für begrenzten Speicher lassen sich vorhandene Abhängigkeiten in einem taskbezogenen `--scratch-path` wiederverwenden. `scripts/package.py --scratch-path … --jobs 2` und `scripts/portable-checks.py --scratch-path … --output … --jobs 2` verwenden denselben Build. `--development --debug --app-only` erzeugt nur ein Test-Bundle ohne zusätzlichen Installer und ist für öffentliche Pakete gesperrt.
 
 Die Prüfskripte `portable-checks.py`, `check-paragraph-quality.py` und `check-textedit-delivery.py` nehmen ebenfalls `--sdk /Pfad/zum/kompatiblen.sdk` an. Sie verwenden dieses SDK sowohl beim Paketbau als auch beim Kompilieren der jeweiligen Prüfung. Die Absatzprüfung liest das vorhandene lokale Wörterbuch, verändert keine Einstellungen und prüft ausschließlich deklarierte Textfälle; sie ersetzt keinen Spracherkennungstest.
 
@@ -92,3 +92,11 @@ Der Prüfer aktiviert oder startet keine App und liest keine Diktate, Zwischenab
 ## Sicherheitsänderungen für den nächsten Kandidaten
 
 Der veröffentlichte Build 0.1.11 (15) ist weiterhin lokal signiert und nicht notarisiert. Apple-notarisierte Pakete benötigen eine bestehende Developer ID Application und `--notary-profile`. Die ausdrücklich freigegebene, nicht notarisierte Beta verwendet `--local-beta` in Paket-, Update- und Website-Build. Lokale Tests verwenden `--development`; dieser Modus ist kein Veröffentlichungsweg. Automatische Zwischenablage-Nutzung ist im aktuellen Quellcode standardmäßig aus und erfordert Opt-in. Details und noch offene Apple-Einrichtung: [Sicherheitsnachprüfung](docs/security-followup-2026-10-06.md).
+# Schweizerdeutsch-Beta / Swiss German beta
+
+Optionales Profil mit hochdeutscher Ausgabe und lokaler Verarbeitung, ohne
+separate Dialektauswahl. Zusatzmodell und Qualitätsgrenzen:
+[Anleitung und Modellvergleich](docs/swiss-german-beta.md).
+
+Optional profile for Swiss German speech with standard German output and local
+processing. See the [setup and model comparison](docs/swiss-german-beta.md).

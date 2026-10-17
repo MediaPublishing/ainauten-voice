@@ -80,3 +80,49 @@
 "status.recordingCheck" = "Check recording";
 "status.notRecognized" = "Recording not recognized";
 "status.feedback" = "Insertion not confirmed. Text is available under Recent Results.";
+
+/* Optional local Swiss German beta. */
+"swiss.title" = "Swiss German (Beta)";
+"swiss.description" = "Speak Swiss German. Get standard German text. Locally on your Mac.";
+"swiss.warning" = "Experimental: Check names, numbers and negations in particular.";
+"swiss.localOverride" = "Swiss German text optimization also stays local, regardless of the cloud setting.";
+"swiss.savedLanguages" = "This beta uses Swiss German. Your previous language selection is preserved and restored when you turn it off.";
+"swiss.openBeta" = "Set up Swiss German in Beta";
+"swiss.modelRequired" = "Swiss German: Download the extra model in Settings → Beta.";
+"swiss.modelInvalid" = "The Swiss German model is damaged. Please download it again.";
+"swiss.baseRequired" = "Local base models are missing. Download them in Setup.";
+"swiss.ready" = "Swiss German ready · standard German output · local";
+"swiss.checking" = "Checking the Swiss German model …";
+"swiss.downloading" = "Downloading the Swiss German model …";
+"swiss.progress" = "Swiss German: %@ of %@";
+"swiss.paused" = "Download paused. Resume it when you are ready.";
+"swiss.downloadFailed" = "Extra model download failed.";
+"swiss.prepareFailed" = "Could not prepare recognition.";
+"swiss.download" = "Download extra model (%@)";
+"swiss.retry" = "Retry recognition preparation";
+"swiss.openModels" = "Set up base models";
+"swiss.pause" = "Pause download";
+"swiss.modelInfo" = "Whisper large-v3. Download once, then use offline. Recognition can be slower.";
+"speech.decoder.failed" = "The local speech decoder could not run.";
+"speech.decoder.timeout" = "The local speech decoder timed out. Please try recording again.";
+"speech.decoder.invalidOutput" = "The local speech decoder returned an invalid response.";
+
+/* Ordered local Swiss dictation queue. */
+"swiss.queue.title" = "Consecutive dictations";
+"swiss.queue.help" = "Keep dictating while earlier text is being processed. Overlapping dictations are collected here in order. Copy them together, then paste with ⌘V.";
+"swiss.queue.processing" = "%@ recording(s) being processed · next dictation available";
+"swiss.queue.copy" = "Copy %@ texts together";
+"swiss.queue.full" = "Queue full. Wait for the next recording to finish.";
+"swiss.queue.collectFirst" = "Copy the collected texts before starting more dictations.";
+"swiss.queue.failed" = "One recording could not be processed. Other texts are preserved.";
+"swiss.queue.saved" = "Dictation collected locally. Copy the texts together under Dictation.";
+"swiss.queue.copied" = "Collected texts copied. Paste with ⌘V.";
+"swiss.queue.quitTitle" = "Recordings are still being processed";
+"swiss.queue.quitHelp" = "Quitting discards recordings that have not finished processing. Completed text remains in history when enabled.";
+"swiss.queue.keepWorking" = "Keep processing";
+"swiss.queue.discardQuit" = "Discard recordings and quit";
+"swiss.queue.recording" = "Recording …";
+"swiss.queue.copyFailed" = "Could not copy. Your texts are still available here.";
+"swiss.queue.checkTarget" = "Check the target before pasting: text whose insertion was not confirmed may already be there.";
+"swiss.queue.failures" = "%@ recording(s) failed. Other texts are preserved.";
+"swiss.queue.partial" = "Includes incomplete text. Please check before using.";

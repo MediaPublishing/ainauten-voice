@@ -27,6 +27,7 @@ public enum ModelPaths {
     public static let speech = models.appendingPathComponent("parakeet", isDirectory: true)
     public static let activity = models.appendingPathComponent("vad/silero-vad-unified-256ms-v6.2.1.mlmodelc", isDirectory: true)
     public static let formatter = models.appendingPathComponent("Qwen3-4B-Instruct-2507-Q4_K_M.gguf")
+    public static let swissGerman = models.appendingPathComponent(SwissGermanModel.path)
 }
 
 public actor ModelDownloader {
@@ -35,6 +36,7 @@ public actor ModelDownloader {
     private let manifest: ModelManifest?
     private let sessionConfiguration: URLSessionConfiguration?
     private var current: FileTransfer?
+    private var installing = false
     private let discard: @Sendable (URL) -> Void
     public init(root: URL = ModelPaths.models, manifest: ModelManifest? = nil, sessionConfiguration: URLSessionConfiguration? = nil, discard: @escaping @Sendable (URL) -> Void = { ModelDownloader.trash($0) }) { self.root = root; self.manifest = manifest; self.sessionConfiguration = sessionConfiguration; self.discard = discard }
     /// A rejected model can be 2.5 GB. Keep one fixed quarantine per file and clear
@@ -51,8 +53,15 @@ public actor ModelDownloader {
     }
     private func activeManifest() throws -> ModelManifest { try manifest ?? ModelManifest.bundled() }
     public func cancel() { current?.cancel() }
-    public func installed(includeFormatter: Bool = true) async throws -> Bool {
-        for file in try activeManifest().files.filter({ includeFormatter || $0.group != "qwen" }) {
+    private func selectedFiles(includeFormatter: Bool, groups: Set<String>?) throws -> [ModelFile] {
+        try activeManifest().files.filter { file in
+            (groups.map { $0.contains(file.group) } ?? (file.group != SwissGermanModel.group)) && (includeFormatter || file.group != "qwen")
+        }
+    }
+    public func installed(includeFormatter: Bool = true, groups: Set<String>? = nil) async throws -> Bool {
+        let files = try selectedFiles(includeFormatter: includeFormatter, groups: groups)
+        guard !files.isEmpty, groups == nil || groups!.isSubset(of: Set(files.map(\.group))) else { return false }
+        for file in files {
             try Task.checkCancellation()
             let url = root.appendingPathComponent(file.path)
             guard (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) == Int(file.size),
@@ -62,8 +71,11 @@ public actor ModelDownloader {
         }
         return true
     }
-    public func install(includeFormatter: Bool = true, progress: @escaping Progress) async throws {
-        let files = try activeManifest().files.filter { includeFormatter || $0.group != "qwen" }
+    public func install(includeFormatter: Bool = true, groups: Set<String>? = nil, progress: @escaping Progress) async throws {
+        guard !installing else { throw VoiceError.message("A model download is already running.") }
+        installing = true; defer { installing = false; current = nil }
+        let files = try selectedFiles(includeFormatter: includeFormatter, groups: groups)
+        guard !files.isEmpty, groups == nil || groups!.isSubset(of: Set(files.map(\.group))) else { throw VoiceError.message("No models match the requested groups.") }
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         for file in files { clearQuarantine(for: root.appendingPathComponent(file.path)) }
         let total = files.reduce(Int64(0)) { $0 + $1.size }

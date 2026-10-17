@@ -127,6 +127,33 @@ private struct StageFormatter: TextFormatting {
     static func main() async {
         do {
             let arguments = CommandLine.arguments
+            if arguments.dropFirst().first == "swiss-transcribe", arguments.count >= 4 {
+                // Explicit public-fixture check. Never reads user settings,
+                // dictionary, microphone or cloud credentials; no target paste.
+                let style = arguments.count > 4 ? TextStyle(rawValue: arguments[4]) ?? .original : .original
+                let speech = SwissGermanSpeechRuntime(modelURL: URL(fileURLWithPath: arguments[3]))
+                let local = LocalFormatter(modelURL: ModelPaths.formatter)
+                let began = ProcessInfo.processInfo.systemUptime
+                do {
+                    try await speech.prepare()
+                    if style != .original { try await local.prepare() }
+                    let ready = ProcessInfo.processInfo.systemUptime
+                    let audio = try AudioConverter().resampleAudioFile(URL(fileURLWithPath: arguments[2]))
+                    let pipeline = ProcessingPipeline(speech: speech, formatter: style == .original ? OriginalFormatter() : local)
+                    try await pipeline.start(sessionID: UUID(), style: style, languages: ["de"])
+                    let processing = ProcessInfo.processInfo.systemUptime
+                    let feed = arguments.contains("stream") ? try await feedAudio(audio, began: processing) { try await pipeline.append(samples: $0) } : nil
+                    if feed == nil { try await pipeline.append(samples: audio) }
+                    let result = try await pipeline.finish()
+                    let done = ProcessInfo.processInfo.systemUptime
+                    try emit(["engine": "swiss-large-v3", "text": result.text, "original": result.original,
+                              "style": style.rawValue, "fallback": result.usedFallback, "complete": result.isComplete,
+                              "audioSeconds": Double(audio.count) / 16000, "prepareSeconds": ready - began,
+                              "processingSeconds": done - processing, "stopToResultSeconds": feed.map { done - $0.scheduledStop } ?? NSNull(),
+                              "streamedAtRealTime": feed != nil, "cloud": false, "pasteTested": false])
+                    await local.shutdown(); return
+                } catch { await local.shutdown(); throw error }
+            }
             if arguments.dropFirst().first == "whatsapp-empty-focus-check" {
                 try checkEmptyWhatsAppFocus()
                 return

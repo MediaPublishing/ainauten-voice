@@ -260,9 +260,26 @@ struct SettingsView: View {
             HStack(spacing: 6) { Text(flag(code)).accessibilityHidden(true); Text(name).lineLimit(1); Spacer(minLength: 0); Image(systemName: selected ? "checkmark" : "plus").font(.system(size: 11, weight: .semibold)) }
                 .padding(.horizontal, 8).padding(.vertical, 8).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
         }.buttonStyle(.bordered).tint(selected ? .accentColor : .secondary)
-            .disabled(selected && model.document.settings.languages.count == 1)
+            .disabled(model.swissEnabled || !model.canChangeSpeechProfile || (selected && model.document.settings.languages.count == 1))
             .accessibilityLabel(L10n.text(selected ? "dictation.language.removeAX" : "dictation.language.addAX", name))
             .accessibilityAddTraits(selected ? [.isSelected] : [])
+            .accessibilityHint(model.swissEnabled ? L10n.text("swiss.savedLanguages") : "")
+    }
+    private var swissLanguageChip: some View {
+        Button { model.setSwissGermanEnabled(!model.swissEnabled) } label: {
+            HStack(spacing: 6) {
+                Text("🇨🇭").accessibilityHidden(true)
+                Text(L10n.text("swiss.title")).lineLimit(1)
+                Spacer(minLength: 0)
+                Image(systemName: model.swissEnabled ? "checkmark" : "plus").font(.system(size: 11, weight: .semibold))
+            }
+            .padding(.horizontal, 8).padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+        }.buttonStyle(.bordered).tint(model.swissEnabled ? .accentColor : .secondary)
+            .disabled(!model.canChangeSpeechProfile || model.isUIPreview)
+            .accessibilityLabel(L10n.text(model.swissEnabled ? "dictation.language.removeAX" : "dictation.language.addAX", L10n.text("swiss.title")))
+            .accessibilityAddTraits(model.swissEnabled ? [.isSelected] : [])
+            .accessibilityHint(L10n.text("swiss.description"))
     }
     private var languagePicker: some View {
         languageSelection(compact: false)
@@ -270,10 +287,11 @@ struct SettingsView: View {
     private func languageSelection(compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: compact ? 8 : 12) {
             Text(compact ? L10n.text("dictation.languages") : L10n.text("dictation.languageQuestion")).font(.system(size: compact ? 16 : 19, weight: .semibold))
-            Text(compact ? L10n.text("dictation.languageBrief") : L10n.text("dictation.languageHelp")).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(model.swissEnabled ? L10n.text("swiss.description") : compact ? L10n.text("dictation.languageBrief") : L10n.text("dictation.languageHelp")).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if !compact { Text(L10n.text("dictation.languages.selected")).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary) }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 8)], alignment: .leading, spacing: 8) {
-                ForEach(model.document.settings.languages, id: \.self) { code in languageChip(code, languageName(code), selected: true) }
+                ForEach(model.swissEnabled ? [] : model.document.settings.languages, id: \.self) { code in languageChip(code, languageName(code), selected: true) }
+                swissLanguageChip
             }
             if !compact { Text(L10n.text("dictation.languages.required")).font(.system(size: 12)).foregroundStyle(.secondary) }
             Button { showAllLanguages.toggle() } label: {
@@ -284,6 +302,12 @@ struct SettingsView: View {
                     ForEach(languages.filter { !model.document.settings.languages.contains($0) }, id: \.self) { code in languageChip(code, languageName(code), selected: false) }
                 }.padding(.top, 8).frame(maxWidth: .infinity, alignment: .leading)
             }
+            if model.swissEnabled {
+                Text(L10n.text("swiss.savedLanguages")).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Label(model.swissStatus, systemImage: model.swissReady ? "checkmark.circle" : "arrow.down.circle")
+                    .font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
+            }
+            Button(L10n.text("swiss.openBeta")) { section = .beta; focusedSection = .beta }.buttonStyle(.link)
         }
     }
     private var models: some View {
@@ -292,13 +316,13 @@ struct SettingsView: View {
             Text(L10n.text("models.size")).foregroundStyle(.secondary)
             if model.downloading { ProgressView(value: model.downloadFraction); Text(model.downloadLabel).font(.system(size: 12)).monospacedDigit(); Button(L10n.text("models.pause")) { model.pauseDownload() } }
             else if model.preparing { ProgressView(L10n.text("models.loading")) }
-            else if model.modelsReady { Label(L10n.text("models.loaded"), systemImage: "checkmark.circle").foregroundStyle(.green) }
+            else if model.baseModelsReady { Label(L10n.text("models.loaded"), systemImage: "checkmark.circle").foregroundStyle(.green) }
             else {
                 Button(L10n.text("models.download")) {
                     model.installModels()
                     // The download continues in the background while the remaining steps are done.
                     if section == .setup && step == .models { step = .wispr }
-                }.buttonStyle(.borderedProminent)
+                }.buttonStyle(.borderedProminent).disabled(model.swissDownloading || model.isUIPreview)
             }
             Text(L10n.text("models.resumeHelp")).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
@@ -342,8 +366,36 @@ struct SettingsView: View {
                     languageSelection(compact: true)
                 }
             }
+            swissQueuePanel
             Divider()
             dictationReadiness
+        }
+    }
+    @ViewBuilder private var swissQueuePanel: some View {
+        if model.swissEnabled || model.swissPendingCount > 0 || !model.swissDrafts.isEmpty || model.swissQueueFailures > 0 {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(L10n.text("swiss.queue.title"), systemImage: "text.badge.plus")
+                    .font(.system(size: 14, weight: .semibold))
+                Text(L10n.text("swiss.queue.help")).font(.system(size: 12)).foregroundStyle(.secondary)
+                if model.swissPendingCount > 0 {
+                    Label(model.swissQueueStatus, systemImage: "hourglass")
+                        .font(.system(size: 12))
+                }
+                if model.swissQueueFailures > 0 {
+                    Label(L10n.text("swiss.queue.failures", String(model.swissQueueFailures)), systemImage: "exclamationmark.triangle")
+                        .font(.system(size: 12)).foregroundStyle(.orange)
+                }
+                if !model.swissDrafts.isEmpty {
+                    if model.swissDrafts.contains(where: { !$0.isComplete }) {
+                        Text(L10n.text("swiss.queue.partial")).font(.system(size: 11)).foregroundStyle(.orange)
+                    }
+                    Text(model.swissCombinedText).lineLimit(4).textSelection(.enabled)
+                    Text(L10n.text("swiss.queue.checkTarget")).font(.system(size: 11)).foregroundStyle(.secondary)
+                    Button(L10n.text("swiss.queue.copy", String(model.swissDrafts.count))) { model.copySwissDrafts() }
+                        .buttonStyle(.bordered)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                .background(Color.secondary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
         }
     }
     private var interfaceLanguagePicker: some View {
@@ -386,12 +438,12 @@ struct SettingsView: View {
                 HStack(spacing: 20) {
                     readinessLabel(L10n.text("permissions.microphone"), ready: model.microphoneGranted)
                     readinessLabel(L10n.text(PrivacySettings.accessibilityKey("permissions.accessibility")), ready: model.accessibilityGranted)
-                    readinessLabel(model.modelsReady ? L10n.text("models.ready") : model.preparing ? L10n.text("models.loadingBrief") : L10n.text("models.missing"), ready: model.modelsReady)
+                    readinessLabel(model.swissEnabled ? model.swissStatus : model.modelsReady ? L10n.text("models.ready") : model.preparing ? L10n.text("models.loadingBrief") : L10n.text("models.missing"), ready: model.modelsReady)
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     readinessLabel(L10n.text("permissions.microphone"), ready: model.microphoneGranted)
                     readinessLabel(L10n.text(PrivacySettings.accessibilityKey("permissions.accessibility")), ready: model.accessibilityGranted)
-                    readinessLabel(model.modelsReady ? L10n.text("models.ready") : model.preparing ? L10n.text("models.loadingBrief") : L10n.text("models.missing"), ready: model.modelsReady)
+                    readinessLabel(model.swissEnabled ? model.swissStatus : model.modelsReady ? L10n.text("models.ready") : model.preparing ? L10n.text("models.loadingBrief") : L10n.text("models.missing"), ready: model.modelsReady)
                 }
             }
             Button(model.pendingSetupStep == nil ? L10n.text("setup.show") : L10n.text("setup.resume")) {
@@ -402,7 +454,7 @@ struct SettingsView: View {
     private func readinessLabel(_ title: String, ready: Bool) -> some View {
         Label(title, systemImage: ready ? "checkmark.circle" : "exclamationmark.circle")
             .foregroundStyle(ready ? Color.secondary : Color.orange)
-            .fixedSize(horizontal: true, vertical: false)
+            .fixedSize(horizontal: false, vertical: true)
             .accessibilityLabel(L10n.text(ready ? "readiness.readyAX" : "readiness.pendingAX", title))
     }
     private var formatting: some View {
@@ -422,6 +474,7 @@ struct SettingsView: View {
             TextField(L10n.text("cloud.endpoint"), text: Binding(get: { model.document.settings.cloudEndpoint }, set: { model.document.settings.cloudEndpoint = $0.trimmingCharacters(in: .whitespacesAndNewlines); model.document.settings.cloudEnabled = false }))
             Toggle(L10n.text("cloud.enable"), isOn: Binding(get: { model.document.settings.cloudEnabled }, set: setCloudEnabled))
             Text(L10n.text("cloud.disclosure", model.document.settings.cloudEndpoint)).font(.system(size: 12)).foregroundStyle(.secondary)
+            if model.swissEnabled { Label(L10n.text("swiss.localOverride"), systemImage: "lock").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
             if model.document.settings.cloudEnabled {
                 TextField(L10n.text("cloud.model"), text: $model.document.settings.cloudModel)
                 SecureField(L10n.text("cloud.key"), text: $key)
@@ -593,7 +646,43 @@ struct SettingsView: View {
             model.document.settings.shortcutBindings = bindings
         }
     }
+    private var swissToggle: some View {
+        Toggle(L10n.text("swiss.title"), isOn: Binding(get: { model.swissEnabled }, set: { model.setSwissGermanEnabled($0) }))
+            .toggleStyle(.switch).disabled(!model.canChangeSpeechProfile || model.isUIPreview)
+    }
     private var beta: some View {
+        VStack(alignment: .leading, spacing: 20) { swissBeta; lipReadingBeta }
+    }
+    private var swissBeta: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            swissToggle.font(.system(size: 20, weight: .semibold))
+            Text(L10n.text("swiss.description")).fixedSize(horizontal: false, vertical: true)
+            Text(L10n.text("swiss.warning")).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if model.swissEnabled {
+                Divider()
+                Label(L10n.text("swiss.localOverride"), systemImage: "lock").font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .top, spacing: 10) {
+                    if model.preparing { ProgressView().controlSize(.small) }
+                    else { Image(systemName: model.swissReady ? "checkmark.circle" : "arrow.down.circle").foregroundStyle(model.swissReady ? Color.green : Color.secondary) }
+                    Text(model.swissStatus).font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
+                }
+                if model.swissDownloading {
+                    ProgressView(value: model.swissDownloadFraction).accessibilityLabel(L10n.text("swiss.downloading"))
+                    Button(L10n.text("swiss.pause")) { model.pauseSwissDownload() }
+                } else if !model.swissModelInstalled {
+                    Button(L10n.text("swiss.download", ByteCountFormatter.string(fromByteCount: SwissGermanModel.size, countStyle: .file))) { model.installSwissModel() }
+                        .buttonStyle(.borderedProminent).disabled(!model.canChangeSpeechProfile || model.isUIPreview)
+                } else if !model.swissReady {
+                    Button(L10n.text("swiss.retry")) { Task { await model.prepareModels() } }.disabled(!model.canChangeSpeechProfile || model.isUIPreview)
+                }
+                if model.swissNeedsBaseModels {
+                    Button(L10n.text("swiss.openModels")) { section = .setup; focusedSection = .setup; step = .models }.buttonStyle(.link)
+                }
+                Text(L10n.text("swiss.modelInfo")).font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }.padding(20).background(Color.secondary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
+    }
+    private var lipReadingBeta: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
