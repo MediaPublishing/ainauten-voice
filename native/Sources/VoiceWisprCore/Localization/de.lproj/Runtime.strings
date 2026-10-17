@@ -106,3 +106,21 @@
 "speech.decoder.failed" = "Der lokale Sprachdecoder konnte nicht ausgeführt werden.";
 "speech.decoder.timeout" = "Der lokale Sprachdecoder hat zu lange gebraucht. Bitte die Aufnahme erneut versuchen.";
 "speech.decoder.invalidOutput" = "Der lokale Sprachdecoder hat eine ungültige Antwort geliefert.";
+
+/* Ordered local Swiss dictation queue. */
+"swiss.queue.title" = "Aufeinanderfolgende Diktate";
+"swiss.queue.help" = "Du kannst weiter diktieren, während vorherige Texte verarbeitet werden. Überlappende Diktate werden hier in Reihenfolge gesammelt. Gemeinsam kopieren, dann mit ⌘V einfügen.";
+"swiss.queue.processing" = "%@ Aufnahme(n) in Bearbeitung · nächstes Diktat möglich";
+"swiss.queue.copy" = "%@ Texte gemeinsam kopieren";
+"swiss.queue.full" = "Warteschlange voll. Warte kurz auf den nächsten fertigen Text.";
+"swiss.queue.collectFirst" = "Bitte zuerst die gesammelten Texte übernehmen.";
+"swiss.queue.failed" = "Eine Aufnahme konnte nicht verarbeitet werden. Andere Texte bleiben erhalten.";
+"swiss.queue.saved" = "Diktat lokal gesammelt. Unter Diktieren gemeinsam kopieren.";
+"swiss.queue.copied" = "Gesammelte Texte kopiert. Mit ⌘V einfügen.";
+"swiss.queue.quitTitle" = "Aufnahmen werden noch verarbeitet";
+"swiss.queue.quitHelp" = "Beim Beenden werden die noch nicht verarbeiteten Aufnahmen verworfen. Fertige Texte bleiben im aktivierten Verlauf.";
+"swiss.queue.keepWorking" = "Weiterverarbeiten";
+"swiss.queue.discardQuit" = "Aufnahmen verwerfen und beenden";
+"swiss.queue.recording" = "Aufnahme läuft …";
+"swiss.queue.copyFailed" = "Kopieren nicht möglich. Die Texte bleiben hier erhalten.";
+"swiss.queue.checkTarget" = "Prüfe vor dem Einfügen das Zielfeld: Ein nicht bestätigter Text kann dort bereits stehen.";

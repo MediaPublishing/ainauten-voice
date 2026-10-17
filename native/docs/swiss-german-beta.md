@@ -2,7 +2,8 @@
 
 ## Deutsch
 
-Unter **Einstellungen → Beta → Schweizerdeutsch** aktivieren und das Zusatzmodell
+Unter **Diktieren → Sprachen → Schweizerdeutsch (Beta)** oder
+**Einstellungen → Beta → Schweizerdeutsch** aktivieren und das Zusatzmodell
 laden (1,08 GB). Danach mit dem bisherigen Diktierkürzel auf Schweizerdeutsch
 sprechen. Die Erkennung zielt direkt auf hochdeutschen Text. Es gibt vorerst
 keine separate Dialektauswahl. Die normale Sprachauswahl bleibt gespeichert und
@@ -36,9 +37,37 @@ Meetingprotokoll oder eine bestimmte Trefferrate für jeden Dialekt wird nicht
 versprochen. Mehrere Sprecher und Protokollzusammenfassung sind kein neues
 Feature dieser Beta.
 
+### Weiterdiktieren während der Verarbeitung
+
+Nach dem Loslassen kann eine neue Aufnahme beginnen, während die vorherige
+lokal verarbeitet wird. Die Verarbeitung läuft nacheinander. Sobald Aufnahmen
+überlappen, werden fertige Texte unter **Diktieren → Aufeinanderfolgende Diktate**
+in Aufnahme-Reihenfolge gesammelt. Dort gemeinsam kopieren und bewusst einfügen;
+es erfolgt kein verspätetes automatisches Einfügen in ein inzwischen anderes
+Textfeld. Ein einzelnes Diktat verwendet weiterhin die geprüfte automatische
+Texteingabe. Nicht bestätigte Einfügungen vorher im Zielfeld prüfen.
+
+Die Warteschlange reserviert vor jeder Aufnahme einen begrenzten PCM-Arbeitsspeicher
+(768 MiB Budget, höchstens drei Aufnahmen). Bei voller Warteschlange muss ein Text
+fertig werden, bevor die nächste Aufnahme startet. Fertige gesammelte Texte bleiben
+auch bei ausgeschaltetem Verlauf bis zum Kopieren oder Beenden im App-Speicher.
+Esc verwirft noch laufende Aufnahmen und Verarbeitung; fertige Texte bleiben.
+Der App-Neustart stellt nicht verarbeitete Aufnahmen nicht wieder her.
+
+### Wörterbuchhinweise im Decoder: noch nicht aktiviert
+
+Ein gepaarter lokaler Versuch mit 42 öffentlichen Schweizerdeutsch-Aufnahmen
+verbesserte einige Eigennamen. Die gleiche feste Begriffsliste erzeugte bei
+leisem Rauschen jedoch das ungesprochene Wort „Zürich“. Auch „AInauten“ wurde
+in separaten deutschen Beispielen nicht zuverlässig besser. Deshalb wird
+`initial_prompt` nicht im produktiven Decoder gesetzt. Die vorhandene lokale
+Wörterbuchkorrektur nach der Erkennung bleibt erhalten. Details im
+[Versuchsbericht](whisper-vocabulary-evaluation.md).
+
 ## English
 
-Enable **Settings → Beta → Swiss German**, then download the extra model
+Select **Dictation → Languages → Swiss German (Beta)** or enable it under
+**Settings → Beta → Swiss German**, then download the extra model
 (1.08 GB). Use your existing dictation shortcut to speak Swiss German and obtain
 standard German text. No dialect selection is required. Your ordinary language
 choices are preserved and restored when you disable the beta. It is off by default.
@@ -56,6 +85,22 @@ and primes caches; it is not a persistent model server.
 **Experimental:** Check important names, numbers and negations. Recognition can
 be slower. This beta does not promise meeting minutes, speaker diarization or a
 guaranteed accuracy for every dialect.
+
+### Consecutive recordings
+
+Start another recording while earlier text is processed locally. Processing is
+serial. Once recordings overlap, completed text is collected in capture order
+under **Dictation → Consecutive dictations** for explicit combined copy and paste.
+There is no delayed automatic insertion into a different field. A single
+recording retains normal verified insertion. Check unconfirmed insertions in the
+target before pasting again. A 768 MiB PCM reservation budget admits at most three
+recordings; it does not represent total app/model memory. Pending audio lives in
+RAM, not on disk. Escape discards unfinished work; completed snippets remain until
+copying or quitting. Restarting does not restore pending recordings.
+
+Decoder vocabulary prompts remain disabled: the local paired experiment improved
+some names but also hallucinated an unspoken hinted name in quiet noise. Existing
+post-recognition dictionary replacement remains in use.
 
 ## Local model comparison
 

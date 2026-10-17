@@ -265,6 +265,22 @@ struct SettingsView: View {
             .accessibilityAddTraits(selected ? [.isSelected] : [])
             .accessibilityHint(model.swissEnabled ? L10n.text("swiss.savedLanguages") : "")
     }
+    private var swissLanguageChip: some View {
+        Button { model.setSwissGermanEnabled(!model.swissEnabled) } label: {
+            HStack(spacing: 6) {
+                Text("🇨🇭").accessibilityHidden(true)
+                Text(L10n.text("swiss.title")).lineLimit(1)
+                Spacer(minLength: 0)
+                Image(systemName: model.swissEnabled ? "checkmark" : "plus").font(.system(size: 11, weight: .semibold))
+            }
+            .padding(.horizontal, 8).padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+        }.buttonStyle(.bordered).tint(model.swissEnabled ? .accentColor : .secondary)
+            .disabled(!model.canChangeSpeechProfile || model.isUIPreview)
+            .accessibilityLabel(L10n.text(model.swissEnabled ? "dictation.language.removeAX" : "dictation.language.addAX", L10n.text("swiss.title")))
+            .accessibilityAddTraits(model.swissEnabled ? [.isSelected] : [])
+            .accessibilityHint(L10n.text("swiss.description"))
+    }
     private var languagePicker: some View {
         languageSelection(compact: false)
     }
@@ -274,7 +290,8 @@ struct SettingsView: View {
             Text(model.swissEnabled ? L10n.text("swiss.description") : compact ? L10n.text("dictation.languageBrief") : L10n.text("dictation.languageHelp")).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if !compact { Text(L10n.text("dictation.languages.selected")).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary) }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 8)], alignment: .leading, spacing: 8) {
-                ForEach(model.document.settings.languages, id: \.self) { code in languageChip(code, languageName(code), selected: true) }
+                ForEach(model.swissEnabled ? [] : model.document.settings.languages, id: \.self) { code in languageChip(code, languageName(code), selected: true) }
+                swissLanguageChip
             }
             if !compact { Text(L10n.text("dictation.languages.required")).font(.system(size: 12)).foregroundStyle(.secondary) }
             Button { showAllLanguages.toggle() } label: {
@@ -285,8 +302,6 @@ struct SettingsView: View {
                     ForEach(languages.filter { !model.document.settings.languages.contains($0) }, id: \.self) { code in languageChip(code, languageName(code), selected: false) }
                 }.padding(.top, 8).frame(maxWidth: .infinity, alignment: .leading)
             }
-            Divider()
-            swissToggle
             if model.swissEnabled {
                 Text(L10n.text("swiss.savedLanguages")).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Label(model.swissStatus, systemImage: model.swissReady ? "checkmark.circle" : "arrow.down.circle")
@@ -351,8 +366,29 @@ struct SettingsView: View {
                     languageSelection(compact: true)
                 }
             }
+            swissQueuePanel
             Divider()
             dictationReadiness
+        }
+    }
+    @ViewBuilder private var swissQueuePanel: some View {
+        if model.swissEnabled || model.swissPendingCount > 0 || !model.swissDrafts.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(L10n.text("swiss.queue.title"), systemImage: "text.badge.plus")
+                    .font(.system(size: 14, weight: .semibold))
+                Text(L10n.text("swiss.queue.help")).font(.system(size: 12)).foregroundStyle(.secondary)
+                if model.swissPendingCount > 0 {
+                    Label(model.swissQueueStatus, systemImage: "hourglass")
+                        .font(.system(size: 12))
+                }
+                if !model.swissDrafts.isEmpty {
+                    Text(model.swissCombinedText).lineLimit(4).textSelection(.enabled)
+                    Text(L10n.text("swiss.queue.checkTarget")).font(.system(size: 11)).foregroundStyle(.secondary)
+                    Button(L10n.text("swiss.queue.copy", String(model.swissDrafts.count))) { model.copySwissDrafts() }
+                        .buttonStyle(.bordered)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                .background(Color.secondary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
         }
     }
     private var interfaceLanguagePicker: some View {
