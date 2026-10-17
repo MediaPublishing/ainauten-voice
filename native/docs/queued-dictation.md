@@ -16,6 +16,12 @@ ihr Ziel ausschließlich anhand der vollständig bestätigten eigenen Einfügung
 fortgeschrieben. Dabei müssen Feld, Fenster, vollständiger Text und Cursor exakt
 passen. Normale Wortabstände am Satzende bleiben erhalten.
 
+Wird ein Ergebnis während einer weiteren Aufnahme fertig, wartet seine
+Einfügung bis zum Ende dieser Aufnahme und bis das Kürzel losgelassen wurde.
+Das gilt auch bei freihändiger Aufnahme. Die normale Frist für andere gehaltene
+Tasten beginnt erst danach. Während des Wartens bleibt die Zwischenablage
+unverändert; vor der Einfügung werden Ziel, Text und Cursor erneut geprüft.
+
 Bei verändertem Text, einer anderen Auswahl, einem anderen Feld, App-Wechsel,
 Teiltext, Verarbeitungsfehler oder unklarer Zustellung wird das automatische
 Einfügen für die restliche Serie angehalten. Eine unbestätigte Einfügung wird

@@ -18,7 +18,7 @@ def main():
     parser.add_argument('--sdk', type=Path, help='Compatible installed SDK, used for both SwiftPM and native test compilation.')
     parser.add_argument('--scratch-path', type=Path, help='Reuse this task-owned native SwiftPM build.')
     parser.add_argument('--only-queue', action='store_true', help='Check ordered insertions and a changed-caret refusal.')
-    parser.add_argument('--mode', action='append', choices=['selection', 'caret', 'long', 'focus', 'queued', 'queued-focus'], help='Run explicit cases; failures are never skipped automatically.')
+    parser.add_argument('--mode', action='append', choices=['selection', 'caret', 'long', 'focus', 'queued', 'queued-focus', 'queued-recording', 'queued-recording-cancel', 'queued-recording-focus', 'queued-recording-revoke'], help='Run explicit cases; failures are never skipped automatically.')
     parser.add_argument('--include-fullscreen', action='store_true', help='Also test and exit fullscreen in an own fixture window.')
     parser.add_argument('--output', type=Path, default=root / 'artifacts/receipts/textedit-delivery-current.json')
     args = parser.parse_args()

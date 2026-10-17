@@ -1856,7 +1856,10 @@ extension AppModel {
         } else { text = result.text }
         if result.isComplete && !conflict && !document.settings.paused && dictationQueue.mayAutomaticallyDeliver(job.id) {
             let delivery = Task { await DeliveryCoordinator().deliver(text: text, to: job.focus,
-                allowClipboard: job.settings.usesClipboardForInsertion) }
+                allowClipboard: job.settings.usesClipboardForInsertion,
+                recordingInProgress: { self.queuedCapture != nil },
+                insertionAllowed: { self.dictationQueueGeneration == generation && !self.conflict
+                    && !self.document.settings.paused && self.dictationQueue.mayAutomaticallyDeliver(job.id) }) }
             queuedDeliveryTask = delivery
             outcome = await delivery.value
             guard dictationQueueGeneration == generation, !Task.isCancelled else { return }

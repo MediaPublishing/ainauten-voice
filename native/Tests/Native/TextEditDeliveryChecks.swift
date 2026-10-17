@@ -6,7 +6,27 @@ import VoiceWisprCore
 
 /// Explicit UI test: only generated fixture documents, never user documents.
 @main struct TextEditDeliveryChecks {
-    @MainActor static func checkQueue(_ first: FocusSnapshot, initial: String, changeCaret: Bool) async -> (DeliveryOutcome, String, NSRange, Bool) {
+    @MainActor static func checkInterruptedCaptureHandoff(_ target: FocusSnapshot, initial: String, cancel: Bool, revoke: Bool = false) async -> (DeliveryOutcome, String, NSRange, Bool) {
+        let boardCount = NSPasteboard.general.changeCount
+        var moved = false
+        let end = ProcessInfo.processInfo.systemUptime + 2
+        let delivery = Task {
+            await DeliveryCoordinator(allowDirectSelection: false).deliver(text: "Kein falsches Einfügen", to: target,
+                allowClipboard: true, recordingInProgress: {
+                    if !cancel && !revoke && !moved {
+                        var range = CFRange(location: 0, length: 0)
+                        moved = AXUIElementSetAttributeValue(target.element, kAXSelectedTextRangeAttribute as CFString, AXValueCreate(.cfRange, &range)!) == .success
+                        if !moved { key(126, .maskCommand); moved = true }
+                    }
+                    return ProcessInfo.processInfo.systemUptime < end
+                }, insertionAllowed: { !revoke || ProcessInfo.processInfo.systemUptime < end - 1.8 })
+        }
+        if cancel { try? await Task.sleep(for: .milliseconds(100)); delivery.cancel() }
+        let outcome = await delivery.value
+        return (outcome, initial, cancel || revoke ? target.selectedRange : NSRange(location: 0, length: 0),
+            outcome.status == .notAttempted && !outcome.inputWasSubmitted && NSPasteboard.general.changeCount == boardCount)
+    }
+    @MainActor static func checkQueue(_ first: FocusSnapshot, initial: String, changeCaret: Bool, duringRecording: Bool = false) async -> (DeliveryOutcome, String, NSRange, Bool) {
         let ids = [UUID(), UUID(), UUID()]
         let texts = ["Erster Teil", "Second sentence.", "Troisième phrase."]
         var queue = DictationQueue(maximumBytes: 30, reservationBytes: 10)
@@ -21,7 +41,19 @@ import VoiceWisprCore
             guard passed, queue.mayAutomaticallyDeliver(ids[index]) else { return (last, expected, expectedCaret, false) }
             let target = snapshots[index]
             let text = index == 0 ? texts[index] : DeliveryVerification.queuedContinuationText(texts[index], baseline: target.baseline, selection: target.selectedRange)
-            last = await DeliveryCoordinator().deliver(text: text, to: target)
+            // Reproduce a first result becoming ready while the second capture
+            // is still held, beyond the old 1.5-second modifier timeout. Force
+            // the actual clipboard path, which native selected-text tests miss.
+            let captureEnds = ProcessInfo.processInfo.systemUptime + (duringRecording && index == 0 ? 2 : 0)
+            let boardCount = NSPasteboard.general.changeCount
+            var changedWhileRecording = false
+            last = await DeliveryCoordinator(allowDirectSelection: !duringRecording).deliver(text: text, to: target,
+                allowClipboard: duringRecording, recordingInProgress: {
+                    let active = ProcessInfo.processInfo.systemUptime < captureEnds
+                    if active && NSPasteboard.general.changeCount != boardCount { changedWhileRecording = true }
+                    return active
+                })
+            passed = (!duringRecording || ProcessInfo.processInfo.systemUptime >= captureEnds) && !changedWhileRecording && passed
             guard last.status == .confirmed else { return (last, expected, expectedCaret, false) }
             let insertion = DeliveryVerification.insertionText(text, baseline: expected, selection: expectedCaret)
             expected = DeliveryVerification.expectedValue(baseline: expected, selection: expectedCaret, insertion: insertion)!
@@ -85,7 +117,7 @@ import VoiceWisprCore
         let file = URL(fileURLWithPath: CommandLine.arguments[1])
         guard file.lastPathComponent.hasPrefix("AInauten-Voice-Delivery-"), file.pathExtension == "txt" else { print("{\"passed\":false,\"reason\":\"ownedFixtureRequired\"}"); return }
         let mode = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "selection"
-        guard ["selection", "caret", "long", "focus", "fullscreen", "queued", "queued-focus"].contains(mode) else { return }
+        guard ["selection", "caret", "long", "focus", "fullscreen", "queued", "queued-focus", "queued-recording", "queued-recording-cancel", "queued-recording-focus", "queued-recording-revoke"].contains(mode) else { return }
         let physicalModifiers: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift]
         guard CGEventSource.flagsState(.hidSystemState).intersection(physicalModifiers).isEmpty else { print("{\"passed\":false,\"reason\":\"physicalModifiersHeldBeforeOpening\"}");return }
         let initial = "Anfang ERSETZEN Ende\n"
@@ -141,7 +173,18 @@ import VoiceWisprCore
             }
             try await Task.sleep(for: .milliseconds(50))
         }
-        guard let target else { print("{\"passed\":false,\"reason\":\"ownedTargetUnavailable\"}"); return }
+        guard let target else {
+            let application = AXUIElementCreateApplication(app.processIdentifier)
+            let window = attribute(application, kAXFocusedWindowAttribute)
+            let field = attribute(application, kAXFocusedUIElementAttribute)
+            let ownsWindow = window.map { CFGetTypeID($0) == AXUIElementGetTypeID() && ownDocument(unsafeBitCast($0, to: AXUIElement.self), file) } ?? false
+            let details: [String: Any] = ["passed": false, "reason": "ownedTargetUnavailable",
+                "foregroundMatches": NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier,
+                "ownedFocusedWindow": ownsWindow, "focusedFieldAvailable": field != nil,
+                "appActive": app.isActive, "appHidden": app.isHidden,
+                "sessionLocked": (CGSessionCopyCurrentDictionary() as? [String: Any])?["CGSSessionScreenIsLocked"] as? Bool ?? false]
+            print(String(decoding: try JSONSerialization.data(withJSONObject: details, options: [.sortedKeys]), as: UTF8.self)); return
+        }
         let usesFullscreen = mode == "fullscreen"
         var entered = false
         if usesFullscreen {
@@ -199,8 +242,9 @@ import VoiceWisprCore
         var beforeDeliveryRange = CFRange(location: -1, length: -1)
         if let rawRange = attribute(ready.element, kAXSelectedTextRangeAttribute), CFGetTypeID(rawRange) == AXValueGetTypeID() { _ = AXValueGetValue(rawRange as! AXValue, .cfRange, &beforeDeliveryRange) }
         let started = ContinuousClock.now
-        let queued = mode == "queued" || mode == "queued-focus"
-        let proof = queued ? await checkQueue(ready, initial: initial, changeCaret: mode == "queued-focus") : nil
+        let queued = mode.hasPrefix("queued")
+        let interruptedHandoff = ["queued-recording-cancel", "queued-recording-focus", "queued-recording-revoke"].contains(mode)
+        let proof = interruptedHandoff ? await checkInterruptedCaptureHandoff(ready, initial: initial, cancel: mode == "queued-recording-cancel", revoke: mode == "queued-recording-revoke") : queued ? await checkQueue(ready, initial: initial, changeCaret: mode == "queued-focus", duringRecording: mode == "queued-recording") : nil
         let outcome: DeliveryOutcome
         if let proof { outcome = proof.0 }
         else { outcome = await DeliveryCoordinator().deliver(text: insertion, to: ready) }
@@ -258,8 +302,8 @@ import VoiceWisprCore
                 }
             }
         }
-        let report: [String: Any] = ["passed": (mode == "queued-focus" ? outcome.status == .notAttempted : mode == "focus" ? outcome.status == .notAttempted && sameWindowFocusChanged : outcome.status == .confirmed) && (proof?.3 ?? true) && textMatches && caretMatches && equal && saved && closed && foregroundRestored && (!usesFullscreen || (entered && exited)),
-            "queueChecked": queued, "queueChecksPassed": proof?.3 ?? true,
+        let report: [String: Any] = ["passed": (mode == "queued-focus" || interruptedHandoff ? outcome.status == .notAttempted : mode == "focus" ? outcome.status == .notAttempted && sameWindowFocusChanged : outcome.status == .confirmed) && (proof?.3 ?? true) && textMatches && caretMatches && equal && saved && closed && foregroundRestored && (!usesFullscreen || (entered && exited)),
+            "queueChecked": queued, "queueChecksPassed": proof?.3 ?? true, "deliveryReason": outcome.reason,
             "mode": mode, "fullscreenChecked": usesFullscreen, "fullscreenEntered": usesFullscreen ? entered as Any : NSNull(), "fullscreenExited": usesFullscreen ? exited as Any : NSNull(), "modifiersAfterCleanup": CGEventSource.flagsState(.hidSystemState).rawValue, "sameWindowFocusChanged": sameWindowFocusChanged, "insertionUTF16Length": (insertion as NSString).length,
             "status": outcome.status.rawValue, "textMatches": textMatches, "caretMatches": caretMatches,
             "clipboardMaterialized": before != nil, "clipboardByteEqual": equal, "clipboardContentsLogged": false,

@@ -3,6 +3,42 @@ import Foundation
 @testable import VoiceWisprCore
 
 final class DictationQueueTests: XCTestCase {
+    func testFollowupRecordingDoesNotConsumeModifierReleaseDeadline() {
+        var readiness = DictationDeliveryReadiness()
+        XCTAssertEqual(readiness.update(recording: true, modifiersHeld: true, now: 0), .wait)
+        XCTAssertEqual(readiness.update(recording: true, modifiersHeld: true, now: 20), .wait)
+        XCTAssertEqual(readiness.update(recording: false, modifiersHeld: true, now: 20), .wait)
+        XCTAssertEqual(readiness.update(recording: false, modifiersHeld: true, now: 21), .wait)
+        XCTAssertEqual(readiness.update(recording: false, modifiersHeld: false, now: 21.1), .ready)
+    }
+    func testHandsFreeFollowupAlsoDefersDelivery() {
+        var readiness = DictationDeliveryReadiness()
+        XCTAssertEqual(readiness.update(recording: true, modifiersHeld: false, now: 0), .wait)
+        XCTAssertEqual(readiness.update(recording: true, modifiersHeld: false, now: 1200), .wait)
+        XCTAssertEqual(readiness.update(recording: false, modifiersHeld: false, now: 1200.1), .ready)
+    }
+    func testUnrelatedHeldModifiersStillHaveBoundedDeadline() {
+        var readiness = DictationDeliveryReadiness()
+        XCTAssertEqual(readiness.update(recording: false, modifiersHeld: true, now: 10), .wait)
+        XCTAssertEqual(readiness.update(recording: false, modifiersHeld: true, now: 11.49), .wait)
+        XCTAssertEqual(readiness.update(recording: false, modifiersHeld: true, now: 11.5), .timedOut)
+    }
+    func testNewCaptureRestartsReleaseDeadlineAndPreservesFIFOAdmission() {
+        var readiness = DictationDeliveryReadiness()
+        var queue = DictationQueue(maximumBytes: 30, reservationBytes: 10)
+        let first = UUID(), second = UUID()
+        XCTAssertTrue(queue.reserve(first)); XCTAssertTrue(queue.captured(first))
+        XCTAssertEqual(queue.beginNext(), first)
+        XCTAssertEqual(readiness.update(recording: false, modifiersHeld: true, now: 0), .wait)
+        XCTAssertTrue(queue.reserve(second))
+        XCTAssertEqual(readiness.update(recording: true, modifiersHeld: true, now: 1), .wait)
+        XCTAssertEqual(readiness.update(recording: true, modifiersHeld: true, now: 10), .wait)
+        XCTAssertTrue(queue.captured(second))
+        XCTAssertEqual(readiness.update(recording: false, modifiersHeld: true, now: 10), .wait)
+        XCTAssertEqual(readiness.update(recording: false, modifiersHeld: false, now: 10.1), .ready)
+        XCTAssertTrue(queue.mayAutomaticallyDeliver(first)); XCTAssertNil(queue.beginNext())
+        queue.finish(first); XCTAssertEqual(queue.beginNext(), second)
+    }
     func testAdmissionReservesBytesBeforeCaptureAndCannotOverflow() {
         var queue = DictationQueue(maximumBytes: 20, reservationBytes: 10)
         let a = UUID(), b = UUID(), c = UUID()

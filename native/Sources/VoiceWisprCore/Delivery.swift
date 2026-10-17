@@ -333,7 +333,8 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
 }
 
 @MainActor public struct DeliveryCoordinator {
-    public init() {}
+    private let allowDirectSelection: Bool
+    public init(allowDirectSelection: Bool = true) { self.allowDirectSelection = allowDirectSelection }
     /// Browser/Electron fields can advertise writable selected text yet ignore
     /// the AX operation. Use paste for these apps on the first attempt, never
     /// as a retry after an ambiguous write. Native TextEdit retains its path.
@@ -344,8 +345,25 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         guard targetReadable && !secure && focusUnchanged else { return DeliveryOutcome(.notAttempted, reason: "Ziel nicht sicher verifizierbar; Text steht zur Wiederherstellung bereit.") }
         return DeliveryOutcome(.uncertain, reason: "Ziel geprüft; Zustellung muss noch bestätigt werden.")
     }
-    public func deliver(text: String, to target: FocusSnapshot?, allowClipboard: Bool = false) async -> DeliveryOutcome {
+    public func deliver(text: String, to target: FocusSnapshot?, allowClipboard: Bool = false,
+                        recordingInProgress: @MainActor () -> Bool = { false },
+                        insertionAllowed: @MainActor () -> Bool = { true }) async -> DeliveryOutcome {
         guard !Task.isCancelled else { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
+        var readiness = DictationDeliveryReadiness()
+        let physicalModifiers: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift]
+        deliveryReadiness: while true {
+            guard !Task.isCancelled, insertionAllowed() else { return DeliveryOutcome(.notAttempted, reason: "Automatisches Einfügen angehalten; Text bleibt verfügbar.") }
+            switch readiness.update(recording: recordingInProgress(),
+                modifiersHeld: !CGEventSource.flagsState(.hidSystemState).intersection(physicalModifiers).isEmpty,
+                now: ProcessInfo.processInfo.systemUptime) {
+            case .ready: break deliveryReadiness
+            case .timedOut:
+                return DeliveryOutcome(.notAttempted, reason: "Tastenkürzel noch gehalten; Text bitte aus dem Ergebnisfenster kopieren.")
+            case .wait:
+                do { try await Task.sleep(for: .milliseconds(20)) }
+                catch { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
+            }
+        }
         guard !text.isEmpty, let target, target.isUnchanged() else {
             return DeliveryOutcome(.notAttempted, reason: "Fokus, Auswahl oder Textfeld haben sich verändert. Text aus dem Wiederherstellungsfenster verwenden.")
         }
@@ -354,7 +372,7 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         let selected = AXAccess.string(target.element, kAXSelectedTextAttribute)
         let expectedSelected = (target.baseline as NSString).substring(with: target.selectedRange)
         // Use a single selected-text operation only when native AX explicitly exposes the exact selection.
-        if Self.usesDirectSelection(bundleID: target.bundleID, role: role), selected == expectedSelected,
+        if allowDirectSelection, Self.usesDirectSelection(bundleID: target.bundleID, role: role), selected == expectedSelected,
            AXAccess.settable(target.element, kAXSelectedTextAttribute) {
             #if DEBUG
             if CommandLine.arguments.contains("--test-delivery") { print("DELIVERY_TEST_METHOD selectedText"); fflush(stdout) }
@@ -369,12 +387,6 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         #endif
         guard allowClipboard else { return DeliveryOutcome(.notAttempted, reason: "Dieses Textfeld unterstützt kein direktes Einfügen. Text bleibt in der App; die Zwischenablage bleibt unverändert.") }
         let board = NSPasteboard.general
-        let releaseDeadline = ContinuousClock.now.advanced(by: .milliseconds(1500))
-        let physicalModifiers: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift]
-        while !CGEventSource.flagsState(.hidSystemState).intersection(physicalModifiers).isEmpty {
-            guard ContinuousClock.now < releaseDeadline, !Task.isCancelled else { return DeliveryOutcome(.notAttempted, reason: "Tastenkürzel noch gehalten; Text bitte aus dem Ergebnisfenster kopieren.") }
-            do { try await Task.sleep(for: .milliseconds(20)) } catch { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
-        }
         guard let saved = ClipboardSnapshot.capture(board), let source = CGEventSource(stateID: .hidSystemState),
               let down = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true),
               let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) else {
