@@ -32,7 +32,7 @@ https://github.com/user-attachments/assets/bf5a39be-fa37-4d6b-8ff7-f2203b581335
 - **Nutzung sehen:** Gesprochene Wörter, Aufnahmezeit und Sprechgeschwindigkeit.
 - **Deutsch oder Englisch verwenden:** Die Oberfläche folgt deiner Systemsprache; unter **Einstellungen → Diktieren → Oberflächensprache** kannst du sie direkt wechseln. Deine Diktatsprachen bleiben erhalten.
 - **Schweizerdeutsch sprechen (Beta):** Mundart lokal erkennen und hochdeutschen Text erhalten. Optionales Zusatzmodell, keine Dialektauswahl. [Einrichtung und Grenzen](native/docs/swiss-german-beta.md).
-- **Während der Verarbeitung weiterdiktieren:** Aufeinanderfolgende Schweizer Diktate aufnehmen und fertige Texte geordnet gemeinsam kopieren.
+- **Während der Verarbeitung weiterdiktieren:** In allen ausgewählten Audiosprachen weiter aufnehmen. Fertige Texte werden im ursprünglichen, unveränderten Feld automatisch in Aufnahmereihenfolge eingefügt. [Verhalten und Grenzen](native/docs/queued-dictation.md).
 - **Automatisch aktualisieren:** Signierte Updates im Hintergrund laden, beim Beenden installieren.
 
 ![AInauten Voice: Übersicht mit Verlauf und Nutzungsstatistik](site/assets/screenshots/overview.png)
@@ -60,7 +60,7 @@ Audio bleibt auf deinem Mac und wird nicht dauerhaft gespeichert. Den lokalen Te
 
 Die native App verwendet SwiftUI/AppKit, FluidAudio mit Parakeet v3 und eingebettetes llama.cpp mit Qwen3-4B. [Entwicklungsanleitung](native/README.md) · [Prüfbericht](native/docs/verification-report.md) · [Website entwickeln](site/README.md).
 
-Der öffentliche Download ist Beta **0.1.16, Build 20**, mit signierten automatischen Updates. Die Automatik ist standardmäßig aktiv und lässt sich unter **Einstellungen → Updates** ausschalten. Ältere Apps ohne Updater müssen einmalig durch den aktuellen Download ersetzt werden. Manuelle Fehlerberichte sind unter **Hilfe** verfügbar und gehen nach deiner Bestätigung an den privaten Eingang. Forschungsmodelle und automatische Fehlerübermittlung bleiben standardmäßig aus. Ein Git-Push allein verteilt kein App-Update. [Installations- und Updatehinweise](docs/agent-installation.md#updates-und-entwicklungsbuilds).
+Der öffentliche Download ist Beta **0.1.17, Build 24**, mit signierten automatischen Updates. Die Automatik ist standardmäßig aktiv und lässt sich unter **Einstellungen → Updates** ausschalten. Ältere Apps ohne Updater müssen einmalig durch den aktuellen Download ersetzt werden. Manuelle Fehlerberichte sind unter **Hilfe** verfügbar und gehen nach deiner Bestätigung an den privaten Eingang. Forschungsmodelle und automatische Fehlerübermittlung bleiben standardmäßig aus. Ein Git-Push allein verteilt kein App-Update. [Installations- und Updatehinweise](docs/agent-installation.md#updates-und-entwicklungsbuilds).
 
 Der Quellcode ist öffentlich einsehbar. Für den eigenen App-Code wurde bislang keine Open-Source-Lizenz erteilt; alle Rechte bleiben vorbehalten. Abhängigkeiten und Modelle haben eigene Lizenzen. [Lizenznachweise](native/Resources/Licenses/NOTICE.md) · [Forschungsmodell-Lizenzen](native/lipreading_runtime/licenses/NOTICE-Research-Models.txt).
 
@@ -72,6 +72,6 @@ Fehler und Ideen: [Issue anlegen](https://github.com/MediaPublishing/ainauten-vo
 
 ### Sicherheitsänderungen im Quellcode
 
-Der öffentliche Download **0.1.16 (20)** ist weiterhin eine lokal signierte, nicht Apple-notarisierte Beta mit einer Ausnahme für Bibliotheksvalidierung. Kompatibles Einfügen über die systemweite Zwischenablage ist bei neuen Installationen standardmäßig aktiv. Andere lokale Apps können den kurzzeitig dort abgelegten Text lesen. Die Option lässt sich unter Datenschutz ausschalten; bestehende Einstellungen, einschließlich Abschaltungen, bleiben erhalten. Ohne diese Option benötigen nicht direkt unterstützte Felder bewusstes Kopieren. Die Update-Signaturen bleiben geprüft. Der gesonderte Apple-Release-Weg verlangt weiterhin Developer ID, aktive Bibliotheksvalidierung und Notarisierung. [Details](native/docs/security-followup-2026-10-06.md).
+Der öffentliche Download **0.1.17 (24)** ist weiterhin eine lokal signierte, nicht Apple-notarisierte Beta mit einer Ausnahme für Bibliotheksvalidierung. Kompatibles Einfügen über die systemweite Zwischenablage ist bei neuen Installationen standardmäßig aktiv. Andere lokale Apps können den kurzzeitig dort abgelegten Text lesen. Die Option lässt sich unter Datenschutz ausschalten; bestehende Einstellungen, einschließlich Abschaltungen, bleiben erhalten. Ohne diese Option benötigen nicht direkt unterstützte Felder bewusstes Kopieren. Die Update-Signaturen bleiben geprüft. Der gesonderte Apple-Release-Weg verlangt weiterhin Developer ID, aktive Bibliotheksvalidierung und Notarisierung. [Details](native/docs/security-followup-2026-10-06.md).
 
 Die Diktatsprachen werden ab 0.1.14 bei der Erkennung berücksichtigt. Bei auffälligen Sprachabweichungen prüft ein mitgeliefertes lokales Whisper-Modell das Originalaudio erneut. [Verhalten und Grenzen der Sprachwahl](native/docs/speech-language-selection.md).

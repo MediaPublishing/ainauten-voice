@@ -1,7 +1,7 @@
 # Weiterdiktieren in allen Sprachen
 
-Lokaler Teststand: 0.1.17, Build 23. Noch kein öffentliches Release; der
-veröffentlichte Download bleibt 0.1.16, Build 20.
+Ab Beta 0.1.17, Build 24. Der vorangehende lokale Build 23 wurde nach den
+automatisierten Prüfungen auch im praktischen Nutzertest positiv bestätigt.
 
 Nach dem Loslassen darf die nächste Audioaufnahme bereits beginnen, während
 die vorherige Aufnahme erkannt, formatiert oder eingefügt wird. Dies gilt für
