@@ -372,7 +372,7 @@ struct SettingsView: View {
         }
     }
     @ViewBuilder private var swissQueuePanel: some View {
-        if model.swissEnabled || model.swissPendingCount > 0 || !model.swissDrafts.isEmpty {
+        if model.swissEnabled || model.swissPendingCount > 0 || !model.swissDrafts.isEmpty || model.swissQueueFailures > 0 {
             VStack(alignment: .leading, spacing: 8) {
                 Label(L10n.text("swiss.queue.title"), systemImage: "text.badge.plus")
                     .font(.system(size: 14, weight: .semibold))
@@ -381,7 +381,14 @@ struct SettingsView: View {
                     Label(model.swissQueueStatus, systemImage: "hourglass")
                         .font(.system(size: 12))
                 }
+                if model.swissQueueFailures > 0 {
+                    Label(L10n.text("swiss.queue.failures", String(model.swissQueueFailures)), systemImage: "exclamationmark.triangle")
+                        .font(.system(size: 12)).foregroundStyle(.orange)
+                }
                 if !model.swissDrafts.isEmpty {
+                    if model.swissDrafts.contains(where: { !$0.isComplete }) {
+                        Text(L10n.text("swiss.queue.partial")).font(.system(size: 11)).foregroundStyle(.orange)
+                    }
                     Text(model.swissCombinedText).lineLimit(4).textSelection(.enabled)
                     Text(L10n.text("swiss.queue.checkTarget")).font(.system(size: 11)).foregroundStyle(.secondary)
                     Button(L10n.text("swiss.queue.copy", String(model.swissDrafts.count))) { model.copySwissDrafts() }

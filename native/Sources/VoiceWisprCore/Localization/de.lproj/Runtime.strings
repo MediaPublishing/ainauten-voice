@@ -124,3 +124,5 @@
 "swiss.queue.recording" = "Aufnahme läuft …";
 "swiss.queue.copyFailed" = "Kopieren nicht möglich. Die Texte bleiben hier erhalten.";
 "swiss.queue.checkTarget" = "Prüfe vor dem Einfügen das Zielfeld: Ein nicht bestätigter Text kann dort bereits stehen.";
+"swiss.queue.failures" = "%@ Aufnahme(n) fehlgeschlagen. Andere Texte bleiben erhalten.";
+"swiss.queue.partial" = "Enthält unvollständige Teiltexte. Bitte vor dem Verwenden prüfen.";

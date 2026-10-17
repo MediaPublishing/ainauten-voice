@@ -124,3 +124,5 @@
 "swiss.queue.recording" = "Recording …";
 "swiss.queue.copyFailed" = "Could not copy. Your texts are still available here.";
 "swiss.queue.checkTarget" = "Check the target before pasting: text whose insertion was not confirmed may already be there.";
+"swiss.queue.failures" = "%@ recording(s) failed. Other texts are preserved.";
+"swiss.queue.partial" = "Includes incomplete text. Please check before using.";

@@ -217,6 +217,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     @Published var elapsed: TimeInterval = 0
     @Published var results: [DictationResult] = []
     @Published private(set) var swissPendingCount = 0
+    @Published private(set) var swissQueueFailures = 0
     @Published private(set) var swissDrafts: [DictationResult] = []
     private var swissQueue = DictationQueue()
     private var swissJobs: [UUID: SwissCaptureJob] = [:]
@@ -1669,7 +1670,9 @@ extension AppModel {
         guard swissDrafts.count < 32 else {
             status = L10n.text("swiss.queue.collectFirst"); return
         }
-        if !hasSwissWork && swissDrafts.isEmpty { swissQueue.resetBatchIfIdle() }
+        if !hasSwissWork && swissDrafts.isEmpty {
+            swissQueue.resetBatchIfIdle(); swissQueueFailures = 0
+        }
         let job = SwissCaptureJob(settings: document.settings, dictionary: document.dictionary)
         guard swissQueue.reserve(job.id) else {
             status = L10n.text("swiss.queue.full"); return
@@ -1794,7 +1797,9 @@ extension AppModel {
                     if let context = job.history { self.recordHistory(partial.result, context: context, delivery: .notAttempted) }
                 } catch is CancellationError { }
                 catch {
-                    if self.swissQueueGeneration == generation && self.swissCapture == nil {
+                    guard self.swissQueueGeneration == generation else { return }
+                    self.swissQueueFailures += 1
+                    if self.swissCapture == nil {
                         self.errorMessage = error.localizedDescription
                         self.status = L10n.text("swiss.queue.failed")
                     }
@@ -1835,7 +1840,8 @@ extension AppModel {
         swissCapture = nil; swissJobs = [:]; swissQueue.cancelAll(); swissPendingCount = 0
     }
     var swissQueueStatus: String {
-        swissQueue.canCapture ? L10n.text("swiss.queue.processing", String(swissPendingCount)) : L10n.text("swiss.queue.full")
+        if swissCapture != nil { return L10n.text("swiss.queue.recording") }
+        return swissQueue.canCapture ? L10n.text("swiss.queue.processing", String(swissPendingCount)) : L10n.text("swiss.queue.full")
     }
     func copySwissDrafts() {
         guard !swissDrafts.isEmpty else { return }
