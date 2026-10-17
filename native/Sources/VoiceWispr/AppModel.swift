@@ -1646,7 +1646,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
 /// Late worker callbacks must never use the currently recording job's state.
 @MainActor private final class SwissCaptureJob {
     let id = UUID()
-    let settings: Settings
+    let settings: VoiceWisprCore.Settings
     let dictionary: [DictionaryEntry]
     let capturedAt = Date()
     var focus: FocusSnapshot?
@@ -1659,7 +1659,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     var samples: [Float] = []
     var failure: Error?
     var stopped = false
-    init(settings: Settings, dictionary: [DictionaryEntry]) { self.settings = settings; self.dictionary = dictionary }
+    init(settings: VoiceWisprCore.Settings, dictionary: [DictionaryEntry]) { self.settings = settings; self.dictionary = dictionary }
 }
 
 extension AppModel {
