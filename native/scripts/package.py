@@ -8,6 +8,9 @@ p = argparse.ArgumentParser(); p.add_argument('--debug', action='store_true'); p
 p.add_argument('--sdk', type=pathlib.Path, help='Explicit compatible macOS SDK; leaves the system default unchanged')
 p.add_argument('--built-products', type=pathlib.Path, help='Resume explicit local beta packaging from this checkout’s successful release build; no compilation')
 p.add_argument('--build-system', choices=['native', 'swiftbuild'], help='Swift build engine override for compatible CLT packaging')
+p.add_argument('--scratch-path', type=pathlib.Path, help='Task-owned SwiftPM build directory; reuse existing pinned dependencies')
+p.add_argument('--jobs', type=int, default=4, help='Maximum concurrent compilation jobs')
+p.add_argument('--app-only', action='store_true', help='Development UI check only: do not create a duplicate installer')
 p.add_argument('--local-beta', action='store_true', help='Explicit locally signed public beta; no Apple notarization, existing publisher pin required')
 p.add_argument('--development', action='store_true', help='Explicit local test package only; never accepted by public distribution gates')
 p.add_argument('--notary-profile', help='Existing notarytool Keychain profile for Apple distribution; no credentials are created')
@@ -15,6 +18,9 @@ p.add_argument('--adhoc', action='store_true', help='Local test build only: allo
 p.add_argument('--sign-identity', help='SHA-1 of an existing code-signing identity in the macOS keychain')
 p.add_argument('--install-directory', type=pathlib.Path, help='Existing installation directory; defaults to the system installation when writable')
 args = p.parse_args()
+if args.jobs < 1: p.error('--jobs must be positive')
+if args.app_only and (not args.development or args.install):
+    p.error('--app-only requires --development and cannot install or produce a public release')
 if args.local_beta and (args.development or args.adhoc or args.debug or args.notary_profile):
     p.error('--local-beta cannot be combined with development, ad-hoc, debug or notarization modes')
 if args.adhoc and not args.development:
@@ -64,8 +70,8 @@ if args.built_products:
         p.error('--built-products must be this checkout’s existing successful release products')
 else:
     run('python3', 'scripts/bootstrap.py')
-    build_options = (['--sdk', str(args.sdk)] if args.sdk else []) + (['--build-system', args.build_system] if args.build_system else [])
-    run('swift', 'build', *build_options, '-c', configuration, '-j', '4')
+    build_options = (['--sdk', str(args.sdk)] if args.sdk else []) + (['--build-system', args.build_system] if args.build_system else []) + (['--scratch-path', str(args.scratch_path.resolve())] if args.scratch_path else [])
+    run('swift', 'build', *build_options, '-c', configuration, '-j', str(args.jobs))
     build = pathlib.Path(subprocess.check_output(['swift', 'build', *build_options, '-c', configuration, '--show-bin-path'], cwd=root, text=True).strip())
 stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 out = root / 'artifacts' / stamp; out.mkdir(parents=True)
@@ -156,6 +162,9 @@ if not args.development and not args.local_beta:
 if args.local_beta:
     from distribution_security import verify_local_beta_app
     print('VERIFIED LOCAL BETA', verify_local_beta_app(app))
+if args.app_only:
+    print('APP', app)
+    raise SystemExit(0)
 dmg = create_dmg(app, out)
 if not args.development and not args.local_beta:
     # Apple checks the exact final DMG too; only Accepted may reach verification.

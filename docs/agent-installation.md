@@ -32,7 +32,7 @@ Bei neuen Installationen ab 0.1.14 ist kompatibles Einfügen eingeschaltet. Daf�
 
 ## Updates und Entwicklungsbuilds
 
-Der öffentliche Download **0.1.15, Build 19** enthält den signierten Updater. Automatische Suche und Downloads sind für neue Installationen standardmäßig aktiv; ein ausdrücklich gespeichertes Nein bleibt erhalten. Die App prüft täglich, installiert beim Beenden und unterbricht laufende Diktate nicht. Unter **Einstellungen → Updates** lassen sich die Automatik ausschalten und Updates sofort prüfen. Einstellungen, Wörterbuch und Verlauf bleiben erhalten.
+Der öffentliche Download **0.1.16, Build 20** enthält den signierten Updater. Automatische Suche und Downloads sind für neue Installationen standardmäßig aktiv; ein ausdrücklich gespeichertes Nein bleibt erhalten. Die App prüft täglich, installiert beim Beenden und unterbricht laufende Diktate nicht. Unter **Einstellungen → Updates** lassen sich die Automatik ausschalten und Updates sofort prüfen. Einstellungen, Wörterbuch und Verlauf bleiben erhalten.
 
 Apps ohne Updater, insbesondere die frühere Beta 0.1.1, Build 2, benötigen einmalig den aktuellen Installer. Ein Git-Push oder eine Änderung der Website allein verteilt kein Update; dafür wird ein geprüftes App-Paket im signierten Kanal veröffentlicht. Apple-Notarisierung bleibt ein separater Schritt.
 
