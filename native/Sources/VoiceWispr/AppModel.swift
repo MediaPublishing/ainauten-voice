@@ -1867,8 +1867,13 @@ extension AppModel {
         }
         guard dictationQueueGeneration == generation, !Task.isCancelled else { return }
         results.insert(result, at: 0); results = Array(results.prefix(5))
+        // The write already happened. Retain its history even if cancellation
+        // arrives while waiting for the editor's delayed caret readback.
+        if let context = job.history { recordHistory(result, context: context, delivery: outcome.status) }
         if outcome.status == .confirmed, let previous = job.focus {
-            if let advanced = previous.afterConfirmedInsertion(text) {
+            let advanced = await previous.afterConfirmedInsertion(text)
+            guard dictationQueueGeneration == generation, !Task.isCancelled else { return }
+            if let advanced {
                 queuedInsertionAnchor = advanced
                 // A second microphone capture may have snapshotted the same
                 // caret before this first insertion. Advance only exact matches,
@@ -1887,7 +1892,6 @@ extension AppModel {
             queuedDrafts.append(result)
             if !dictationQueue.overlaps && queuedCapture == nil { presentDelivery(outcome, result: result) }
         }
-        if let context = job.history { recordHistory(result, context: context, delivery: outcome.status) }
     }
     private func cancelQueuedWork() {
         guard hasQueuedWork else { return }

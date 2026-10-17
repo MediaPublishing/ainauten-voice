@@ -2,6 +2,7 @@ import Foundation
 import AppKit
 import ApplicationServices
 import Carbon
+import os
 
 public struct ClipboardOwnership: Sendable, Equatable {
     public let nonce: UUID
@@ -26,13 +27,23 @@ public enum DeliveryVerification {
         }
         return text
     }
-    /// Queue rebasing is stricter than a one-off paste acknowledgement. A late
-    /// caret or a user's cursor move must not redirect the following snippet.
+    /// Require the exact equivalent caret and complete text on both sides.
+    /// Editors may represent spaces, paragraph endings and accents differently.
+    /// Never trim the caret prefix: that would accept a move to another line.
     public static func canAdvanceQueuedInsertion(baseline: String, selection: NSRange, text: String,
                                                  observed: String, caret: NSRange) -> Bool {
         let insertion = insertionText(text, baseline: baseline, selection: selection)
-        return expectedValue(baseline: baseline, selection: selection, insertion: insertion) == observed
-            && caret == NSRange(location: selection.location + (insertion as NSString).length, length: 0)
+        guard let expected = expectedValue(baseline: baseline, selection: selection, insertion: insertion),
+              caret.location != NSNotFound, caret.location >= 0, caret.length == 0,
+              caret.location <= (observed as NSString).length else { return false }
+        let observedValue = observed as NSString
+        if caret.location > 0, caret.location < observedValue.length,
+           observedValue.character(at: caret.location - 1) == 13, observedValue.character(at: caret.location) == 10 { return false }
+        let expectedCaret = selection.location + (insertion as NSString).length
+        let expectedValue = expected as NSString
+        return normalized(expectedValue.substring(to: expectedCaret), trimTrailingNewlines: false)
+                == normalized(observedValue.substring(to: caret.location), trimTrailingNewlines: false)
+            && normalized(expectedValue.substring(from: expectedCaret)) == normalized(observedValue.substring(from: caret.location))
     }
     public static func insertionText(_ text: String, baseline: String, selection: NSRange) -> String {
         let value = baseline as NSString
@@ -72,11 +83,11 @@ public enum DeliveryVerification {
         let drift = abs((observed as NSString).length - (expected as NSString).length)
         return abs(caret.location - caretTarget) <= drift
     }
-    static func normalized(_ text: String) -> String {
+    static func normalized(_ text: String, trimTrailingNewlines: Bool = true) -> String {
         var value = text.replacingOccurrences(of: "\r\n", with: "\n")
         for separator in ["\r", "\u{2028}", "\u{2029}"] { value = value.replacingOccurrences(of: separator, with: "\n") }
         value = value.replacingOccurrences(of: "\u{00A0}", with: " ")
-        while value.hasSuffix("\n") { value.removeLast() }
+        if trimTrailingNewlines { while value.hasSuffix("\n") { value.removeLast() } }
         return value.precomposedStringWithCanonicalMapping
     }
 }
@@ -144,12 +155,34 @@ public enum DeliveryVerification {
             && CFEqual(other.window, window) && CFEqual(other.element, element)
             && other.selectedRange == selectedRange && other.baseline == baseline
     }
-    public func afterConfirmedInsertion(_ text: String) -> Self? {
-        guard !secure, let current = Self.capture(expectedPID: pid), !current.secure,
-              current.bundleID == bundleID, CFEqual(current.window, window), CFEqual(current.element, element),
-              DeliveryVerification.canAdvanceQueuedInsertion(baseline: baseline, selection: selectedRange,
-                  text: text, observed: current.baseline, caret: current.selectedRange) else { return nil }
-        return current
+    public func afterConfirmedInsertion(_ text: String) async -> Self? {
+        let deadline = ContinuousClock.now.advanced(by: .milliseconds(600))
+        var failure = "readbackUnavailable"
+        while ContinuousClock.now < deadline, !Task.isCancelled {
+            guard !secure, !IsSecureEventInputEnabled(), NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+                failure = "foregroundChanged"; break
+            }
+            if let current = Self.capture(expectedPID: pid) {
+                guard !current.secure, current.bundleID == bundleID,
+                      CFEqual(current.window, window), CFEqual(current.element, element) else { failure = "fieldChanged"; break }
+                if DeliveryVerification.canAdvanceQueuedInsertion(baseline: baseline, selection: selectedRange,
+                    text: text, observed: current.baseline, caret: current.selectedRange) {
+                    guard !Task.isCancelled, !IsSecureEventInputEnabled(),
+                          NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else { return nil }
+                    return current
+                }
+                let insertion = DeliveryVerification.insertionText(text, baseline: baseline, selection: selectedRange)
+                guard let expected = DeliveryVerification.expectedValue(baseline: baseline, selection: selectedRange, insertion: insertion),
+                      DeliveryVerification.normalized(current.baseline) == DeliveryVerification.normalized(expected)
+                        || current.baseline == baseline else { failure = "textChanged"; break }
+                failure = "caretOrValueNotSettled"
+            }
+            do { try await Task.sleep(for: .milliseconds(40)) } catch { return nil }
+        }
+        // Only a technical category, never text, field contents or clipboard data.
+        Logger(subsystem: "com.mediapublishing.VoiceWispr", category: "dictation-queue")
+            .notice("Queued insertion not advanced: \(failure, privacy: .public)")
+        return nil
     }
     public var selection: NSRange { selectedRange }
 }

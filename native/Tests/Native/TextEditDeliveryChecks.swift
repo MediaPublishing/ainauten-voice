@@ -61,11 +61,12 @@ import VoiceWisprCore
             if changeCaret && index == 0 {
                 var moved = CFRange(location: 0, length: 0)
                 if AXUIElementSetAttributeValue(target.element, kAXSelectedTextRangeAttribute as CFString, AXValueCreate(.cfRange, &moved)!) != .success {
-                    guard let current = FocusSnapshot.capture(), current.matches(target.afterConfirmedInsertion(texts[index]) ?? target) else { return (last, expected, expectedCaret, false) }
+                    let advanced = await target.afterConfirmedInsertion(texts[index])
+                    guard let current = FocusSnapshot.capture(), current.matches(advanced ?? target) else { return (last, expected, expectedCaret, false) }
                     key(126, .maskCommand) // Move only the owned fixture caret to its start.
                 }
                 try? await Task.sleep(for: .milliseconds(100))
-                passed = target.afterConfirmedInsertion(texts[index]) == nil && passed
+                passed = (await target.afterConfirmedInsertion(texts[index])) == nil && passed
                 // The unadvanced second snapshot must not paste into that caret.
                 last = await DeliveryCoordinator().deliver(text: texts[1], to: snapshots[1])
                 passed = last.status == .notAttempted && passed
@@ -73,7 +74,7 @@ import VoiceWisprCore
                 passed = queue.beginNext() == ids[1] && !queue.mayAutomaticallyDeliver(ids[1]) && passed
                 return (last, expected, NSRange(location: 0, length: 0), passed)
             }
-            guard let advanced = target.afterConfirmedInsertion(text) else { return (last, expected, expectedCaret, false) }
+            guard let advanced = await target.afterConfirmedInsertion(text) else { return (last, expected, expectedCaret, false) }
             for next in ids.indices where next > index {
                 passed = snapshots[next].matches(target) && passed
                 snapshots[next] = advanced

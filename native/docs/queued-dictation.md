@@ -1,6 +1,6 @@
 # Weiterdiktieren in allen Sprachen
 
-Lokaler Teststand: 0.1.17, Build 21. Noch kein öffentliches Release; der
+Lokaler Teststand: 0.1.17, Build 23. Noch kein öffentliches Release; der
 veröffentlichte Download bleibt 0.1.16, Build 20.
 
 Nach dem Loslassen darf die nächste Audioaufnahme bereits beginnen, während
@@ -13,8 +13,13 @@ für jede Aufnahme festgehalten. Schweizerdeutsch wird weiterhin lokal verarbeit
 Ergebnisse werden nacheinander in Aufnahmereihenfolge eingefügt. Hat eine neue
 Aufnahme das gleiche Textfeld bereits vor der ersten Einfügung erfasst, wird
 ihr Ziel ausschließlich anhand der vollständig bestätigten eigenen Einfügung
-fortgeschrieben. Dabei müssen Feld, Fenster, vollständiger Text und Cursor exakt
-passen. Normale Wortabstände am Satzende bleiben erhalten.
+fortgeschrieben. Dabei müssen Feld, Fenster, vollständiger Text und die genaue
+Einfügeposition passen. Geschützte Leerzeichen, unterschiedliche Zeilenenden
+und gleichwertige Unicode-Darstellungen werden wie bei der ersten Einfügung
+berücksichtigt. Text und Position werden auf beiden Seiten des Cursors geprüft.
+Auf verzögerten Editor-Readback wird höchstens 600 Millisekunden gewartet;
+der Text wird dabei nicht erneut eingefügt und der Cursor nicht versetzt.
+Normale Wortabstände am Satzende bleiben erhalten.
 
 Wird ein Ergebnis während einer weiteren Aufnahme fertig, wartet seine
 Einfügung bis zum Ende dieser Aufnahme und bis das Kürzel losgelassen wurde.
@@ -44,6 +49,15 @@ native TextEdit-Test fügt drei künstliche Texte in dieselbe Auswahl ein und
 prüft vollständigen Text, Cursor, unveränderte Zwischenablage sowie ein
 angehaltenes Folgediktat nach Cursorwechsel. Tests mit künstlichen Texten
 ersetzen keinen gesprochenen Mikrofon-/Kürzeltest in der jeweiligen Ziel-App.
+
+`check-textedit-delivery.py --rich-editor` prüft zusätzlich einen eigenen
+nativen Editor, der Leerzeichen in geschützte Leerzeichen umwandelt und die
+Cursor-Rückmeldung verzögern kann. Die echte Zwischenablage-Einfügung muss
+weiterhin drei Abschnitte in Reihenfolge liefern; Cursorwechsel, Feldwechsel
+und Abbruch müssen die Fortsetzung verhindern. Die Tests automatisieren keine
+geschützte Codex-Oberfläche. Technische Kategorien einer angehaltenen
+Fortsetzung stehen im lokalen Systemlog unter `dictation-queue`; Diktat- und
+Feldinhalte werden dort nicht protokolliert.
 
 Für den praktischen Test im unveränderten Textfeld einen Satz diktieren und
 während seiner Verarbeitung sofort den nächsten aufnehmen. Die Sätze sollen

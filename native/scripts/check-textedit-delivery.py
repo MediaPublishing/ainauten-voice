@@ -18,15 +18,18 @@ def main():
     parser.add_argument('--sdk', type=Path, help='Compatible installed SDK, used for both SwiftPM and native test compilation.')
     parser.add_argument('--scratch-path', type=Path, help='Reuse this task-owned native SwiftPM build.')
     parser.add_argument('--only-queue', action='store_true', help='Check ordered insertions and a changed-caret refusal.')
+    parser.add_argument('--rich-editor', action='store_true', help='Use an own isolated rich-text editor with NBSP rewriting and delayed caret readback.')
     parser.add_argument('--mode', action='append', choices=['selection', 'caret', 'long', 'focus', 'queued', 'queued-focus', 'queued-recording', 'queued-recording-cancel', 'queued-recording-focus', 'queued-recording-revoke'], help='Run explicit cases; failures are never skipped automatically.')
     parser.add_argument('--include-fullscreen', action='store_true', help='Also test and exit fullscreen in an own fixture window.')
     parser.add_argument('--output', type=Path, default=root / 'artifacts/receipts/textedit-delivery-current.json')
     args = parser.parse_args()
     if args.only_queue and args.mode:
         parser.error('--only-queue and --mode are mutually exclusive')
+    if args.rich_editor and (args.mode or args.only_queue or args.include_fullscreen):
+        parser.error('--rich-editor selects its own isolated cases')
     args.output = args.output.resolve()
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    out = args.output.parent / 'textedit-driver'
+    out = args.output.parent / ('rich-editor-driver' if args.rich_editor else 'textedit-driver')
     out.mkdir(parents=True, exist_ok=True)
     started = datetime.now(timezone.utc).isoformat()
     # Use the native debug object layout already used by portable-checks.py.
@@ -54,22 +57,23 @@ def main():
         command += ['-Xcc', '-fmodule-map-file=' + str(include / 'module.modulemap'), '-Xcc', '-I' + str(include)]
     for target in ['VoiceWisprCore.build', 'FluidAudio.build', 'FastClusterWrapper.build', 'MachTaskSelfWrapper.build']:
         command += [str(p) for p in sorted((build / target).glob('*.o'))]
-    binary = out / 'TextEditDeliveryChecks'
-    command += [str(root / 'Tests/Native/TextEditDeliveryChecks.swift'), '-o', str(binary)]
+    native_name = 'RichTextQueueChecks' if args.rich_editor else 'TextEditDeliveryChecks'
+    binary = out / native_name
+    command += [str(root / 'Tests/Native' / (native_name + '.swift')), '-o', str(binary)]
     compile_run = subprocess.run(command, cwd=root, capture_output=True, text=True)
     (out / 'compile.log').write_text(compile_run.stdout + compile_run.stderr)
     if compile_run.returncode:
         raise SystemExit(compile_run.returncode)
     cases = []
-    modes = (args.mode or (['queued', 'queued-focus'] if args.only_queue else ['selection', 'caret', 'long', 'focus', 'queued', 'queued-focus'])) + (['fullscreen'] if args.include_fullscreen else [])
+    modes = ['normalized', 'delayed', 'moved', 'field', 'cancelled'] if args.rich_editor else (args.mode or (['queued', 'queued-focus'] if args.only_queue else ['selection', 'caret', 'long', 'focus', 'queued', 'queued-focus'])) + (['fullscreen'] if args.include_fullscreen else [])
     for mode in modes:
         file = out / ('AInauten-Voice-Delivery-' + mode + '-' + str(uuid.uuid4()) + '.txt')
         case_started = datetime.now(timezone.utc).isoformat()
-        run = subprocess.run([str(binary), str(file), mode], cwd=root, capture_output=True, text=True, timeout=30)
+        run = subprocess.run([str(binary), mode] if args.rich_editor else [str(binary), str(file), mode], cwd=root, capture_output=True, text=True, timeout=30)
         (out / (mode + '.stdout')).write_text(run.stdout)
         (out / (mode + '.stderr')).write_text(run.stderr)
         try:
-            native = json.loads(run.stdout) if run.returncode == 0 else None
+            native = json.loads(run.stdout)
         except ValueError:
             native = None
         case = {'mode': mode, 'startedAt': case_started, 'endedAt': datetime.now(timezone.utc).isoformat(),
@@ -82,7 +86,7 @@ def main():
               'expectedCases': len(modes), 'allPassed': len(cases) == len(modes) and all(isinstance(case['native'], dict) and case['native'].get('passed') for case in cases),
               'cases': cases, 'productionChanged': False, 'clipboardContentsLogged': False,
               'microphoneUsed': False, 'modelsLoaded': False,
-              'scope': 'Requested real TextEdit Core delivery cases, with explicit optional fullscreen. No physical hotkey, microphone, ASR, installed Pill/recovery UI, multi-display or full OS matrix/p95 acceptance.'}
+              'scope': ('Own isolated rich-text editor: real clipboard, NBSP rewriting, delayed AX caret and refusal cases. No Codex automation, microphone or physical hotkey acceptance.' if args.rich_editor else 'Requested real TextEdit Core delivery cases, with explicit optional fullscreen. No physical hotkey, microphone, ASR, installed Pill/recovery UI, multi-display or full OS matrix/p95 acceptance.')}
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     print(json.dumps({'allPassed': report['allPassed'], 'cases': len(cases),
                       'passed': sum(bool(case['native'] and case['native'].get('passed')) for case in cases)}))

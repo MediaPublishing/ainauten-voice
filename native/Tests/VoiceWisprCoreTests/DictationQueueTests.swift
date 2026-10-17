@@ -3,6 +3,28 @@ import Foundation
 @testable import VoiceWisprCore
 
 final class DictationQueueTests: XCTestCase {
+    func testQueueAdvancesEquivalentEditorRepresentationAtExactEquivalentCaret() {
+        for (text, observed, location) in [("Hallo Welt", "Hallo\u{00A0}Welt\n", 10),
+            ("Erster\nZweiter", "Erster\r\nZweiter", 15),
+            ("Änderung", "A\u{0308}nderung", 9)] {
+            XCTAssertTrue(DeliveryVerification.canAdvanceQueuedInsertion(baseline: "", selection: NSRange(location: 0, length: 0),
+                text: text, observed: observed, caret: NSRange(location: location, length: 0)))
+        }
+    }
+    func testEquivalentEditorRepresentationStillRejectsWrongCaretAndUserText() {
+        let selection = NSRange(location: 0, length: 0)
+        for caret in [NSRange(location: 0, length: 0), NSRange(location: 9, length: 0),
+            NSRange(location: 11, length: 0), NSRange(location: 10, length: 1)] {
+            XCTAssertFalse(DeliveryVerification.canAdvanceQueuedInsertion(baseline: "", selection: selection,
+                text: "Hallo Welt", observed: "Hallo\u{00A0}Welt\n", caret: caret))
+        }
+        XCTAssertFalse(DeliveryVerification.canAdvanceQueuedInsertion(baseline: "", selection: selection,
+            text: "Hallo Welt", observed: "Hallo Erde\n", caret: NSRange(location: 10, length: 0)))
+        XCTAssertFalse(DeliveryVerification.canAdvanceQueuedInsertion(baseline: "Anfang Ende", selection: NSRange(location: 7, length: 0),
+            text: "Mitte ", observed: "Mitte ", caret: NSRange(location: 6, length: 0)))
+        XCTAssertFalse(DeliveryVerification.canAdvanceQueuedInsertion(baseline: "", selection: selection,
+            text: "Text\n", observed: "Text\r\n", caret: NSRange(location: 5, length: 0)))
+    }
     func testFollowupRecordingDoesNotConsumeModifierReleaseDeadline() {
         var readiness = DictationDeliveryReadiness()
         XCTAssertEqual(readiness.update(recording: true, modifiersHeld: true, now: 0), .wait)
