@@ -39,13 +39,16 @@ Feature dieser Beta.
 
 ### Weiterdiktieren während der Verarbeitung
 
-Nach dem Loslassen kann eine neue Aufnahme beginnen, während die vorherige
-lokal verarbeitet wird. Die Verarbeitung läuft nacheinander. Sobald Aufnahmen
-überlappen, werden fertige Texte unter **Diktieren → Aufeinanderfolgende Diktate**
-in Aufnahme-Reihenfolge gesammelt. Dort gemeinsam kopieren und bewusst einfügen;
-es erfolgt kein verspätetes automatisches Einfügen in ein inzwischen anderes
-Textfeld. Ein einzelnes Diktat verwendet weiterhin die geprüfte automatische
-Texteingabe. Nicht bestätigte Einfügungen vorher im Zielfeld prüfen.
+Ab Beta 0.1.17 gilt das Weiterdiktieren für alle ausgewählten Audiosprachen,
+einschließlich Schweizerdeutsch. Nach dem Loslassen kann eine neue Aufnahme
+beginnen, während die vorherige lokal verarbeitet wird. Ergebnisse werden in
+Aufnahme-Reihenfolge automatisch im ursprünglichen, unveränderten Textfeld
+eingefügt. Ein fertiger Text wartet, solange du noch aufnimmst oder das Kürzel hältst.
+
+Bei Feldwechsel, verschobenem Cursor oder unbestätigter Zustellung hält die
+automatische Serie an. Fertige Texte bleiben unter **Diktieren → Aufeinanderfolgende
+Diktate** zur Wiederherstellung verfügbar. Vor erneutem Einfügen das Zielfeld
+prüfen: Unbestätigter Text kann dort bereits stehen. [Details und Grenzen](queued-dictation.md).
 
 Die Warteschlange reserviert vor jeder Aufnahme einen begrenzten PCM-Arbeitsspeicher
 (768 MiB Budget, höchstens drei Aufnahmen). Bei voller Warteschlange muss ein Text
@@ -88,12 +91,14 @@ guaranteed accuracy for every dialect.
 
 ### Consecutive recordings
 
-Start another recording while earlier text is processed locally. Processing is
-serial. Once recordings overlap, completed text is collected in capture order
-under **Dictation → Consecutive dictations** for explicit combined copy and paste.
-There is no delayed automatic insertion into a different field. A single
-recording retains normal verified insertion. Check unconfirmed insertions in the
-target before pasting again. A 768 MiB PCM reservation budget admits at most three
+From beta 0.1.17, consecutive recording works in all selected audio languages,
+including Swiss German. Start another recording while earlier text is processed
+locally. Results are inserted automatically in capture order into the original,
+unchanged field. Insertion waits until a follow-up capture and held shortcut end.
+Changing the field or caret, or an unconfirmed insertion, stops the automatic
+series. Completed text remains under **Dictation → Consecutive dictations** for
+recovery. Check the target before pasting again: unconfirmed text may already
+be present. A 768 MiB PCM reservation budget admits at most three
 recordings; it does not represent total app/model memory. Pending audio lives in
 RAM, not on disk. Escape discards unfinished work; completed snippets remain until
 copying or quitting. Restarting does not restore pending recordings.

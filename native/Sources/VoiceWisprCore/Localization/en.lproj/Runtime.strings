@@ -107,22 +107,22 @@
 "speech.decoder.timeout" = "The local speech decoder timed out. Please try recording again.";
 "speech.decoder.invalidOutput" = "The local speech decoder returned an invalid response.";
 
-/* Ordered local Swiss dictation queue. */
-"swiss.queue.title" = "Consecutive dictations";
-"swiss.queue.help" = "Keep dictating while earlier text is being processed. Overlapping dictations are collected here in order. Copy them together, then paste with ⌘V.";
-"swiss.queue.processing" = "%@ recording(s) being processed · next dictation available";
-"swiss.queue.copy" = "Copy %@ texts together";
-"swiss.queue.full" = "Queue full. Wait for the next recording to finish.";
-"swiss.queue.collectFirst" = "Copy the collected texts before starting more dictations.";
-"swiss.queue.failed" = "One recording could not be processed. Other texts are preserved.";
-"swiss.queue.saved" = "Dictation collected locally. Copy the texts together under Dictation.";
-"swiss.queue.copied" = "Collected texts copied. Paste with ⌘V.";
-"swiss.queue.quitTitle" = "Recordings are still being processed";
-"swiss.queue.quitHelp" = "Quitting discards recordings that have not finished processing. Completed text remains in history when enabled.";
-"swiss.queue.keepWorking" = "Keep processing";
-"swiss.queue.discardQuit" = "Discard recordings and quit";
-"swiss.queue.recording" = "Recording …";
-"swiss.queue.copyFailed" = "Could not copy. Your texts are still available here.";
-"swiss.queue.checkTarget" = "Check the target before pasting: text whose insertion was not confirmed may already be there.";
-"swiss.queue.failures" = "%@ recording(s) failed. Other texts are preserved.";
-"swiss.queue.partial" = "Includes incomplete text. Please check before using.";
+/* Ordered audio dictation queue for every language. */
+"dictation.queue.title" = "Consecutive dictations";
+"dictation.queue.help" = "Keep dictating in any language while earlier text is being processed. Completed dictations are inserted in recording order into the unchanged target field. If the target changes, your text is kept here.";
+"dictation.queue.processing" = "%@ recording(s) being processed · next dictation available";
+"dictation.queue.copy" = "Copy %@ texts together";
+"dictation.queue.full" = "Queue full. Wait for the next recording to finish.";
+"dictation.queue.collectFirst" = "Copy the collected texts before starting more dictations.";
+"dictation.queue.failed" = "One recording could not be processed. Other texts are preserved.";
+"dictation.queue.saved" = "Automatic insertion paused. Recover your text under Dictation.";
+"dictation.queue.copied" = "Collected texts copied. Paste with ⌘V.";
+"dictation.queue.quitTitle" = "Recordings are still being processed";
+"dictation.queue.quitHelp" = "Quitting discards recordings that have not finished processing. Completed text remains in history when enabled.";
+"dictation.queue.keepWorking" = "Keep processing";
+"dictation.queue.discardQuit" = "Discard recordings and quit";
+"dictation.queue.recording" = "Recording …";
+"dictation.queue.copyFailed" = "Could not copy. Your texts are still available here.";
+"dictation.queue.checkTarget" = "Check the target before pasting: text whose insertion was not confirmed may already be there.";
+"dictation.queue.failures" = "%@ recording(s) failed. Other texts are preserved.";
+"dictation.queue.partial" = "Includes incomplete text. Please check before using.";

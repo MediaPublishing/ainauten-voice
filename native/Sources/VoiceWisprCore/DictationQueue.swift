@@ -1,5 +1,24 @@
 import Foundation
 
+/// A held follow-up dictation is expected, not a paste timeout. The ordinary
+/// modifier-release deadline starts only after recording stops. No text or
+/// clipboard data is retained here; delivery revalidates its target afterwards.
+public struct DictationDeliveryReadiness: Sendable {
+    public enum Decision: Equatable, Sendable { case wait, ready, timedOut }
+    private let modifierTimeout: TimeInterval
+    private var waitingSince: TimeInterval?
+    public init(modifierTimeout: TimeInterval = 1.5) {
+        precondition(modifierTimeout > 0)
+        self.modifierTimeout = modifierTimeout
+    }
+    public mutating func update(recording: Bool, modifiersHeld: Bool, now: TimeInterval) -> Decision {
+        if recording { waitingSince = nil; return .wait }
+        guard modifiersHeld else { waitingSince = nil; return .ready }
+        if waitingSince == nil { waitingSince = now }
+        return now - (waitingSince ?? now) >= modifierTimeout ? .timedOut : .wait
+    }
+}
+
 /// Main-actor owners reserve the worst-case PCM working set before starting a
 /// microphone. Pending audio stays in RAM; only one job may process at a time.
 public struct DictationQueue: Sendable {
@@ -14,6 +33,7 @@ public struct DictationQueue: Sendable {
     public let reservationBytes: Int
     public private(set) var entries: [Entry] = []
     public private(set) var overlaps = false
+    public private(set) var automaticDeliverySuppressed = false
     private var sequence: UInt64 = 0
     public init(maximumBytes: Int = 768 * 1_048_576, reservationBytes: Int = Self.captureReservationBytes) {
         precondition(maximumBytes > 0 && reservationBytes > 0)
@@ -40,10 +60,10 @@ public struct DictationQueue: Sendable {
         entries[0].phase = .processing; return first.id
     }
     public func mayAutomaticallyDeliver(_ id: UUID) -> Bool {
-        !overlaps && entries.count == 1 && entries.first?.id == id && entries.first?.phase == .processing
+        !automaticDeliverySuppressed && entries.first?.id == id && entries.first?.phase == .processing
     }
-    public mutating func suppressAutomaticDelivery() { overlaps = true }
+    public mutating func suppressAutomaticDelivery() { automaticDeliverySuppressed = true }
     public mutating func finish(_ id: UUID) { entries.removeAll { $0.id == id } }
-    public mutating func resetBatchIfIdle() { if entries.isEmpty { overlaps = false } }
-    public mutating func cancelAll() { entries.removeAll(); overlaps = true }
+    public mutating func resetBatchIfIdle() { if entries.isEmpty { overlaps = false; automaticDeliverySuppressed = false } }
+    public mutating func cancelAll() { entries.removeAll(); automaticDeliverySuppressed = true }
 }

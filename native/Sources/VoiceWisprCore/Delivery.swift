@@ -2,6 +2,7 @@ import Foundation
 import AppKit
 import ApplicationServices
 import Carbon
+import os
 
 public struct ClipboardOwnership: Sendable, Equatable {
     public let nonce: UUID
@@ -11,6 +12,39 @@ public struct ClipboardOwnership: Sendable, Equatable {
 }
 
 public enum DeliveryVerification {
+    /// Adjacent recordings are separate utterances. Preserve punctuation and
+    /// decimal continuations, but do not glue unpunctuated words together.
+    public static func queuedContinuationText(_ text: String, baseline: String, selection: NSRange) -> String {
+        let value = baseline as NSString
+        guard let first = text.first, first.isLetter || first.isNumber,
+              selection.length == 0, selection.location > 0, selection.location <= value.length,
+              let previous = value.substring(to: selection.location).last else { return text }
+        if previous.isLetter || previous.isNumber { return " " + text }
+        if previous == "," || previous == ";" || previous == ":" {
+            let prefix = value.substring(to: selection.location).dropLast()
+            if previous == ",", first.isNumber, prefix.last?.isNumber == true { return text }
+            return " " + text
+        }
+        return text
+    }
+    /// Require the exact equivalent caret and complete text on both sides.
+    /// Editors may represent spaces, paragraph endings and accents differently.
+    /// Never trim the caret prefix: that would accept a move to another line.
+    public static func canAdvanceQueuedInsertion(baseline: String, selection: NSRange, text: String,
+                                                 observed: String, caret: NSRange) -> Bool {
+        let insertion = insertionText(text, baseline: baseline, selection: selection)
+        guard let expected = expectedValue(baseline: baseline, selection: selection, insertion: insertion),
+              caret.location != NSNotFound, caret.location >= 0, caret.length == 0,
+              caret.location <= (observed as NSString).length else { return false }
+        let observedValue = observed as NSString
+        if caret.location > 0, caret.location < observedValue.length,
+           observedValue.character(at: caret.location - 1) == 13, observedValue.character(at: caret.location) == 10 { return false }
+        let expectedCaret = selection.location + (insertion as NSString).length
+        let expectedValue = expected as NSString
+        return normalized(expectedValue.substring(to: expectedCaret), trimTrailingNewlines: false)
+                == normalized(observedValue.substring(to: caret.location), trimTrailingNewlines: false)
+            && normalized(expectedValue.substring(from: expectedCaret)) == normalized(observedValue.substring(from: caret.location))
+    }
     public static func insertionText(_ text: String, baseline: String, selection: NSRange) -> String {
         let value = baseline as NSString
         guard let first = text.first, !first.isWhitespace,
@@ -49,11 +83,11 @@ public enum DeliveryVerification {
         let drift = abs((observed as NSString).length - (expected as NSString).length)
         return abs(caret.location - caretTarget) <= drift
     }
-    static func normalized(_ text: String) -> String {
+    static func normalized(_ text: String, trimTrailingNewlines: Bool = true) -> String {
         var value = text.replacingOccurrences(of: "\r\n", with: "\n")
         for separator in ["\r", "\u{2028}", "\u{2029}"] { value = value.replacingOccurrences(of: separator, with: "\n") }
         value = value.replacingOccurrences(of: "\u{00A0}", with: " ")
-        while value.hasSuffix("\n") { value.removeLast() }
+        if trimTrailingNewlines { while value.hasSuffix("\n") { value.removeLast() } }
         return value.precomposedStringWithCanonicalMapping
     }
 }
@@ -112,8 +146,43 @@ public enum DeliveryVerification {
 
     public func isUnchanged() -> Bool {
         guard !secure, !IsSecureEventInputEnabled(), let current = Self.capture() else { return false }
-        return !current.secure && current.pid == pid && current.bundleID == bundleID && CFEqual(current.window, window)
-            && CFEqual(current.element, element) && current.selectedRange == selectedRange && current.baseline == baseline
+        return matches(current)
+    }
+    /// Only our confirmed insertion can advance snapshots of already recorded
+    /// snippets. User edits, a moved caret, another field or app never qualify.
+    public func matches(_ other: Self) -> Bool {
+        !secure && !other.secure && other.pid == pid && other.bundleID == bundleID
+            && CFEqual(other.window, window) && CFEqual(other.element, element)
+            && other.selectedRange == selectedRange && other.baseline == baseline
+    }
+    public func afterConfirmedInsertion(_ text: String) async -> Self? {
+        let deadline = ContinuousClock.now.advanced(by: .milliseconds(600))
+        var failure = "readbackUnavailable"
+        while ContinuousClock.now < deadline, !Task.isCancelled {
+            guard !secure, !IsSecureEventInputEnabled(), NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+                failure = "foregroundChanged"; break
+            }
+            if let current = Self.capture(expectedPID: pid) {
+                guard !current.secure, current.bundleID == bundleID,
+                      CFEqual(current.window, window), CFEqual(current.element, element) else { failure = "fieldChanged"; break }
+                if DeliveryVerification.canAdvanceQueuedInsertion(baseline: baseline, selection: selectedRange,
+                    text: text, observed: current.baseline, caret: current.selectedRange) {
+                    guard !Task.isCancelled, !IsSecureEventInputEnabled(),
+                          NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else { return nil }
+                    return current
+                }
+                let insertion = DeliveryVerification.insertionText(text, baseline: baseline, selection: selectedRange)
+                guard let expected = DeliveryVerification.expectedValue(baseline: baseline, selection: selectedRange, insertion: insertion),
+                      DeliveryVerification.normalized(current.baseline) == DeliveryVerification.normalized(expected)
+                        || current.baseline == baseline else { failure = "textChanged"; break }
+                failure = "caretOrValueNotSettled"
+            }
+            do { try await Task.sleep(for: .milliseconds(40)) } catch { return nil }
+        }
+        // Only a technical category, never text, field contents or clipboard data.
+        Logger(subsystem: "com.mediapublishing.VoiceWispr", category: "dictation-queue")
+            .notice("Queued insertion not advanced: \(failure, privacy: .public)")
+        return nil
     }
     public var selection: NSRange { selectedRange }
 }
@@ -297,7 +366,8 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
 }
 
 @MainActor public struct DeliveryCoordinator {
-    public init() {}
+    private let allowDirectSelection: Bool
+    public init(allowDirectSelection: Bool = true) { self.allowDirectSelection = allowDirectSelection }
     /// Browser/Electron fields can advertise writable selected text yet ignore
     /// the AX operation. Use paste for these apps on the first attempt, never
     /// as a retry after an ambiguous write. Native TextEdit retains its path.
@@ -308,8 +378,25 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         guard targetReadable && !secure && focusUnchanged else { return DeliveryOutcome(.notAttempted, reason: "Ziel nicht sicher verifizierbar; Text steht zur Wiederherstellung bereit.") }
         return DeliveryOutcome(.uncertain, reason: "Ziel geprüft; Zustellung muss noch bestätigt werden.")
     }
-    public func deliver(text: String, to target: FocusSnapshot?, allowClipboard: Bool = false) async -> DeliveryOutcome {
+    public func deliver(text: String, to target: FocusSnapshot?, allowClipboard: Bool = false,
+                        recordingInProgress: @MainActor () -> Bool = { false },
+                        insertionAllowed: @MainActor () -> Bool = { true }) async -> DeliveryOutcome {
         guard !Task.isCancelled else { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
+        var readiness = DictationDeliveryReadiness()
+        let physicalModifiers: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift]
+        deliveryReadiness: while true {
+            guard !Task.isCancelled, insertionAllowed() else { return DeliveryOutcome(.notAttempted, reason: "Automatisches Einfügen angehalten; Text bleibt verfügbar.") }
+            switch readiness.update(recording: recordingInProgress(),
+                modifiersHeld: !CGEventSource.flagsState(.hidSystemState).intersection(physicalModifiers).isEmpty,
+                now: ProcessInfo.processInfo.systemUptime) {
+            case .ready: break deliveryReadiness
+            case .timedOut:
+                return DeliveryOutcome(.notAttempted, reason: "Tastenkürzel noch gehalten; Text bitte aus dem Ergebnisfenster kopieren.")
+            case .wait:
+                do { try await Task.sleep(for: .milliseconds(20)) }
+                catch { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
+            }
+        }
         guard !text.isEmpty, let target, target.isUnchanged() else {
             return DeliveryOutcome(.notAttempted, reason: "Fokus, Auswahl oder Textfeld haben sich verändert. Text aus dem Wiederherstellungsfenster verwenden.")
         }
@@ -318,7 +405,7 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         let selected = AXAccess.string(target.element, kAXSelectedTextAttribute)
         let expectedSelected = (target.baseline as NSString).substring(with: target.selectedRange)
         // Use a single selected-text operation only when native AX explicitly exposes the exact selection.
-        if Self.usesDirectSelection(bundleID: target.bundleID, role: role), selected == expectedSelected,
+        if allowDirectSelection, Self.usesDirectSelection(bundleID: target.bundleID, role: role), selected == expectedSelected,
            AXAccess.settable(target.element, kAXSelectedTextAttribute) {
             #if DEBUG
             if CommandLine.arguments.contains("--test-delivery") { print("DELIVERY_TEST_METHOD selectedText"); fflush(stdout) }
@@ -333,12 +420,6 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         #endif
         guard allowClipboard else { return DeliveryOutcome(.notAttempted, reason: "Dieses Textfeld unterstützt kein direktes Einfügen. Text bleibt in der App; die Zwischenablage bleibt unverändert.") }
         let board = NSPasteboard.general
-        let releaseDeadline = ContinuousClock.now.advanced(by: .milliseconds(1500))
-        let physicalModifiers: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift]
-        while !CGEventSource.flagsState(.hidSystemState).intersection(physicalModifiers).isEmpty {
-            guard ContinuousClock.now < releaseDeadline, !Task.isCancelled else { return DeliveryOutcome(.notAttempted, reason: "Tastenkürzel noch gehalten; Text bitte aus dem Ergebnisfenster kopieren.") }
-            do { try await Task.sleep(for: .milliseconds(20)) } catch { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
-        }
         guard let saved = ClipboardSnapshot.capture(board), let source = CGEventSource(stateID: .hidSystemState),
               let down = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true),
               let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) else {
