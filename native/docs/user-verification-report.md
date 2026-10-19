@@ -6,6 +6,7 @@ Diese Fassung wird mit der App ausgeliefert. Sie enthält keine Diktate, Namen o
 
 ## Was geprüft wurde
 
+- Begrenzte Fokus-Wiederherstellung ohne Probezeichen oder Rückgängig-Tastenkürzel, Schutz bei Zielwechsel und Abbruch sowie Erhalt von Gesten beim Ersetzen eines ungültigen Tastatur-Hooks. Getrennte Regressionen für widerrufene Zustellungsfreigaben; keine vollständige Live-Abnahme aller Apps.
 - Schweizerdeutsch-Beta mit lokalem Modell und begrenzter Aufnahme-Warteschlange. Getrennte Tests für Akustik und Queue-Verhalten; kein Nachweis fehlerfreier Dialekterkennung.
 - Weiterdiktieren in allen ausgewählten Audiosprachen mit automatischer Einfügung in Aufnahme-Reihenfolge. Native Prüfungen für überlappende Aufnahmen, gleichwertige Rich-Text-Darstellung, verzögerte Cursor-Rückmeldung sowie Schutz nach Feldwechsel, Cursorwechsel und Abbruch. Ein lokaler praktischer Nutzertest war positiv; keine vollständige Abnahme aller Ziel-Apps.
 - Automatisierte Vertragsfälle für Spracherkennung, Textoptimierung, Wörterbuch, Wispr-Flow-Import, Zwischenablage, Kürzel und Verlauf.
