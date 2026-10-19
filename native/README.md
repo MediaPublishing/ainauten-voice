@@ -58,7 +58,7 @@ python3 scripts/check-human-suite.py --manifest artifacts/fixtures/fleurs/balanc
 
 Die lokalen Optimierungsfälle sind ausdrücklich synthetische Texte. Die öffentliche FLEURS-Auswahl verwendet einen festen Datenstand; Quell-/PCM-Prüfsummen und CC-BY-4.0-Provenance liegen bei den ignorierten Fixtures. Zehn gemischte Fälle sind zusammengesetzte Lesetexte verschiedener Sprecher, keine spontanen Sprachwechsel. `--settings-dictionary` liest das lokale Wörterbuch ohne Schlüsselbundzugriff und unterdrückt alle Inhaltsfelder im Probe-Receipt. `format-cases` protokolliert nur solche deklarierten Fixtures; die App speichert keine Inhalte in Diagnoseprotokollen. Der optionale lokale Textverlauf ist davon getrennt. Die lokale Glättung ist auf die Wortfolge des aktuellen Abschnitts beschränkt. Bei Diktaten über zehn Minuten prüft der abschließende Abgleich 60-Sekunden-Blöcke mit acht Sekunden akustischem Kontext. Details und weiterhin offene praktische Abnahme stehen im Prüfbericht.
 
-Bei `SwiftUIMacros.StateMacro`-Fehlern in neuen Command Line Tools ist die passende SwiftUI-Macro-Laufzeit erforderlich. Auf dem Referenzsystem wurde der Release-Build mit `swift build --build-system native --sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -c release --jobs 4` geprüft. Nutze nur ein bereits vorhandenes, kompatibles SDK oder vollständiges passendes Xcode; ändere keine globale Toolchain-Konfiguration für eine Nutzerinstallation. Dieser Build-Befehl allein erstellt noch kein installierbares App-Bundle.
+Bei `SwiftUIMacros.StateMacro`-Fehlern in neuen Command Line Tools ist die passende SwiftUI-Macro-Laufzeit erforderlich. Auf dem Referenzsystem wurde der Release-Build mit `swift build --build-system native --sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -c release --jobs 4` geprüft. Nutze nur ein bereits vorhandenes, kompatibles SDK oder vollständiges passendes Xcode; ändere keine globale Toolchain-Konfiguration für eine Nutzerinstallation. Dieser Build-Befehl allein erstellt noch kein installierbares App-Bundle. Für begrenzten Speicher lassen sich vorhandene Abhängigkeiten in einem taskbezogenen `--scratch-path` wiederverwenden. `scripts/package.py --scratch-path … --jobs 2` und `scripts/portable-checks.py --scratch-path … --output … --jobs 2` verwenden denselben Build. `--development --debug --app-only` erzeugt nur ein Test-Bundle ohne zusätzlichen Installer und ist für öffentliche Pakete gesperrt.
 
 Die Prüfskripte `portable-checks.py`, `check-paragraph-quality.py` und `check-textedit-delivery.py` nehmen ebenfalls `--sdk /Pfad/zum/kompatiblen.sdk` an. Sie verwenden dieses SDK sowohl beim Paketbau als auch beim Kompilieren der jeweiligen Prüfung. Die Absatzprüfung liest das vorhandene lokale Wörterbuch, verändert keine Einstellungen und prüft ausschließlich deklarierte Textfälle; sie ersetzt keinen Spracherkennungstest.
 
@@ -66,11 +66,17 @@ Die Absatzprüfung protokolliert auch fehlgeschlagene Formatierungsversuche mit 
 
 ## Sicherheit und Zustellung
 
+Lokale Entwicklungskandidaten können mit `scripts/package.py --development
+--app-only --development-version 0.1.17 --development-build 21` eine eigene
+Versionsanzeige erhalten, ohne die Metadaten des öffentlichen Releases zu
+ändern. Beide Versionsargumente sind ausschließlich mit `--development`
+zulässig; solche Pakete dürfen nicht öffentlich ausgeliefert werden.
+
 Der vorhandene Berechtigungscheck prüft auch, ob der Tastatur-Hook noch gültig und aktiviert ist, und stellt einen deaktivierten beziehungsweise ungültigen Hook wieder her. Das Aus- und Einschalten über „Tastenkürzel aktiv“ im Menü verwirft eine laufende Sitzung samt Gestenzustand und baut die Hotkey-Hooks neu auf.
 
 Einfügung nur in unveränderte, lesbare AX-Ziele. Bestätigung verlangt kompletten Text-/Cursor-Readback, keine bloße Tastensimulation. Bei Zweifel vollständiges Ergebnisfenster; keine automatische Wiederholung. Zwischenablage wird byteweise gesichert, bei unlesbaren/über 64 MB großen Inhalten nicht verändert; ein neuer Benutzer-Copy gewinnt. macOS stellt keine atomare Fokus-und-Paste-Operation bereit. Verzögerte Einfügeziele können nach dem 1,5-Sekunden-Fenster unklar bleiben.
 
-Wenn beim Diktatstart kein editierbares Textfeld fokussiert ist, prüft die App das ursprüngliche Ziel vor dem Einfügen erneut. Die Wiederholungen sind begrenzt und bleiben an dieselbe App, dasselbe Fenster und dasselbe Bedienelement gebunden. Dabei werden weder Probezeichen eingegeben noch Tastenkürzel zum Rückgängigmachen gesendet. Ist das Textfeld weiterhin nicht sicher lesbar und editierbar, bleibt das Diktat zur Wiederherstellung in der App. Ein App-, Fenster- oder Fokuswechsel sowie sichere Eingaben verhindern die Zustellung. Die Einstellung zur Zwischenablage-Nutzung bleibt maßgeblich.
+Bei expliziter Wiederherstellung und im separaten Kameraablauf kann die App ein ursprünglich noch nicht lesbares Ziel erneut prüfen. Die automatische Diktatwarteschlange behält ihre bei Aufnahmebeginn verifizierten Textfeld-Snapshots und übernimmt kein späteres Ersatz-Ziel. Die Wiederholungen sind begrenzt und bleiben an dieselbe App, dasselbe Fenster und dasselbe Bedienelement gebunden. Dabei werden weder Probezeichen eingegeben noch Tastenkürzel zum Rückgängigmachen gesendet. Ist das Textfeld weiterhin nicht sicher lesbar und editierbar, bleibt das Diktat zur Wiederherstellung in der App. Ein App-, Fenster- oder Fokuswechsel sowie sichere Eingaben verhindern die Zustellung. Die Einstellung zur Zwischenablage-Nutzung bleibt maßgeblich.
 
 Einstellungen und Wörterbuch: `~/Library/Application Support/Voice Wispr/settings.json`, atomar, versioniertes Exportformat. API-Schlüssel ausschließlich Keychain. Audio und die fünf letzten Resultate für den Schnellzugriff bleiben im Speicher. Bei eingeschaltetem Verlauf werden Diktattexte zusätzlich lokal in history.sqlite gespeichert; das lässt sich in der App abschalten. SDK-Transkript-Diagnosen und llama-Logs sind deaktiviert. Die App liest den fokussierten Text ausschließlich für lokale Zustellungsprüfung; er wird weder an ein Sprachmodell noch an Cloud gesendet.
 
@@ -96,3 +102,11 @@ Der Prüfer aktiviert oder startet keine App und liest keine Diktate, Zwischenab
 ## Sicherheitsänderungen für den nächsten Kandidaten
 
 Der veröffentlichte Build 0.1.11 (15) ist weiterhin lokal signiert und nicht notarisiert. Apple-notarisierte Pakete benötigen eine bestehende Developer ID Application und `--notary-profile`. Die ausdrücklich freigegebene, nicht notarisierte Beta verwendet `--local-beta` in Paket-, Update- und Website-Build. Lokale Tests verwenden `--development`; dieser Modus ist kein Veröffentlichungsweg. Automatische Zwischenablage-Nutzung ist im aktuellen Quellcode standardmäßig aus und erfordert Opt-in. Details und noch offene Apple-Einrichtung: [Sicherheitsnachprüfung](docs/security-followup-2026-10-06.md).
+# Schweizerdeutsch-Beta / Swiss German beta
+
+Optionales Profil mit hochdeutscher Ausgabe und lokaler Verarbeitung, ohne
+separate Dialektauswahl. Zusatzmodell und Qualitätsgrenzen:
+[Anleitung und Modellvergleich](docs/swiss-german-beta.md).
+
+Optional profile for Swiss German speech with standard German output and local
+processing. See the [setup and model comparison](docs/swiss-german-beta.md).

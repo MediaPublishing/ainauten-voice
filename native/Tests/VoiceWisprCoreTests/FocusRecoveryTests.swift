@@ -2,6 +2,25 @@ import XCTest
 @testable import VoiceWisprCore
 
 final class FocusRecoveryTests: XCTestCase {
+    @MainActor func testDeliveryPermissionRevokedDuringRecordingWaitDoesNotSubmit() async {
+        var permissionChecks = 0, recordingChecks = 0
+        let outcome = await DeliveryCoordinator().deliver(text: "Keep this for recovery", to: nil,
+            recordingInProgress: { recordingChecks += 1; return true },
+            insertionAllowed: { permissionChecks += 1; return permissionChecks == 1 })
+        XCTAssertEqual(outcome.status, .notAttempted)
+        XCTAssertFalse(outcome.inputWasSubmitted)
+        XCTAssertEqual(permissionChecks, 2)
+        XCTAssertEqual(recordingChecks, 1)
+    }
+    @MainActor func testRevokedDeliveryPermissionDoesNotReadRecordingState() async {
+        var recordingChecks = 0
+        let outcome = await DeliveryCoordinator().deliver(text: "Keep this for recovery", to: nil,
+            recordingInProgress: { recordingChecks += 1; return false },
+            insertionAllowed: { false })
+        XCTAssertEqual(outcome.status, .notAttempted)
+        XCTAssertFalse(outcome.inputWasSubmitted)
+        XCTAssertEqual(recordingChecks, 0)
+    }
     @MainActor func testMissingEditableFieldFailsClosedWithBoundedReadOnlyRetries() async {
         var reads = 0, pauses = 0
         let target: String? = await FocusCaptureRetry.capture(expectedPID: 42,

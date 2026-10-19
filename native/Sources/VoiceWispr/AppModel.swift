@@ -186,6 +186,9 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
 @MainActor final class AppModel: NSObject, ObservableObject, NSWindowDelegate, NSApplicationDelegate {
     let reports = ErrorReportController()
     @Published var document = ExportDocument() { didSet {
+        if !loading, !previewMode, swissEnabled, document.settings.swissNeedsFormatter != oldValue.settings.swissNeedsFormatter {
+            speechProfileNeedsPreparation = true
+        }
         scheduleSave(); updateHotkey()
         if document.settings.menuBarOnly != oldValue.settings.menuBarOnly { updateActivationPolicy() }
     } }
@@ -213,6 +216,19 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     @Published private(set) var recordingDelayed = false
     @Published var elapsed: TimeInterval = 0
     @Published var results: [DictationResult] = []
+    @Published private(set) var pendingDictationCount = 0
+    @Published private(set) var dictationQueueFailures = 0
+    @Published private(set) var queuedDrafts: [DictationResult] = []
+    private var dictationQueue = DictationQueue()
+    private var dictationJobs: [UUID: QueuedCaptureJob] = [:]
+    private var queuedCapture: QueuedCaptureJob?
+    private var dictationQueueTask: Task<Void, Never>?
+    private var queuedDeliveryTask: Task<DeliveryOutcome, Never>?
+    private var dictationQueueGeneration = UUID()
+    private var queuedInsertionAnchor: FocusSnapshot?
+    var hasQueuedWork: Bool { !dictationQueue.entries.isEmpty }
+    var queuedCombinedText: String { queuedDrafts.map(\.text).joined(separator: "\n\n") }
+
     @Published var practiceFeedback = PracticeFeedback()
     @Published private var recoveryReasonMessage: LocalizedMessage = L10n.message("")
     var recoveryReason: String {
@@ -248,6 +264,22 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     @Published var downloading = false
     @Published var preparing = false
     @Published var modelsReady = false
+    @Published var baseModelsReady = false
+    @Published private(set) var swissReady = false
+    @Published private(set) var swissModelInstalled = false
+    @Published private(set) var swissDownloading = false
+    @Published private(set) var swissNeedsBaseModels = false
+    @Published private(set) var swissDownloadFraction = 0.0
+    @Published private var swissStatusMessage: LocalizedMessage = .key("swiss.modelRequired", [])
+    var swissStatus: String { swissStatusMessage.text }
+    var swissEnabled: Bool { document.settings.usesSwissGerman }
+    var canChangeSpeechProfile: Bool { !loading && !preparing && !downloading && sessionID == nil && !hasQueuedWork && !lipPreparing && !lipSession && !quitting }
+    private let swissDownloader = ModelDownloader()
+    private let swissSpeech = SwissGermanSpeechRuntime()
+    private var swissDownloadTask: Task<Void, Never>?
+    private var swissDownloadID = UUID()
+    private var speechPreparationID = UUID()
+    private var speechProfileNeedsPreparation = false
     @Published var microphoneGranted = false
     @Published var accessibilityGranted = false
     @Published var cameraGranted = false
@@ -388,7 +420,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     // A failed cached preview must not lock the user out of a fresh transactional import.
     var canImportWispr: Bool { !previewMode && !loading && importPreviewLoaded && !importRefreshing && !importing }
     var acceptsDictationGesture: Bool {
-        state == .ready || state == .recording || state == .success || (state == .error && sessionID == nil)
+        state == .ready || state == .recording || state == .success || (state == .processing && hasQueuedWork && sessionID == nil) || (state == .error && sessionID == nil)
     }
 
     var pillLabel: String { state == .ready ? document.settings.shortcut.spokenLabel : status }
@@ -450,8 +482,8 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         updates.busy = { [weak self] in
             guard let self else { return true }
             return UpdatePolicy.busy(recording: self.state == .recording,
-                processing: self.state == .processing,
-                setup: self.loading || self.downloading || self.preparing || self.importing || self.switchingWispr || self.lipPreparing || self.lipInstalling || !self.document.settings.onboardingComplete)
+                processing: self.state == .processing || self.hasQueuedWork,
+                setup: self.loading || self.downloading || self.swissDownloading || self.preparing || self.importing || self.switchingWispr || self.lipPreparing || self.lipInstalling || !self.document.settings.onboardingComplete)
         }
         if !previewMode { updates.start() }
         hotkey.onGesture = { [weak self] gesture in switch gesture { case .start: self?.start(); case .stop: self?.stop(); case .cancel: self?.cancel(); case .handsFree: break; case .copyLast: if self?.results.isEmpty == false { self?.copyResult(at: 0) }; case .pasteLast: self?.pasteLastResult() } }
@@ -465,7 +497,15 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             #if DEBUG
             if ["overview", "history", "statistics", "dictionary", "updates", "beta", "help"].contains(preview) {
                 loadHistoryPreview(empty: CommandLine.arguments.contains("--preview-empty"))
-                document.settings.onboardingComplete = true; modelsReady = true; microphoneGranted = true; accessibilityGranted = true
+                document.settings.onboardingComplete = true; modelsReady = true; baseModelsReady = true; microphoneGranted = true; accessibilityGranted = true
+                if preview == "beta", let swissPreview = CommandLine.arguments.first(where: { $0.hasPrefix("--preview-swiss=") })?.split(separator: "=").last {
+                    document.settings.swissGermanEnabled = true
+                    swissModelInstalled = swissPreview == "ready" || swissPreview == "error"
+                    swissReady = swissPreview == "ready"; modelsReady = swissReady
+                    swissNeedsBaseModels = swissPreview == "base"
+                    swissDownloading = swissPreview == "downloading"; swissDownloadFraction = 0.48
+                    swissStatusMessage = .key(swissPreview == "ready" ? "swiss.ready" : swissPreview == "downloading" ? "swiss.downloading" : swissPreview == "error" ? "swiss.prepareFailed" : swissPreview == "base" ? "swiss.baseRequired" : "swiss.modelRequired", [])
+                }
                 settingsNavigation = SettingsNavigation(section: SettingsSection.allCases.first { $0.previewName == preview } ?? .overview, setupStep: nil)
                 showSettings()
             }
@@ -487,7 +527,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 bindings.copyLast = [Shortcut(keyCode: 8, modifiers: (1 << 18) | (1 << 20))]
                 bindings.pasteLast = [Shortcut(keyCode: 9, modifiers: (1 << 18) | (1 << 20))]
                 document.settings.shortcutBindings = bindings
-                modelsReady = true; microphoneGranted = true; accessibilityGranted = true
+                modelsReady = true; baseModelsReady = true; microphoneGranted = true; accessibilityGranted = true
                 state = .ready; status = "Bereit zum Diktieren"
                 settingsNavigation = SettingsNavigation(section: .dictation, setupStep: nil)
                 showSettings()
@@ -528,7 +568,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 recoveryPreviewStarted = ProcessInfo.processInfo.systemUptime
                 document.settings.shortcut = Shortcut(keyCode: 49, modifiers: (1 << 17) | (1 << 18) | (1 << 19))
                 document.settings.shortcutBindings = ShortcutBindings()
-                modelsReady = true; microphoneGranted = true; accessibilityGranted = AXIsProcessTrusted()
+                modelsReady = true; baseModelsReady = true; microphoneGranted = true; accessibilityGranted = AXIsProcessTrusted()
                 state = .error; results = [.init(id: UUID(), text: "Öffentlicher Prüftext.", original: "", usedFallback: false, duration: 3)]
                 recoveryReason = "Kürzelprüfung ohne Mikrofon: Control + Option + Shift + Leertaste."
                 showRecovery(activate: false)
@@ -586,14 +626,15 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             if !document.settings.onboardingComplete { showSettings() }
             let installed = (try? await downloader.installed()) == true
             preparing = false
-            if installed { await prepareModels() }
+            baseModelsReady = installed
+            if installed || swissEnabled { await prepareModels() }
             if lipEnabled { prepareLipReading() }
             updateHotkey()
         }
         refreshClock = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in Task { @MainActor in self?.refreshPermissions() } }
         // About 3 GB stay resident otherwise. Free the formatter under pressure; the next dictation reloads it.
         let pressure = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .main)
-        pressure.setEventHandler { [weak self] in MainActor.assumeIsolated { guard let self, self.sessionID == nil else { return }; Task { await self.formatter.unload() } } }
+        pressure.setEventHandler { [weak self] in MainActor.assumeIsolated { guard let self, self.sessionID == nil, !self.hasQueuedWork else { return }; Task { await self.formatter.unload() } } }
         pressure.resume(); memoryPressure = pressure
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.prepareForSleep() } }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in Task { @MainActor in self?.updateHotkey() } }
@@ -717,10 +758,18 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if shutdownComplete { return .terminateNow }
         // Sparkle's deferral delegate is not called for every installation path.
+        if hasQueuedWork && !updates.installingUpdate && !quitting {
+            let alert = NSAlert()
+            alert.messageText = L10n.text("dictation.queue.quitTitle")
+            alert.informativeText = L10n.text("dictation.queue.quitHelp")
+            alert.addButton(withTitle: L10n.text("dictation.queue.keepWorking"))
+            alert.addButton(withTitle: L10n.text("dictation.queue.discardQuit"))
+            if alert.runModal() == .alertFirstButtonReturn { return .terminateCancel }
+        }
         // Never let its relaunch cancel an active recording or processing task.
         if updates.installingUpdate && updates.busy() { return .terminateCancel }
         if !quitting {
-            quitting = true; cancel(); downloadTask?.cancel(); refreshClock?.invalidate(); lipPreparation?.cancel()
+            quitting = true; cancel(); downloadTask?.cancel(); swissDownloadTask?.cancel(); speechPreparationID = UUID(); swissDownloadID = UUID(); refreshClock?.invalidate(); lipPreparation?.cancel()
             let pendingSave = saveTask, pendingHistory = historyWriteTask
             Task { await lipRuntime.cancel(); await lipInstaller.cancel(); await pendingSave?.value; await pendingHistory?.value; await formatter.shutdown(); shutdownComplete = true; sender.reply(toApplicationShouldTerminate: true) }
         }
@@ -745,6 +794,13 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         updateHotkey()
     }
     private func updateHotkey() {
+        if speechProfileNeedsPreparation, sessionID == nil, !hasQueuedWork, !loading, !quitting {
+            modelsReady = false; swissReady = false
+            if !preparing, !downloading, !swissDownloading {
+                speechProfileNeedsPreparation = false
+                Task { await prepareModels() }
+            }
+        }
         updateStatusItem()
         guard !quitting else { hotkey.enabled = false; hotkey.cancellationEnabled = false; lipHotkey.enabled = false; lipHotkey.cancellationEnabled = false; return }
         #if DEBUG
@@ -752,18 +808,18 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         #else
         guard !previewMode else { return }
         #endif
-        hotkey.cancellationEnabled = sessionID != nil && (state == .recording || state == .processing) && accessibilityGranted && !shortcutCapture
+        hotkey.cancellationEnabled = (sessionID != nil || hasQueuedWork) && (state == .recording || state == .processing) && accessibilityGranted && !shortcutCapture
         hotkey.shortcut = document.settings.shortcut
         hotkey.bindings = document.settings.shortcutBindings ?? ShortcutBindings()
         updateLipHotkey()
-        let allowed = !preparing && modelsReady && microphoneGranted && accessibilityGranted && !lipSession && !conflict && !document.settings.paused && !shortcutCapture
+        let allowed = !preparing && modelsReady && (!swissEnabled || swissReady) && microphoneGranted && accessibilityGranted && !lipSession && !conflict && !document.settings.paused && !shortcutCapture
         // A result panel, including manual history/partial text, never blocks
         // a new dictation. start() closes it while retaining the hold gesture.
         hotkey.enabled = allowed && acceptsDictationGesture
         if allowed { _ = hotkey.install() }
         guard state != .recording && state != .processing && state != .success && state != .error else { return }
         let nextState: PillState = allowed ? .ready : preparing || loading ? .loading : conflict ? .conflict : document.settings.paused ? .paused : .needsSetup
-        let nextStatus = allowed ? "Bereit zum Diktieren" : preparing || loading ? preparationStatusMessage.text : conflict ? "Wispr Flow läuft. Bitte den Wechsel abschließen." : document.settings.paused ? "Tastenkürzel ausgeschaltet" : !modelsReady ? "Modelle einrichten" : !microphoneGranted ? "Mikrofon freigeben" : "Bedienungshilfen freigeben"
+        let nextStatus = allowed ? (swissEnabled ? L10n.text("swiss.ready") : "Bereit zum Diktieren") : preparing || loading ? preparationStatusMessage.text : conflict ? "Wispr Flow läuft. Bitte den Wechsel abschließen." : document.settings.paused ? "Tastenkürzel ausgeschaltet" : swissEnabled && !swissReady ? swissStatus : !modelsReady ? "Modelle einrichten" : !microphoneGranted ? "Mikrofon freigeben" : "Bedienungshilfen freigeben"
         if state != nextState { state = nextState }
         if statusMessage != L10n.message(nextStatus) { status = nextStatus }
         hotkey.enabled = allowed
@@ -779,31 +835,96 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         NSWorkspace.shared.open(PrivacySettings.destination("Accessibility"))
     }
     func installModels() {
-        guard !downloading else { return }; downloading = true; errorMessage = nil
+        guard !downloading, !swissDownloading, !preparing, sessionID == nil else { return }; downloading = true; errorMessage = nil
         downloadTask = Task {
             do {
                 try await downloader.install { [weak self] current, total, group in
                     Task { @MainActor in self?.downloadFraction = Double(current) / Double(max(1, total)); self?.downloadLabelMessage = .key("models.progress", [L10n.text(group == "parakeet" ? "models.recognition" : "models.optimization"), ByteCountFormatter.string(fromByteCount: current, countStyle: .file), ByteCountFormatter.string(fromByteCount: total, countStyle: .file)]) }
                 }
-                downloading = false; await prepareModels()
+                downloading = false; baseModelsReady = true; await prepareModels()
             } catch is CancellationError { downloading = false; downloadLabel = "Download pausiert. Beim nächsten Start geht es weiter." }
             catch { downloading = false; errorMessage = error.localizedDescription }
         }
     }
     func pauseDownload() { downloadTask?.cancel(); Task { await downloader.cancel() } }
+    func setSwissGermanEnabled(_ enabled: Bool) {
+        guard canChangeSpeechProfile, enabled != swissEnabled else { return }
+        if !enabled { pauseSwissDownload() }
+        modelsReady = false; swissReady = false
+        document.settings.swissGermanEnabled = enabled
+        Task { await prepareModels() }
+    }
+    func pauseSwissDownload() {
+        swissDownloadTask?.cancel()
+        Task { await swissDownloader.cancel() }
+    }
+    func installSwissModel() {
+        guard swissEnabled, canChangeSpeechProfile, !swissDownloading, !previewMode else { return }
+        let token = UUID(); swissDownloadID = token
+        swissDownloading = true; swissStatusMessage = .key("swiss.downloading", [])
+        swissDownloadTask = Task {
+            do {
+                try await swissDownloader.install(groups: [SwissGermanModel.group]) { [weak self] current, total, _ in
+                    Task { @MainActor in
+                        guard let self, self.swissDownloadID == token, self.swissDownloading else { return }
+                        self.swissDownloadFraction = Double(current) / Double(max(1, total))
+                        self.swissStatusMessage = .key("swiss.progress", [ByteCountFormatter.string(fromByteCount: current, countStyle: .file), ByteCountFormatter.string(fromByteCount: total, countStyle: .file)])
+                    }
+                }
+                guard swissDownloadID == token, !quitting else { return }
+                swissDownloading = false; swissModelInstalled = true
+                if swissEnabled { await prepareModels() }
+            } catch {
+                guard swissDownloadID == token, !quitting else { return }
+                swissDownloading = false
+                swissStatusMessage = error is CancellationError ? .key("swiss.paused", []) : .joined([.key("swiss.downloadFailed", []), L10n.message(error.localizedDescription)], " ")
+                updateHotkey()
+            }
+        }
+    }
     func prepareModels() async {
-        guard !quitting else { return }
+        guard !quitting, sessionID == nil, !hasQueuedWork, !preparing else { return }
+        let token = UUID(); speechPreparationID = token
+        speechProfileNeedsPreparation = false
+        let swiss = swissEnabled
+        modelsReady = false; swissReady = false
         preparationStatusMessage = .key("status.speechLoading", [])
         preparing = true; state = .loading; status = preparationStatusMessage.text; updateHotkey()
         do {
-            try await speech.prepare()
-            guard !quitting else { return }
-            preparationStatusMessage = .key("status.formatterLoading", []); status = preparationStatusMessage.text
-            try await formatter.prepare()
-            guard !quitting else { return }
+            if swiss {
+                swissStatusMessage = .key("swiss.checking", [])
+                swissModelInstalled = try await swissDownloader.installed(groups: [SwissGermanModel.group])
+                let needsFormatter = document.settings.swissNeedsFormatter
+                let baseGroups: Set<String> = needsFormatter ? ["vad", "qwen"] : ["vad"]
+                swissNeedsBaseModels = try await !downloader.installed(groups: baseGroups)
+                guard speechPreparationID == token, !quitting else { return }
+                if !swissModelInstalled || swissNeedsBaseModels {
+                    swissStatusMessage = .key(swissNeedsBaseModels ? "swiss.baseRequired" : "swiss.modelRequired", [])
+                    preparing = false; state = .needsSetup; updateHotkey(); return
+                }
+                try await swissSpeech.prepare()
+                if needsFormatter { try await formatter.prepare() }
+                guard speechPreparationID == token, !quitting else { return }
+                swissReady = true; swissStatusMessage = .key("swiss.ready", [])
+            } else {
+                baseModelsReady = try await downloader.installed()
+                guard speechPreparationID == token, !quitting else { return }
+                if !baseModelsReady { preparing = false; state = .needsSetup; updateHotkey(); return }
+                try await speech.prepare()
+                guard speechPreparationID == token, !quitting else { return }
+                preparationStatusMessage = .key("status.formatterLoading", []); status = preparationStatusMessage.text
+                try await formatter.prepare()
+            }
+            guard speechPreparationID == token, !quitting else { return }
             modelsReady = true; state = .paused; status = "Bereit"
         }
-        catch { modelsReady = false; errorMessage = error.localizedDescription; state = .error; status = "Modelle prüfen"; reports.record(component: .models, code: .modelLoadFailed) }
+        catch {
+            guard speechPreparationID == token, !quitting else { return }
+            modelsReady = false; swissReady = false
+            if swiss { swissStatusMessage = .joined([.key("swiss.prepareFailed", []), L10n.message(error.localizedDescription)], " "); state = .needsSetup }
+            else { errorMessage = error.localizedDescription; state = .error; status = "Modelle prüfen" }
+            reports.record(component: .models, code: .modelLoadFailed)
+        }
         preparing = false; updateHotkey()
     }
     func refreshImportPreview() {
@@ -882,10 +1003,13 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         captureStartupMilliseconds = max(0, receivedAt - requestedAt) * 1000
     }
     func start(practice: Bool = false) {
+        if !practice && !previewMode { startQueuedCapture(); return }
+        guard !hasQueuedWork else { return }
         let requestedAt = ProcessInfo.processInfo.systemUptime
         guard !quitting else { return }
         guard sessionID == nil else { return }
-        guard !preparing, modelsReady, microphoneGranted else {
+        guard !preparing, modelsReady, (!swissEnabled || swissReady), microphoneGranted else {
+            if swissEnabled && !swissReady && !preparing { settingsNavigation = SettingsNavigation(section: .beta, setupStep: nil); showSettings() }
             if practice {
                 let id = UUID(); practiceFeedback.begin(id)
                 practiceFeedback.fail(id, message: !modelsReady ? "Die Modelle sind noch nicht bereit. Lade sie im Schritt „Modelle“." : "Die Mikrofonfreigabe fehlt. Öffne den Schritt „Freigaben“ und erlaube AInauten Voice den Zugriff.")
@@ -916,7 +1040,8 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         }
         #endif
         let dictionary = document.dictionary
-        let languages = document.settings.languages
+        let settings = document.settings
+        let selectedSpeech: any SpeechTranscribing = settings.usesSwissGerman ? swissSpeech : speech
         operation = Task {
             do {
                 guard sessionID == id, !Task.isCancelled else { return }
@@ -926,16 +1051,17 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                     focus = await FocusSnapshot.captureWithRetry(expectedPID: targetPID)
                 }
                 guard sessionID == id, !Task.isCancelled else { return }
-                let style = document.settings.style(for: focus?.bundleID)
+                let style = settings.style(for: focus?.bundleID)
+                let route = DictationProcessingRoute(settings: settings, style: style)
+                let languages = route.languages
                 historyContext = HistoryCaptureContext(date: Date(), style: style, bundleID: focus?.bundleID,
                     appName: focus.flatMap { NSRunningApplication(processIdentifier: $0.pid)?.localizedName }, enabled: document.settings.historyEnabled ?? true)
-                let selectedFormatter: any TextFormatting
-                if document.settings.cloudEnabled && style != .original {
-                    guard let endpoint = URL(string: document.settings.cloudEndpoint) else { throw VoiceError.message("Ungültige Cloud-Adresse") }
+                let selectedFormatter = try route.selectFormatter(local: formatter) {
+                    guard let endpoint = URL(string: settings.cloudEndpoint) else { throw VoiceError.message("Ungültige Cloud-Adresse") }
                     let key = try CloudRecipient.authorizedKey(for: endpoint)
-                    selectedFormatter = CloudFormatter(endpoint: endpoint, model: document.settings.cloudModel, key: key)
-                } else { selectedFormatter = formatter }
-                let pipeline = ProcessingPipeline(speech: speech, formatter: selectedFormatter); self.pipeline = pipeline
+                    return CloudFormatter(endpoint: endpoint, model: settings.cloudModel, key: key)
+                }
+                let pipeline = ProcessingPipeline(speech: selectedSpeech, formatter: selectedFormatter); self.pipeline = pipeline
                 // An immediate release still needs pipeline initialization so Stop can finish.
                 if state != .recording {
                     try await pipeline.start(sessionID: id, style: style, dictionary: dictionary, languages: languages)
@@ -983,6 +1109,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         }
     }
     func stop() {
+        if queuedCapture != nil { stopQueuedCapture(); return }
         guard let id = sessionID, state == .recording else { return }
         if lipSession { stopLipReading(id); return }
         #if DEBUG
@@ -1067,6 +1194,11 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     /// Sleep must not silently drop what was already said. Finish the recording,
     /// keep processing, and show the text instead of pasting after wake.
     private func prepareForSleep() {
+        if hasQueuedWork {
+            dictationQueue.suppressAutomaticDelivery()
+            if queuedCapture != nil { stopQueuedCapture() }
+            return
+        }
         if sessionID != nil && !practiceSession && !lipSession && (state == .recording || state == .processing) {
             sleepInterrupted = true
             if state == .recording { stop() }
@@ -1087,11 +1219,18 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         Task { try? await Task.sleep(for: .seconds(1.5)); guard self.sessionID == nil, self.state == .error, self.statusRevision == noSpeechID else { return }; self.state = .paused; self.updateHotkey() }
     }
     func useOriginal() {
+        if let entry = dictationQueue.entries.first, entry.phase == .processing,
+           let pipeline = dictationJobs[entry.id]?.pipeline {
+            status = "Originaltext wird abgeschlossen …"
+            Task { await pipeline.requestOriginal() }
+            return
+        }
         guard state == .processing, sessionID != nil else { return }
         originalRequested = true; status = "Originaltext wird abgeschlossen …"
         if let pipeline { Task { await pipeline.requestOriginal() } }
     }
     func cancel() {
+        cancelQueuedWork()
         let wasLipSession = lipSession
         camera.cancel(); lipHotkey.reset(); lipHotkey.cancellationEnabled = false; lipSession = false
         if practiceSession, let id = sessionID { practiceFeedback.cancel(id) }
@@ -1203,7 +1342,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         pill?.setVisible(!quitting && active, loading: state == .loading)
     }
     func pasteLastResult() {
-        guard sessionID == nil, !conflict, let result = results.first else { return }
+        guard sessionID == nil, !hasQueuedWork, !conflict, let result = results.first else { return }
         guard result.isComplete else { recoveryReason = "Dieser Teiltext wird nicht automatisch eingefügt."; showRecovery(); return }
         let target = FocusSnapshot.capture()
         let recovery = target == nil ? InputFocusRecovery.capture() : nil
@@ -1518,5 +1657,279 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     private func scheduleSave() {
         guard !loading && !previewMode else { return }; saveTask?.cancel()
         saveTask = Task { try? await Task.sleep(for: .milliseconds(200)); guard !Task.isCancelled else { return }; do { try await store.save(document) } catch { errorMessage = "Einstellungen konnten nicht gespeichert werden: \(error.localizedDescription)" } }
+    }
+}
+
+
+/// One capture owns its own asynchronous initialization and immutable settings.
+/// Late worker callbacks must never use the currently recording job's state.
+@MainActor private final class QueuedCaptureJob {
+    let id = UUID()
+    let settings: VoiceWisprCore.Settings
+    let dictionary: [DictionaryEntry]
+    let capturedAt = Date()
+    var focus: FocusSnapshot?
+    var history: HistoryCaptureContext?
+    var pipeline: ProcessingPipeline?
+    var initialization: Task<Void, Never>?
+    var append: Task<Void, Never>?
+    var accepted = 0
+    var blocks: [Int: [Float]] = [:]
+    var samples: [Float] = []
+    var failure: Error?
+    var stopped = false
+    var followsConfirmedInsertion = false
+    var style: TextStyle { settings.style(for: focus?.bundleID) }
+    var languages: [String] { DictationProcessingRoute(settings: settings, style: style).languages }
+    init(settings: VoiceWisprCore.Settings, dictionary: [DictionaryEntry]) { self.settings = settings; self.dictionary = dictionary }
+}
+
+extension AppModel {
+    private func makeQueuedPipeline(for job: QueuedCaptureJob) throws -> ProcessingPipeline {
+        let route = DictationProcessingRoute(settings: job.settings, style: job.style)
+        let selectedFormatter = try route.selectFormatter(local: formatter) {
+            guard let endpoint = URL(string: job.settings.cloudEndpoint) else { throw VoiceError.message("Ungültige Cloud-Adresse") }
+            let key = try CloudRecipient.authorizedKey(for: endpoint)
+            return CloudFormatter(endpoint: endpoint, model: job.settings.cloudModel, key: key)
+        }
+        let selectedSpeech: any SpeechTranscribing = job.settings.usesSwissGerman ? swissSpeech : speech
+        return ProcessingPipeline(speech: selectedSpeech, formatter: selectedFormatter)
+    }
+    private func startQueuedCapture() {
+        guard !quitting, !loading, !preparing, modelsReady, (!swissEnabled || swissReady), microphoneGranted,
+              accessibilityGranted, !conflict, !document.settings.paused, sessionID == nil else { return }
+        guard queuedDrafts.count < 32 else {
+            status = L10n.text("dictation.queue.collectFirst"); return
+        }
+        if !hasQueuedWork {
+            // A completed failed series stays recoverable, but must not disable
+            // automatic insertion for a new, independently captured target.
+            dictationQueue.resetBatchIfIdle()
+            queuedInsertionAnchor = nil
+            if queuedDrafts.isEmpty { dictationQueueFailures = 0 }
+        }
+        let job = QueuedCaptureJob(settings: document.settings, dictionary: document.dictionary)
+        guard dictationQueue.reserve(job.id) else {
+            status = L10n.text("dictation.queue.full"); return
+        }
+        let stream = dictationQueue.entries.count == 1 && dictationQueueTask == nil
+        dictationJobs[job.id] = job; queuedCapture = job; sessionID = job.id
+        pendingDictationCount = dictationQueue.entries.count
+        closeRecovery(); errorMessage = nil; captureReady = false
+        quietDeliveryFeedback = false; sleepInterrupted = false; practiceSession = false; originalRequested = false
+        recordingDelayed = false
+        captureStartupMilliseconds = nil; elapsed = 0; level = 0
+        spectrumMeter = AudioSpectrumMeter()
+        spectrumLevels = [Float](repeating: 0, count: AudioSpectrumMeter.bandCount)
+        state = .recording; status = L10n.text("dictation.queue.recording")
+        hotkey.cancellationEnabled = true
+        let requestedAt = ProcessInfo.processInfo.systemUptime
+        let targetPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        job.initialization = Task { [weak self] in
+            guard let self else { return }
+            if let targetPID { job.focus = await FocusSnapshot.captureWithRetry(expectedPID: targetPID) }
+            guard self.queuedCapture?.id == job.id, !job.stopped, !Task.isCancelled else { return }
+            if let anchor = self.queuedInsertionAnchor, job.focus?.matches(anchor) == true { job.followsConfirmedInsertion = true }
+            let style = job.settings.style(for: job.focus?.bundleID)
+            job.history = HistoryCaptureContext(date: job.capturedAt, style: style,
+                bundleID: job.focus?.bundleID,
+                appName: job.focus.flatMap { NSRunningApplication(processIdentifier: $0.pid)?.localizedName },
+                enabled: job.settings.historyEnabled ?? true)
+            do {
+                if stream { job.pipeline = try self.makeQueuedPipeline(for: job) }
+                let offsets = CaptureSampleOffsets()
+                try self.capture.start(onSamples: { [weak self] samples in
+                    let rms = sqrt(samples.reduce(Float(0)) { $0 + $1 * $1 } / Float(max(1, samples.count)))
+                    let level = min(1, rms * 8)
+                    let receivedAt = ProcessInfo.processInfo.systemUptime
+                    let offset = offsets.reserve(samples.count)
+                    Task { @MainActor in
+                        guard let self, self.queuedCapture?.id == job.id, !job.stopped else { return }
+                        self.level = level
+                        self.receivedCaptureAudio(session: job.id, offset: offset, count: samples.count,
+                            receivedAt: receivedAt, requestedAt: requestedAt)
+                        self.spectrumLevels = self.spectrumMeter.levels(for: samples)
+                        guard let pipeline = job.pipeline else { return }
+                        job.blocks[offset] = samples
+                        while let contiguous = job.blocks.removeValue(forKey: job.accepted) {
+                            job.accepted += contiguous.count
+                            let prior = job.append, initialization = job.initialization
+                            job.append = Task {
+                                await prior?.value; await initialization?.value
+                                guard !Task.isCancelled, job.failure == nil else { return }
+                                do { try await pipeline.append(samples: contiguous) }
+                                catch { job.failure = error }
+                            }
+                        }
+                    }
+                }, onLevel: { _ in }, onError: { [weak self] error in
+                    Task { @MainActor in
+                        guard let self, self.queuedCapture?.id == job.id else { return }
+                        job.failure = error; self.stopQueuedCapture()
+                    }
+                }, onCompletion: { [weak self] in
+                    Task { @MainActor in if self?.queuedCapture?.id == job.id { self?.stopQueuedCapture() } }
+                })
+                self.startedAt = ProcessInfo.processInfo.systemUptime
+                self.clock = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+                    Task { @MainActor in
+                        guard let self, self.queuedCapture?.id == job.id else { return }
+                        self.elapsed = ProcessInfo.processInfo.systemUptime - self.startedAt
+                        if self.elapsed >= 1200 { self.stopQueuedCapture() }
+                    }
+                }
+                if let pipeline = job.pipeline {
+                    try await pipeline.start(sessionID: job.id, style: style, dictionary: job.dictionary, languages: job.languages)
+                }
+            } catch {
+                job.failure = error
+                if self.queuedCapture?.id == job.id { self.stopQueuedCapture() }
+            }
+        }
+    }
+    private func stopQueuedCapture() {
+        guard let job = queuedCapture else { return }
+        job.stopped = true; job.samples = capture.stop()
+        captureReady = false; clock?.invalidate(); clock = nil; level = 0
+        queuedCapture = nil; sessionID = nil; hotkey.reset()
+        _ = dictationQueue.captured(job.id)
+        state = .processing; status = dictationQueueStatus
+        updateHotkey(); drainDictationQueue()
+    }
+    private func drainDictationQueue() {
+        guard dictationQueueTask == nil else { return }
+        let generation = dictationQueueGeneration
+        dictationQueueTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled, self.dictationQueueGeneration == generation,
+                  let id = self.dictationQueue.beginNext(), let job = self.dictationJobs[id] {
+                await job.initialization?.value; await job.append?.value
+                guard !Task.isCancelled, self.dictationQueueGeneration == generation else { return }
+                do {
+                    if let failure = job.failure { throw failure }
+                    guard !job.samples.isEmpty else { throw SpeechInputError.tooShort }
+                    let pipeline: ProcessingPipeline
+                    if let existing = job.pipeline { pipeline = existing }
+                    else {
+                        pipeline = try self.makeQueuedPipeline(for: job)
+                        job.pipeline = pipeline
+                        try await pipeline.start(sessionID: id, style: job.settings.style(for: job.focus?.bundleID),
+                            dictionary: job.dictionary, languages: job.languages)
+                    }
+                    guard job.accepted <= job.samples.count else { throw SpeechDecoderError.invalidOutput }
+                    if job.accepted < job.samples.count {
+                        try await pipeline.append(samples: Array(job.samples.dropFirst(job.accepted)))
+                    }
+                    job.samples = []; job.blocks = [:]
+                    let result = try await pipeline.finish()
+                    guard !Task.isCancelled, self.dictationQueueGeneration == generation else { return }
+                    if !result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        await self.completeQueuedJob(job, result: result, generation: generation)
+                    }
+                } catch let partial as PartialDictationError {
+                    guard self.dictationQueueGeneration == generation else { return }
+                    self.dictationQueue.suppressAutomaticDelivery()
+                    self.queuedDrafts.append(partial.result)
+                    self.results.insert(partial.result, at: 0); self.results = Array(self.results.prefix(5))
+                    if let context = job.history { self.recordHistory(partial.result, context: context, delivery: .notAttempted) }
+                } catch is SpeechInputError {
+                    // A short tap or silence is not a missing text. Keep later
+                    // recordings usable without opening a global error window.
+                    if self.queuedCapture == nil { self.status = "Keine Sprache erkannt" }
+                } catch is CancellationError {
+                    if self.dictationQueueGeneration == generation { self.dictationQueue.suppressAutomaticDelivery() }
+                }
+                catch {
+                    guard self.dictationQueueGeneration == generation else { return }
+                    self.dictationQueue.suppressAutomaticDelivery()
+                    self.dictationQueueFailures += 1
+                    self.reports.record(component: .recognition, code: .processingFailed)
+                    if self.queuedCapture == nil {
+                        self.errorMessage = error.localizedDescription
+                        self.status = L10n.text("dictation.queue.failed")
+                    }
+                }
+                guard self.dictationQueueGeneration == generation else { return }
+                if let pipeline = job.pipeline { await pipeline.cancel() }
+                self.dictationJobs.removeValue(forKey: id); self.dictationQueue.finish(id)
+                self.pendingDictationCount = self.dictationQueue.entries.count
+            }
+            guard self.dictationQueueGeneration == generation else { return }
+            self.dictationQueueTask = nil
+            if self.queuedCapture == nil, self.recoveryWindow?.isVisible != true { self.state = .paused; self.updateHotkey() }
+        }
+    }
+    private func completeQueuedJob(_ job: QueuedCaptureJob, result: DictationResult, generation: UUID) async {
+        var outcome = DeliveryOutcome(.notAttempted, reason: L10n.text("dictation.queue.saved"))
+        let text: String
+        if job.followsConfirmedInsertion, let target = job.focus {
+            text = DeliveryVerification.queuedContinuationText(result.text, baseline: target.baseline, selection: target.selectedRange)
+        } else { text = result.text }
+        if result.isComplete && !conflict && !document.settings.paused && dictationQueue.mayAutomaticallyDeliver(job.id) {
+            let delivery = Task { await DeliveryCoordinator().deliver(text: text, to: job.focus,
+                allowClipboard: job.settings.usesClipboardForInsertion,
+                recordingInProgress: { self.queuedCapture != nil },
+                insertionAllowed: { self.dictationQueueGeneration == generation && !self.conflict
+                    && !self.document.settings.paused && self.dictationQueue.mayAutomaticallyDeliver(job.id) }) }
+            queuedDeliveryTask = delivery
+            outcome = await delivery.value
+            guard dictationQueueGeneration == generation, !Task.isCancelled else { return }
+            queuedDeliveryTask = nil
+        }
+        guard dictationQueueGeneration == generation, !Task.isCancelled else { return }
+        results.insert(result, at: 0); results = Array(results.prefix(5))
+        // The write already happened. Retain its history even if cancellation
+        // arrives while waiting for the editor's delayed caret readback.
+        if let context = job.history { recordHistory(result, context: context, delivery: outcome.status) }
+        if outcome.status == .confirmed, let previous = job.focus {
+            let advanced = await previous.afterConfirmedInsertion(text)
+            guard dictationQueueGeneration == generation, !Task.isCancelled else { return }
+            if let advanced {
+                queuedInsertionAnchor = advanced
+                // A second microphone capture may have snapshotted the same
+                // caret before this first insertion. Advance only exact matches,
+                // using a fresh, verified observation of our own complete write.
+                for next in dictationJobs.values where next.id != job.id {
+                    if next.focus?.matches(previous) == true { next.focus = advanced; next.followsConfirmedInsertion = true }
+                    else if next.focus?.matches(advanced) == true { next.followsConfirmedInsertion = true }
+                }
+            } else {
+                dictationQueue.suppressAutomaticDelivery()
+            }
+        } else {
+            // Never pass a missing/uncertain predecessor or retry an ambiguous
+            // paste. Preserve this and all following results, even with history off.
+            dictationQueue.suppressAutomaticDelivery()
+            queuedDrafts.append(result)
+            if !dictationQueue.overlaps && queuedCapture == nil { presentDelivery(outcome, result: result) }
+        }
+    }
+    private func cancelQueuedWork() {
+        guard hasQueuedWork else { return }
+        dictationQueueGeneration = UUID(); queuedDeliveryTask?.cancel(); queuedDeliveryTask = nil
+        queuedInsertionAnchor = nil
+        dictationQueueTask?.cancel(); dictationQueueTask = nil
+        for job in dictationJobs.values {
+            job.initialization?.cancel(); job.append?.cancel()
+            if let pipeline = job.pipeline { Task { await pipeline.cancel() } }
+        }
+        queuedCapture = nil; dictationJobs = [:]; dictationQueue.cancelAll(); pendingDictationCount = 0
+    }
+    var dictationQueueStatus: String {
+        if queuedCapture != nil { return L10n.text("dictation.queue.recording") }
+        return dictationQueue.canCapture ? L10n.text("dictation.queue.processing", String(pendingDictationCount)) : L10n.text("dictation.queue.full")
+    }
+    func copyQueuedDrafts() {
+        guard !queuedDrafts.isEmpty else { return }
+        let combined = DictationResult(id: UUID(), text: queuedCombinedText,
+            original: queuedDrafts.map(\.original).joined(separator: "\n\n"),
+            usedFallback: queuedDrafts.contains { $0.usedFallback },
+            duration: queuedDrafts.reduce(0) { $0 + $1.duration }, isComplete: queuedDrafts.allSatisfy { $0.isComplete })
+        guard recoveryClipboard.copy(combined.text, transient: false) == .copied else {
+            status = L10n.text("dictation.queue.copyFailed"); return
+        }
+        results.insert(combined, at: 0); results = Array(results.prefix(5))
+        queuedDrafts = []; if !hasQueuedWork { dictationQueue.resetBatchIfIdle() }
+        status = L10n.text("dictation.queue.copied")
     }
 }

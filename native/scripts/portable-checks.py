@@ -10,9 +10,13 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--only', action='append', choices=[p.name for p in available],
                     help='Run one test file; repeat to select several. Default: all contract cases.')
 parser.add_argument('--sdk', type=pathlib.Path, help='Compatible installed SDK for CLT-only checks')
+parser.add_argument('--scratch-path', type=pathlib.Path, help='Reuse a task-owned SwiftPM build directory')
+parser.add_argument('--output', type=pathlib.Path, help='Keep adapted checks and receipts in a task-owned directory')
+parser.add_argument('--jobs', type=int, default=4)
 args = parser.parse_args()
+if args.jobs < 1: parser.error('--jobs must be positive')
 sources = [p for p in available if args.only is None or p.name in args.only]
-out = root/'artifacts/portable-checks'
+out = args.output.resolve() if args.output else root/'artifacts/portable-checks'
 if args.only:
     out = out/('selected-' + '-'.join(p.stem for p in sources))
 out.mkdir(parents=True, exist_ok=True)
@@ -50,8 +54,9 @@ func unwrap<T>(_ x: T?, file: StaticString = #filePath, line: UInt = #line) thro
 (out/'Runner.swift').write_text(support+'\n'.join(calls)+f'\n        print("Executed {len(calls)} contract cases; failures: \\(failures)")\n        exit(failures == 0 ? 0 : 1)\n    }}\n}}\n')
 # This adapter links the native SwiftPM object layout below. Swift 6.4 defaults
 # to swiftbuild, whose product layout differs; select the matching engine.
-subprocess.run(['swift','build'] + (['--sdk', str(args.sdk)] if args.sdk else []) + ['--build-system','native','--target','VoiceWisprCore','--jobs','4'], cwd=root, check=True)
-build = root/'.build/arm64-apple-macosx/debug'
+scratch = args.scratch_path.resolve() if args.scratch_path else root/'.build'
+subprocess.run(['swift','build'] + (['--sdk', str(args.sdk)] if args.sdk else []) + ['--scratch-path', str(scratch), '--build-system','native','--target','VoiceWisprCore','--jobs',str(args.jobs)], cwd=root, check=True)
+build = scratch/'arm64-apple-macosx/debug'
 module = build/'Modules'
 # SwiftPM built the Core in Debug above. Match its conditional compilation in
 # the test target; release-only guards need a separate non-Debug Core proof.

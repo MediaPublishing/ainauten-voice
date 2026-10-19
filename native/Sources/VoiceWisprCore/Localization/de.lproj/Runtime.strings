@@ -80,3 +80,49 @@
 "status.recordingCheck" = "Aufnahme prüfen";
 "status.notRecognized" = "Aufnahme nicht erkannt";
 "status.feedback" = "Einfügen nicht bestätigt. Text über Letzte Ergebnisse verfügbar.";
+
+/* Optional local Swiss German beta. */
+"swiss.title" = "Schweizerdeutsch (Beta)";
+"swiss.description" = "Schweizerdeutsch sprechen. Hochdeutschen Text erhalten. Lokal auf deinem Mac.";
+"swiss.warning" = "Experimentell: Prüfe insbesondere Namen, Zahlen und Verneinungen.";
+"swiss.localOverride" = "Auch die Textoptimierung bleibt für Schweizerdeutsch lokal, unabhängig von der Cloud-Einstellung.";
+"swiss.savedLanguages" = "Während dieser Beta gilt Schweizerdeutsch. Deine bisherige Sprachauswahl bleibt gespeichert und gilt nach dem Ausschalten wieder.";
+"swiss.openBeta" = "Schweizerdeutsch in Beta einrichten";
+"swiss.modelRequired" = "Schweizerdeutsch: Zusatzmodell unter Einstellungen → Beta laden.";
+"swiss.modelInvalid" = "Das Schweizerdeutsch-Modell ist beschädigt. Bitte erneut herunterladen.";
+"swiss.baseRequired" = "Lokale Grundmodelle fehlen. Bitte im Bereich Einrichtung laden.";
+"swiss.ready" = "Schweizerdeutsch bereit · Ausgabe Hochdeutsch · lokal";
+"swiss.checking" = "Schweizerdeutsch-Modell wird geprüft …";
+"swiss.downloading" = "Schweizerdeutsch-Modell wird geladen …";
+"swiss.progress" = "Schweizerdeutsch: %@ von %@";
+"swiss.paused" = "Download pausiert. Über Zusatzmodell laden kannst du ihn fortsetzen.";
+"swiss.downloadFailed" = "Zusatzdownload fehlgeschlagen.";
+"swiss.prepareFailed" = "Erkennung konnte nicht vorbereitet werden.";
+"swiss.download" = "Zusatzmodell laden (%@)";
+"swiss.retry" = "Erkennung erneut vorbereiten";
+"swiss.openModels" = "Grundmodelle einrichten";
+"swiss.pause" = "Download pausieren";
+"swiss.modelInfo" = "Whisper large-v3. Einmaliger Zusatzdownload, danach offline nutzbar. Die Erkennung kann langsamer sein.";
+"speech.decoder.failed" = "Der lokale Sprachdecoder konnte nicht ausgeführt werden.";
+"speech.decoder.timeout" = "Der lokale Sprachdecoder hat zu lange gebraucht. Bitte die Aufnahme erneut versuchen.";
+"speech.decoder.invalidOutput" = "Der lokale Sprachdecoder hat eine ungültige Antwort geliefert.";
+
+/* Ordered audio dictation queue for every language. */
+"dictation.queue.title" = "Aufeinanderfolgende Diktate";
+"dictation.queue.help" = "Du kannst in allen Sprachen weiter diktieren, während vorherige Texte verarbeitet werden. Fertige Diktate werden in Aufnahmereihenfolge im unveränderten Zielfeld eingefügt. Bei geändertem Ziel bleiben die Texte hier erhalten.";
+"dictation.queue.processing" = "%@ Aufnahme(n) in Bearbeitung · nächstes Diktat möglich";
+"dictation.queue.copy" = "%@ Texte gemeinsam kopieren";
+"dictation.queue.full" = "Warteschlange voll. Warte kurz auf den nächsten fertigen Text.";
+"dictation.queue.collectFirst" = "Bitte zuerst die gesammelten Texte übernehmen.";
+"dictation.queue.failed" = "Eine Aufnahme konnte nicht verarbeitet werden. Andere Texte bleiben erhalten.";
+"dictation.queue.saved" = "Automatisches Einfügen angehalten. Text unter Diktieren wiederherstellen.";
+"dictation.queue.copied" = "Gesammelte Texte kopiert. Mit ⌘V einfügen.";
+"dictation.queue.quitTitle" = "Aufnahmen werden noch verarbeitet";
+"dictation.queue.quitHelp" = "Beim Beenden werden die noch nicht verarbeiteten Aufnahmen verworfen. Fertige Texte bleiben im aktivierten Verlauf.";
+"dictation.queue.keepWorking" = "Weiterverarbeiten";
+"dictation.queue.discardQuit" = "Aufnahmen verwerfen und beenden";
+"dictation.queue.recording" = "Aufnahme läuft …";
+"dictation.queue.copyFailed" = "Kopieren nicht möglich. Die Texte bleiben hier erhalten.";
+"dictation.queue.checkTarget" = "Prüfe vor dem Einfügen das Zielfeld: Ein nicht bestätigter Text kann dort bereits stehen.";
+"dictation.queue.failures" = "%@ Aufnahme(n) fehlgeschlagen. Andere Texte bleiben erhalten.";
+"dictation.queue.partial" = "Enthält unvollständige Teiltexte. Bitte vor dem Verwenden prüfen.";
