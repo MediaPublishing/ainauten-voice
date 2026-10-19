@@ -72,7 +72,11 @@ Versionsanzeige erhalten, ohne die Metadaten des öffentlichen Releases zu
 ändern. Beide Versionsargumente sind ausschließlich mit `--development`
 zulässig; solche Pakete dürfen nicht öffentlich ausgeliefert werden.
 
+Der vorhandene Berechtigungscheck prüft auch, ob der Tastatur-Hook noch gültig und aktiviert ist, und stellt einen deaktivierten beziehungsweise ungültigen Hook wieder her. Das Aus- und Einschalten über „Tastenkürzel aktiv“ im Menü verwirft eine laufende Sitzung samt Gestenzustand und baut die Hotkey-Hooks neu auf.
+
 Einfügung nur in unveränderte, lesbare AX-Ziele. Bestätigung verlangt kompletten Text-/Cursor-Readback, keine bloße Tastensimulation. Bei Zweifel vollständiges Ergebnisfenster; keine automatische Wiederholung. Zwischenablage wird byteweise gesichert, bei unlesbaren/über 64 MB großen Inhalten nicht verändert; ein neuer Benutzer-Copy gewinnt. macOS stellt keine atomare Fokus-und-Paste-Operation bereit. Verzögerte Einfügeziele können nach dem 1,5-Sekunden-Fenster unklar bleiben.
+
+Bei expliziter Wiederherstellung und im separaten Kameraablauf kann die App ein ursprünglich noch nicht lesbares Ziel erneut prüfen. Die automatische Diktatwarteschlange behält ihre bei Aufnahmebeginn verifizierten Textfeld-Snapshots und übernimmt kein späteres Ersatz-Ziel. Die Wiederholungen sind begrenzt und bleiben an dieselbe App, dasselbe Fenster und dasselbe Bedienelement gebunden. Dabei werden weder Probezeichen eingegeben noch Tastenkürzel zum Rückgängigmachen gesendet. Ist das Textfeld weiterhin nicht sicher lesbar und editierbar, bleibt das Diktat zur Wiederherstellung in der App. Ein App-, Fenster- oder Fokuswechsel sowie sichere Eingaben verhindern die Zustellung. Die Einstellung zur Zwischenablage-Nutzung bleibt maßgeblich.
 
 Einstellungen und Wörterbuch: `~/Library/Application Support/Voice Wispr/settings.json`, atomar, versioniertes Exportformat. API-Schlüssel ausschließlich Keychain. Audio und die fünf letzten Resultate für den Schnellzugriff bleiben im Speicher. Bei eingeschaltetem Verlauf werden Diktattexte zusätzlich lokal in history.sqlite gespeichert; das lässt sich in der App abschalten. SDK-Transkript-Diagnosen und llama-Logs sind deaktiviert. Die App liest den fokussierten Text ausschließlich für lokale Zustellungsprüfung; er wird weder an ein Sprachmodell noch an Cloud gesendet.
 

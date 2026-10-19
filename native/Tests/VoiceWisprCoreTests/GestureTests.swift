@@ -26,6 +26,84 @@ final class GestureTests: XCTestCase {
         let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: false)); up.flags = .maskCommand
         XCTAssertNil(hotkey.handle(.keyUp, event: up))
     }
+    @MainActor func testInvalidTapReplacementPreservesHeldGestureAndCapturedRelease() async throws {
+        for shortcut in [Shortcut(keyCode: 49, modifiers: CGEventFlags.maskControl.rawValue),
+                         Shortcut(keyCode: nil, modifiers: CGEventFlags.maskSecondaryFn.rawValue)] {
+            let hotkey = GlobalHotkey(); hotkey.enabled = true; hotkey.cancellationEnabled = true
+            hotkey.shortcut = shortcut
+            defer { hotkey.uninstall() }
+            var actions: [DictationGesture] = []; hotkey.onGesture = { actions.append($0) }
+            let key = shortcut.keyCode ?? 63
+            let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true))
+            down.flags = CGEventFlags(rawValue: shortcut.modifiers)
+            _ = hotkey.handle(shortcut.keyCode == nil ? .flagsChanged : .keyDown, event: down)
+            try await Task.sleep(for: .milliseconds(200))
+            hotkey.retireInvalidTap(flags: down.flags, keyIsDown: { $0 == key })
+            XCTAssertEqual(actions, [.start])
+            XCTAssertTrue(hotkey.cancellationEnabled)
+            _ = hotkey.handle(.flagsChanged, event: try modifierEvent())
+            XCTAssertEqual(actions, [.start, .stop])
+            if shortcut.keyCode != nil {
+                let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false))
+                XCTAssertNil(hotkey.handle(.keyUp, event: up))
+            }
+            hotkey.recoverAfterTapTimeout(flags: [], keyIsDown: { _ in false })
+            XCTAssertEqual(actions, [.start, .stop])
+        }
+    }
+    @MainActor func testInvalidTapReplacementPreservesHandsFreeStopAndEscape() throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true; hotkey.cancellationEnabled = true
+        hotkey.bindings.handsFree = [Shortcut(keyCode: 49, modifiers: CGEventFlags.maskSecondaryFn.rawValue)]
+        defer { hotkey.uninstall() }
+        var actions: [DictationGesture] = []; hotkey.onGesture = { actions.append($0) }
+        let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: true))
+        down.flags = .maskSecondaryFn
+        _ = hotkey.handle(.keyDown, event: down)
+        hotkey.retireInvalidTap(flags: [], keyIsDown: { _ in false })
+        _ = hotkey.handle(.keyDown, event: down)
+        XCTAssertEqual(actions, [.start, .stop])
+        XCTAssertTrue(hotkey.cancellationEnabled)
+        _ = hotkey.handle(.keyDown, event: down)
+        let escape = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 53, keyDown: true))
+        XCTAssertNil(hotkey.handle(.keyDown, event: escape))
+        XCTAssertEqual(actions, [.start, .stop, .start, .cancel])
+    }
+    @MainActor func testInvalidTapReplacementKeepsPendingShortTapExpiry() async throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true
+        hotkey.shortcut = Shortcut(keyCode: 49, modifiers: CGEventFlags.maskControl.rawValue)
+        defer { hotkey.uninstall() }
+        var actions: [DictationGesture] = []; hotkey.onGesture = { actions.append($0) }
+        let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 49, keyDown: true))
+        down.flags = .maskControl
+        _ = hotkey.handle(.keyDown, event: down)
+        _ = hotkey.handle(.flagsChanged, event: try modifierEvent())
+        XCTAssertTrue(hotkey.expiryTimerRunning)
+        hotkey.retireInvalidTap(flags: [], keyIsDown: { _ in false })
+        XCTAssertTrue(hotkey.expiryTimerRunning)
+        try await Task.sleep(for: .milliseconds(650))
+        XCTAssertEqual(actions, [.start, .stop])
+        XCTAssertFalse(hotkey.expiryTimerRunning)
+    }
+    @MainActor func testUninstallClearsPendingGesturesCancellationAndCapturedKeys() throws {
+        let hotkey = GlobalHotkey(); hotkey.enabled = true; hotkey.cancellationEnabled = true
+        hotkey.shortcut = Shortcut(keyCode: 16, modifiers: CGEventFlags.maskControl.rawValue)
+        var actions: [DictationGesture] = []; hotkey.onGesture = { actions.append($0) }
+        let down = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 16, keyDown: true))
+        down.flags = .maskControl
+        let up = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 16, keyDown: false))
+        _ = hotkey.handle(.keyDown, event: down)
+        _ = hotkey.handle(.flagsChanged, event: try modifierEvent())
+        XCTAssertTrue(hotkey.expiryTimerRunning)
+        hotkey.uninstall()
+        XCTAssertFalse(hotkey.expiryTimerRunning)
+        XCTAssertFalse(hotkey.cancellationEnabled)
+        XCTAssertTrue(hotkey.handle(.keyUp, event: up) != nil)
+        let escape = try XCTUnwrap(CGEvent(keyboardEventSource: nil, virtualKey: 53, keyDown: true))
+        XCTAssertTrue(hotkey.handle(.keyDown, event: escape) != nil)
+        _ = hotkey.handle(.keyDown, event: down)
+        XCTAssertEqual(actions, [.start, .start])
+        hotkey.uninstall()
+    }
     @MainActor func testTapTimeoutFinishesAReleasedHoldExactlyOnce() throws {
         let hotkey = GlobalHotkey(); hotkey.enabled = true
         hotkey.shortcut = Shortcut(keyCode: 49, modifiers: 1 << 20)

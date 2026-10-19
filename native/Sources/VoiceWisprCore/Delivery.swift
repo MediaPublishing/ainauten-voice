@@ -245,6 +245,55 @@ public enum DeliveryVerification {
     }
 }
 
+/// Read-only focus recovery stays bound to the original app, window and control.
+/// It never types a probe character or touches the target app's undo history.
+@MainActor public struct InputFocusRecovery {
+    let pid: pid_t
+    let window: AXUIElement
+    let element: AXUIElement
+
+    public static func capture(expectedPID: pid_t? = nil) -> InputFocusRecovery? {
+        guard AXIsProcessTrusted(), !IsSecureEventInputEnabled(),
+              let app = NSWorkspace.shared.frontmostApplication,
+              app.bundleIdentifier != Bundle.main.bundleIdentifier,
+              expectedPID == nil || app.processIdentifier == expectedPID else { return nil }
+        let root = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(root, 0.05)
+        guard let window = AXAccess.element(root, kAXFocusedWindowAttribute),
+              let element = AXAccess.element(root, kAXFocusedUIElementAttribute) else { return nil }
+        AXUIElementSetMessagingTimeout(element, 0.05)
+        guard AXAccess.string(element, kAXSubroleAttribute) != kAXSecureTextFieldSubrole,
+              AXAccess.string(element, kAXRoleAttribute) != kAXSecureTextFieldSubrole else { return nil }
+        return InputFocusRecovery(pid: app.processIdentifier, window: window, element: element)
+    }
+    private func isUnchanged() -> Bool {
+        guard let current = Self.capture(expectedPID: pid) else { return false }
+        return CFEqual(current.window, window) && CFEqual(current.element, element)
+    }
+    public func prepare() async -> FocusSnapshot? {
+        guard await DeliveryKeyboard.waitForModifiers() else { return nil }
+        return await FocusCaptureRetry.capture(expectedPID: pid,
+            foregroundPID: { NSWorkspace.shared.frontmostApplication?.processIdentifier },
+            targetUnchanged: { isUnchanged() },
+            capture: { FocusSnapshot.capture(expectedPID: pid) })
+    }
+}
+
+@MainActor enum DeliveryKeyboard {
+    static var modifiersReleased: Bool {
+        CGEventSource.flagsState(.hidSystemState).intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift]).isEmpty
+    }
+    static func waitForModifiers() async -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: .milliseconds(1500))
+        while !modifiersReleased {
+            guard ContinuousClock.now < deadline, !Task.isCancelled else { return false }
+            do { try await Task.sleep(for: .milliseconds(20)) } catch { return false }
+        }
+        return !Task.isCancelled
+    }
+
+}
+
 /// nspasteboard.org conventions: clipboard managers (Maccy, Raycast, Paste) skip
 /// marked items, so dictated text written only for insertion is never archived.
 public enum TransientPasteboard {
@@ -378,7 +427,7 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         guard targetReadable && !secure && focusUnchanged else { return DeliveryOutcome(.notAttempted, reason: "Ziel nicht sicher verifizierbar; Text steht zur Wiederherstellung bereit.") }
         return DeliveryOutcome(.uncertain, reason: "Ziel geprüft; Zustellung muss noch bestätigt werden.")
     }
-    public func deliver(text: String, to target: FocusSnapshot?, allowClipboard: Bool = false,
+    public func deliver(text: String, to target: FocusSnapshot?, allowClipboard: Bool = false, recovery: InputFocusRecovery? = nil,
                         recordingInProgress: @MainActor () -> Bool = { false },
                         insertionAllowed: @MainActor () -> Bool = { true }) async -> DeliveryOutcome {
         guard !Task.isCancelled else { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
@@ -397,7 +446,18 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
                 catch { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
             }
         }
-        guard !text.isEmpty, let target, target.isUnchanged() else {
+        guard !text.isEmpty else { return DeliveryOutcome(.notAttempted, reason: "Kein Text zum Einfügen") }
+        var target = target
+        if target == nil, let recovery {
+            target = await recovery.prepare()
+            guard !Task.isCancelled, insertionAllowed(), !recordingInProgress() else {
+                return DeliveryOutcome(.notAttempted, reason: "Automatisches Einfügen angehalten; Text bleibt verfügbar.")
+            }
+            guard target != nil else {
+                return DeliveryOutcome(.notAttempted, reason: "Texteingabeziel nicht sicher verifizierbar. Prüfe das Eingabefeld; der Diktattext steht zur Wiederherstellung bereit.")
+            }
+        }
+        guard let target, target.isUnchanged() else {
             return DeliveryOutcome(.notAttempted, reason: "Fokus, Auswahl oder Textfeld haben sich verändert. Text aus dem Wiederherstellungsfenster verwenden.")
         }
         let text = DeliveryVerification.insertionText(text, baseline: target.baseline, selection: target.selectedRange)
@@ -501,14 +561,14 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
 /// Bounded async retries; never switch destinations or block the event-tap callback.
 @MainActor enum FocusCaptureRetry {
     static func capture<Value>(expectedPID: pid_t, foregroundPID: () -> pid_t?,
+                              targetUnchanged: () -> Bool = { true },
                               capture: () -> Value?,
                               pause: () async throws -> Void = { try await Task.sleep(nanoseconds: 40_000_000) }) async -> Value? {
         for attempt in 0..<6 {
-            guard !Task.isCancelled, foregroundPID() == expectedPID else { return nil }
-            if let value = capture() {
-                guard !Task.isCancelled, foregroundPID() == expectedPID else { return nil }
-                return value
-            }
+            guard !Task.isCancelled, foregroundPID() == expectedPID, targetUnchanged() else { return nil }
+            let value = capture()
+            guard !Task.isCancelled, foregroundPID() == expectedPID, targetUnchanged() else { return nil }
+            if let value { return value }
             if attempt < 5 {
                 do { try await pause() } catch { return nil }
             }
