@@ -65,7 +65,7 @@ def main():
     if compile_run.returncode:
         raise SystemExit(compile_run.returncode)
     cases = []
-    modes = ['normalized', 'delayed', 'moved', 'field', 'cancelled'] if args.rich_editor else (args.mode or (['queued', 'queued-focus'] if args.only_queue else ['selection', 'caret', 'long', 'focus', 'queued', 'queued-focus'])) + (['fullscreen'] if args.include_fullscreen else [])
+    modes = ['paste-only', 'range-value', 'read-only', 'normalized', 'delayed', 'moved', 'field', 'cancelled'] if args.rich_editor else (args.mode or (['queued', 'queued-focus'] if args.only_queue else ['selection', 'caret', 'long', 'focus', 'queued', 'queued-focus'])) + (['fullscreen'] if args.include_fullscreen else [])
     for mode in modes:
         file = out / ('AInauten-Voice-Delivery-' + mode + '-' + str(uuid.uuid4()) + '.txt')
         case_started = datetime.now(timezone.utc).isoformat()
