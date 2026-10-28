@@ -1448,7 +1448,9 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         recoveryFailureTitle = failureTitle
         recoverySelection = failureTitle == nil ? resultID ?? results.first?.id : nil
         if failureTitle != nil { recoveryClipboardState = .empty; recoveryCanUndo = false }
-        recoveryTransient = autoCopy || transient
+        // Failed insertion needs an explicit dismissal, even when we could
+        // offer a compatible recovery copy. Copying is not insertion success.
+        recoveryTransient = transient
         if autoCopy, document.settings.usesClipboardForInsertion, let result = recoveryResult, result.isComplete { copyRecoveryText(result) }
         else if recoveryCopiedID != recoveryResult?.id { recoveryClipboardState = .empty; recoveryCanUndo = false }
         if recoveryCanUndo && !recoveryClipboard.canUndo { recoveryCanUndo = false; recoveryClipboardState = .changed }
@@ -1496,7 +1498,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             recoveryTextHeight = min(160, max(30, ceil(description.height) + 4))
             height = 64 + recoveryTextHeight
         } else {
-            height = 64 + recoveryTextHeight
+            height = 64 + recoveryTextHeight + (!recoveryTransient && !recoveryFooter.isEmpty ? 42 : 0)
         }
         let anchor = pill?.panel.frame ?? NSRect(x: bounds.midX, y: bounds.minY, width: 0, height: 32)
         panel.setFrame(NSRect(x: min(max(bounds.minX + 12, anchor.midX - width / 2), bounds.maxX - width - 12),
@@ -1543,7 +1545,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         #if DEBUG
         if previewMode && CommandLine.arguments.contains("--preview-pin") { return true }
         #endif
-        return recoveryHovered
+        return recoveryHovered || !recoveryTransient
     }
     private func copyRecoveryText(_ result: DictationResult, explicit: Bool = false) {
         switch recoveryClipboard.copy(result.text, transient: !explicit) {

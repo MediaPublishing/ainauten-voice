@@ -44,7 +44,7 @@ test('current packaged release and published retained releases can submit report
     assert(match,`Missing packaged release metadata: ${key}`);return match[1];
   };
   const current=[value('CFBundleShortVersionString'),value('CFBundleVersion')];
-  for(const [version,build] of [['0.1.7','11'],['0.1.8','12'],['0.1.9','13'],current]){
+  for(const [version,build] of [['0.1.7','11'],['0.1.8','12'],['0.1.9','13'],['0.1.19','26'],current]){
     const f=fixture();const response=await f.send({...report(),version,build});
     assert.equal(response.status,202,`Published release rejected: ${version} (${build})`);
     assert.equal(f.db.prepare('SELECT count(*) AS n FROM reports').get().n,1);

@@ -6,6 +6,8 @@ import VoiceWisprCore
 /// Own isolated editor, never the protected Codex UI or a user document.
 @MainActor final class QueueRichTextView: NSTextView {
     var delayCaret = false
+    var pasteOnly = false
+    var truncatedValue = false
     private(set) var staleCaretReads = 0
     private var readbackAfter: TimeInterval = 0
     func delayReadback() { if delayCaret { readbackAfter = ProcessInfo.processInfo.systemUptime + 0.18 } }
@@ -21,6 +23,15 @@ import VoiceWisprCore
     override func accessibilitySelectedTextRange() -> NSRange {
         if ProcessInfo.processInfo.systemUptime < readbackAfter { staleCaretReads += 1; return NSRange(location: 0, length: 0) }
         return super.accessibilitySelectedTextRange()
+    }
+    override func isAccessibilitySelectorAllowed(_ selector: Selector) -> Bool {
+        if pasteOnly && [NSSelectorFromString("setAccessibilityValue:"), NSSelectorFromString("setAccessibilitySelectedText:")].contains(selector) { return false }
+        return super.isAccessibilitySelectorAllowed(selector)
+    }
+    override func accessibilityValue() -> String? { truncatedValue ? "" : super.accessibilityValue() }
+    override func accessibilityIsAttributeSettable(_ attribute: NSAccessibility.Attribute) -> Bool {
+        if pasteOnly && [NSAccessibility.Attribute.value, .selectedText].contains(attribute) { return false }
+        return super.accessibilityIsAttributeSettable(attribute)
     }
 }
 
@@ -47,14 +58,20 @@ import VoiceWisprCore
         }
         let app = NSApplication.shared
         _ = app.setActivationPolicy(.regular)
+        let mode = CommandLine.arguments.dropFirst().first ?? "normalized"
         let menu = NSMenu(), application = NSMenuItem(), edit = NSMenuItem()
         application.submenu = NSMenu(title: "Queue fixture"); menu.addItem(application)
         edit.submenu = NSMenu(title: "Edit")
         edit.submenu?.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.submenu?.autoenablesItems = false
+        edit.submenu?.items.first?.isEnabled = mode != "read-only"
         menu.addItem(edit); app.mainMenu = menu
         let previous = NSWorkspace.shared.frontmostApplication
         let view = QueueRichTextView(frame: NSRect(x: 0, y: 0, width: 600, height: 280))
-        view.isRichText = false; view.isEditable = true; view.isSelectable = true
+        view.isRichText = false; view.isEditable = mode != "read-only"; view.isSelectable = true
+        view.pasteOnly = mode == "paste-only" || mode == "read-only"
+        view.truncatedValue = mode == "range-value"
+        if view.truncatedValue { view.string = "Anfang. "; view.setSelectedRange(NSRange(location: view.string.utf16.count, length: 0)) }
         view.delayCaret = CommandLine.arguments.contains("delayed") || CommandLine.arguments.contains("cancelled")
         let window = NSWindow(contentRect: NSRect(x: 300, y: 220, width: 600, height: 280), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -73,20 +90,28 @@ import VoiceWisprCore
         app.run()
     }
     @MainActor static func check(view: QueueRichTextView, window: NSWindow) async -> [String: Any] {
+        let mode = CommandLine.arguments.dropFirst().first ?? "normalized"
+        if mode == "read-only" {
+            try? await Task.sleep(for: .milliseconds(300))
+            let count = NSPasteboard.general.changeCount
+            let target = FocusSnapshot.capture(expectedPID: getpid())
+            let outcome = await DeliveryCoordinator().deliver(text: "Kein Einfügen", to: target, allowClipboard: true)
+            return ["passed": target == nil && !outcome.inputWasSubmitted && view.string.isEmpty && NSPasteboard.general.changeCount == count,
+                    "scope": "Read-only field must never receive paste", "targetCaptured": target != nil]
+        }
         var first: FocusSnapshot?
         for _ in 0..<60 {
-            if let snapshot = FocusSnapshot.capture(expectedPID: getpid()), snapshot.baseline.isEmpty { first = snapshot; break }
+            if let snapshot = FocusSnapshot.capture(expectedPID: getpid()), snapshot.baseline == view.string { first = snapshot; break }
             try? await Task.sleep(for: .milliseconds(50))
         }
         guard let first else { return ["passed": false, "reason": "ownEditorNotFocused"] }
         guard let before = clipboard() else { return ["passed": false, "reason": "clipboardUnavailable"] }
         let texts = ["Erster Abschnitt.", "Second part.", "Troisième partie."]
-        let mode = CommandLine.arguments.dropFirst().first ?? "normalized"
         var targets = [first, first, first]
         var statuses: [String] = []
         var rebases = 0
         var advanceSeconds: TimeInterval = 0
-        var expected = ""
+        var expected = view.string
         for i in texts.indices {
             let target = targets[i]
             let text = i == 0 ? texts[i] : DeliveryVerification.queuedContinuationText(texts[i], baseline: target.baseline, selection: target.selectedRange)

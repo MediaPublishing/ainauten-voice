@@ -127,13 +127,18 @@ public enum DeliveryVerification {
         let subrole = AXAccess.string(field, kAXSubroleAttribute) ?? ""
         let role = AXAccess.string(field, kAXRoleAttribute) ?? ""
         let secure = subrole == kAXSecureTextFieldSubrole || role == kAXSecureTextFieldSubrole || IsSecureEventInputEnabled()
-        // Selection and readable value alone do not make a control editable:
-        // Chromium also advertises both for buttons and read-only text fields.
+        // Rich-text editors can support Paste without exposing AX text setters.
+        // Require positive editability evidence, never just a selectable value.
         guard !secure, [kAXTextFieldRole, kAXTextAreaRole, kAXComboBoxRole].contains(role),
               (AXAccess.value(field, kAXEnabledAttribute) as? Bool) != false,
-              AXAccess.settable(field, kAXValueAttribute) || AXAccess.settable(field, kAXSelectedTextAttribute),
-              let baseline = AXAccess.string(field, kAXValueAttribute) ?? AXAccess.fullRangeText(field), let range = AXAccess.range(field),
+              AXAccess.settable(field, kAXValueAttribute) || AXAccess.settable(field, kAXSelectedTextAttribute)
+                || AXAccess.pasteMenuEnabled(application),
+              let baseline = AXAccess.completeText(field), let range = AXAccess.range(field),
               DeliveryVerification.expectedValue(baseline: baseline, selection: range, insertion: "") != nil else { return nil }
+        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier,
+              let currentWindow = AXAccess.element(application, kAXFocusedWindowAttribute), CFEqual(currentWindow, window),
+              let currentField = AXAccess.element(application, kAXFocusedUIElementAttribute), CFEqual(currentField, field),
+              !IsSecureEventInputEnabled() else { return nil }
         return FocusSnapshot(pid: app.processIdentifier, bundleID: app.bundleIdentifier, window: window, element: field, selectedRange: range, baseline: baseline, secure: secure)
     }
     /// Chromium constructs its accessibility tree asynchronously. Never sleep in
@@ -193,6 +198,37 @@ public enum DeliveryVerification {
         return AXUIElementCopyAttributeValue(element, name as CFString, &result) == .success ? result : nil
     }
     static func string(_ element: AXUIElement, _ name: String) -> String? { value(element, name) as? String }
+    static func completeText(_ element: AXUIElement) -> String? {
+        let direct = string(element, kAXValueAttribute)
+        if let direct, let count = value(element, kAXNumberOfCharactersAttribute) as? NSNumber,
+           count.intValue != (direct as NSString).length {
+            // An empty/truncated AXValue must not hide the actual document range.
+            return fullRangeText(element)
+        }
+        return direct ?? fullRangeText(element)
+    }
+    /// Standard enabled Command-V is positive evidence for the focused editor's
+    /// Paste command. Query only menu metadata, without invoking any action.
+    static func pasteMenuEnabled(_ application: AXUIElement) -> Bool {
+        guard let bar = element(application, kAXMenuBarAttribute) else { return false }
+        let deadline = ContinuousClock.now.advanced(by: .milliseconds(150))
+        for entry in (value(bar, kAXChildrenAttribute) as? [AXUIElement] ?? []).prefix(20) {
+            guard ContinuousClock.now < deadline else { return false }
+            AXUIElementSetMessagingTimeout(entry, 0.03)
+            for menu in (value(entry, kAXChildrenAttribute) as? [AXUIElement] ?? []).prefix(2) {
+                guard ContinuousClock.now < deadline else { return false }
+                AXUIElementSetMessagingTimeout(menu, 0.03)
+                for item in (value(menu, kAXChildrenAttribute) as? [AXUIElement] ?? []).prefix(100) {
+                    guard ContinuousClock.now < deadline else { return false }
+                    AXUIElementSetMessagingTimeout(item, 0.03)
+                    if string(item, kAXMenuItemCmdCharAttribute)?.lowercased() == "v",
+                       (value(item, kAXMenuItemCmdModifiersAttribute) as? NSNumber)?.intValue == 0,
+                       (value(item, kAXEnabledAttribute) as? Bool) == true { return true }
+                }
+            }
+        }
+        return false
+    }
     /// Some rich-text editors omit or lag AXValue while exposing their complete
     /// text through the standard range attributes. Read only this original field.
     static func fullRangeText(_ element: AXUIElement) -> String? {
@@ -205,8 +241,8 @@ public enum DeliveryVerification {
         for attribute in [kAXStringForRangeParameterizedAttribute, kAXAttributedStringForRangeParameterizedAttribute] {
             var result: CFTypeRef?
             guard AXUIElementCopyParameterizedAttributeValue(element, attribute as CFString, parameter, &result) == .success else { continue }
-            if let text = result as? String { return text }
-            if let text = result as? NSAttributedString { return text.string }
+            let text = (result as? String) ?? (result as? NSAttributedString)?.string
+            if let text, (text as NSString).length == count.intValue { return text }
         }
         return nil
     }
