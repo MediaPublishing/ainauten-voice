@@ -1,12 +1,14 @@
 # AInauten Voice
 
+Ab 0.1.20 (27): Developer-ID-Signierung, aktive Bibliotheksvalidierung und Apple-Notarisierung. [Release-Prüfungen](../docs/apple-distribution.md).
+
 Native Diktier-App für macOS. Apple Silicon, macOS 14+. Audio bleibt lokal; Parakeet v3 (FluidAudio) und Qwen3-4B Q4_K_M (eingebettetes llama.cpp). Optionale OpenAI-kompatible Textglättung ist standardmäßig aus.
 
 ## Installieren
 
 Das DMG enthält AInauten Voice, eine Applications-Verknüpfung sowie **00 - ZUERST LESEN.html** und eine Textfassung. Die HTML-Anleitung ist eigenständig und offline lesbar. App nach Applications ziehen und von dort öffnen. Der Assistent führt durch Modelle, Wispr-Import, Sprache, Mikrofon/Bedienungshilfen, Probediktat und Wechsel.
 
-Release-Pakete sind mit der festen lokalen Identität signiert und nutzen Hardened Runtime. Ad-hoc-Signaturen sind ausschließlich für ausdrücklich angeforderte Testbuilds erlaubt. Apple Developer ID und Notarisierung sind noch nicht Bestandteil dieser Lieferung. Falls macOS den ersten Start blockiert: **Fertig (Done)** wählen, dann **Systemeinstellungen → Datenschutz & Sicherheit → Dennoch öffnen (Open Anyway)** und den Start bestätigen. Die genaue Anleitung mit Hinweisen zu abweichenden Warnungen liegt im DMG und [online](https://voice.ainauten.com/installation.html). Ein Neu-Build kann eine erneute macOS-Freigabe verlangen. Auf macOS 14 wurde das Paket noch nicht praktisch getestet.
+Release-Pakete sind mit Apple Developer ID signiert, nutzen Hardened Runtime und aktive Bibliotheksvalidierung. App und DMG werden von Apple notarisiert und mit Tickets ausgeliefert. Auf macOS 14 wurde das Paket noch nicht praktisch getestet.
 
 `scripts/package.py` und `scripts/package_dmg.py` verwenden dieselbe Anleitung aus `Resources/InstallerGuide`. Mit `python3 scripts/package_dmg.py --app /Pfad/zu/AInauten\ Voice.app` lässt sich ein bestehendes signiertes App-Bundle unverändert neu verpacken, ohne interne Beta-Funktionen in die öffentliche Version zu übernehmen.
 
@@ -101,8 +103,7 @@ Der Prüfer aktiviert oder startet keine App und liest keine Diktate, Zwischenab
 
 ## Sicherheitsänderungen für den nächsten Kandidaten
 
-Der veröffentlichte Build 0.1.11 (15) ist weiterhin lokal signiert und nicht notarisiert. Apple-notarisierte Pakete benötigen eine bestehende Developer ID Application und `--notary-profile`. Die ausdrücklich freigegebene, nicht notarisierte Beta verwendet `--local-beta` in Paket-, Update- und Website-Build. Lokale Tests verwenden `--development`; dieser Modus ist kein Veröffentlichungsweg. Automatische Zwischenablage-Nutzung ist im aktuellen Quellcode standardmäßig aus und erfordert Opt-in. Details und noch offene Apple-Einrichtung: [Sicherheitsnachprüfung](docs/security-followup-2026-10-06.md).
-# Schweizerdeutsch-Beta / Swiss German beta
+Der aktuelle Release 0.1.20 (27) verwendet Apple Developer ID und Notarisierung. `--local-beta` bleibt ausschließlich ein expliziter Weg für nicht notarisierte lokale Betas. Automatische Zwischenablagen-Kompatibilität ist für neue Installationen aktiv; gespeicherte Entscheidungen bleiben erhalten.
 
 Optionales Profil mit hochdeutscher Ausgabe und lokaler Verarbeitung, ohne
 separate Dialektauswahl. Zusatzmodell und Qualitätsgrenzen:

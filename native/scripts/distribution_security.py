@@ -57,6 +57,12 @@ def verify_ticket(path):
     run(['xcrun', 'stapler', 'validate', path])
 
 
+def expected_team_id():
+    team = (Path(__file__).resolve().parents[1]/'Resources/apple-developer-team-id.txt').read_text().strip()
+    require(re.fullmatch(r'[A-Z0-9]{10}', team), 'configured Apple Team ID missing or invalid')
+    return team
+
+
 def verify_distribution_app(app, *, notarized=True):
     app = Path(app)
     require(app.is_dir() and not app.is_symlink(), 'regular app required')
@@ -64,7 +70,7 @@ def verify_distribution_app(app, *, notarized=True):
     require(info.get('CFBundleIdentifier') == 'com.mediapublishing.VoiceWispr',
             'wrong application identity')
     run(['codesign', '--verify', '--deep', '--strict', app])
-    team = verify_code(app)
+    team = verify_code(app, expected_team_id())
     # Enumerate actual executable code, rather than trusting a fixed framework list.
     count = 0
     for path in sorted(app.rglob('*')):

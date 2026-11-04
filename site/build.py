@@ -94,7 +94,8 @@ for name in ['installation.html', 'installation.css']:
     shutil.copy2(guide / name, dist / name)
 # Icons belong to the online guide; keep the standalone offline installer intact.
 online_guide = dist / 'installation.html'
-guide_html = online_guide.read_text()
+from package_dmg import render_guide
+guide_html, _ = render_guide(notarized=verified_release['notarized'])
 require(guide_html.count('</head>') == 1, 'Installation guide head missing')
 online_guide.write_text(guide_html.replace('</head>', '<link rel="icon" href="/favicon.ico?v=1" sizes="32x32" type="image/x-icon"><link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" sizes="180x180"></head>'))
 shutil.copytree(guide/'installation-images', dist/'installation-images', ignore=shutil.ignore_patterns('*.md'))

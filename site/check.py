@@ -62,7 +62,7 @@ for ref in page.refs:
         assert (root / path[1:]).is_file() or (root / path[1:] / 'index.html').is_file() or path in redirects, ref
 assert f'AInauten-Voice-{version}-arm64.dmg' in text
 assert f'Beta {version}' in text
-for term in ['Beispieldaten', 'nicht Apple-notarisiert', 'Audio bleibt', 'Mikrofon', 'Bedienungshilfen', 'Apple Silicon', 'SHA256SUMS.txt', 'aria-selected', 'Impressum', 'Datenschutz']:
+for term in ['Beispieldaten', 'Apple-signiert und notarisiert', 'Audio bleibt', 'Mikrofon', 'Bedienungshilfen', 'Apple Silicon', 'SHA256SUMS.txt', 'aria-selected', 'Impressum', 'Datenschutz']:
     assert term in text, term
 assert not re.search(r'<script[^>]+src="https?://', text), 'External script'
 assert not re.search(r'<link[^>]+rel="stylesheet"[^>]+href="https?://', text), 'External stylesheet'
@@ -119,7 +119,12 @@ print(f'SITE PASS: {len(page.refs)} links/assets, four screenshots, release {ver
 # A claimed illustrated guide must ship its two locally served images.
 guide_root = root if root != source else source.parent/'native/Resources/InstallerGuide'
 guide = (guide_root/'installation.html').read_text()
-assert guide.count('installation-images/') == 2
+if root != source and release.get('notarized'):
+    assert 'Von Apple notarisiert' in guide
+    assert 'Die Beta ist noch nicht Apple-notarisiert' not in guide
+    assert guide.count('installation-images/') == 0
+else:
+    assert guide.count('installation-images/') == 2
 for name in ['macos-warnung.png', 'dennoch-oeffnen.png']:
     assert (guide_root/'installation-images'/name).is_file()
 help_html = (root/'help.html').read_text()
@@ -135,4 +140,4 @@ if reporting_enabled:
 assert f'id="build" value="{info["CFBundleVersion"]}"' in help_html
 assert f'id="version" value="{info["CFBundleShortVersionString"]}"' in help_html
 assert 'buymeacoffee.com' not in text.split('<!-- AINAUTEN_HEADER_END -->', 1)[0], 'Support link must not crowd primary navigation'
-print('INSTALLER/HELP PASS: two illustrated installation steps, consistent support version, reporting flags and consent consistent')
+print('INSTALLER/HELP PASS: release-appropriate installation guidance, consistent support version, reporting flags and consent')

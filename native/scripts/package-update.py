@@ -112,13 +112,9 @@ def main():
     existing = subprocess.check_output([str(tools/'generate_keys'), '--account', ACCOUNT, '-p'], text=True).strip()
     require(existing == info['SUPublicEDKey'], 'Keychain signing identity does not match bundled public key')
     subprocess.run(['codesign', '--verify', '--deep', '--strict', str(args.app)], check=True)
-    # Ad-hoc builds pass --verify too. Updates must keep the stable identity, or users lose their permissions.
-    identity_file = ROOT/'.local'/'signing-identity'
-    require(identity_file.exists(), 'stable signing identity missing (.local/signing-identity)')
-    fingerprint = identity_file.read_text().strip()
-    require(re.fullmatch(r'[0-9a-fA-F]{40}', fingerprint), 'invalid stable signing identity')
-    subprocess.run(['codesign', '--verify', '--deep', '--strict', '-R',
-                    f'=certificate leaf = H"{fingerprint}"', str(args.app)], check=True)
+    # The admission gate above verifies either the unchanged local beta pin or
+    # Developer ID + the configured team + notarization. Keep the existing
+    # EdDSA key when migrating Apple identity; never require the old beta cert.
     if args.previous_feed:
         builds = [int(x.text) for x in xml_feed(args.previous_feed).findall('./channel/item/s:version', NS)]
         require(not builds or int(info['CFBundleVersion']) > max(builds), 'Release build must increase')

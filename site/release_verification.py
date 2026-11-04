@@ -41,10 +41,6 @@ def bundle_manifest(app):
 def verify_app(app, *, local_beta=False):
     require(app.is_dir() and not app.is_symlink(), 'regular app required')
     (verify_local_beta_app if local_beta else verify_distribution_app)(app)
-    fingerprint = (ROOT / 'native/Resources/release-signing-fingerprint.txt').read_text().strip()
-    require(bool(re.fullmatch('[0-9A-F]{40}', fingerprint)), 'missing publisher pin')
-    subprocess.run(['codesign', '--verify', '--deep', '--strict', '-R',
-                    '=certificate leaf = H"' + fingerprint + '"', str(app)], check=True)
     info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
     require(info.get('CFBundleIdentifier') == 'com.mediapublishing.VoiceWispr', 'wrong app identity')
     require(info.get('SUPublicEDKey') == (ROOT / 'native/Resources/update-public-key.txt').read_text().strip(), 'wrong update identity')
@@ -52,14 +48,9 @@ def verify_app(app, *, local_beta=False):
     sparkle = plistlib.loads((framework / 'Resources/Info.plist').read_bytes())
     version = tuple(int(part) for part in sparkle['CFBundleShortVersionString'].split('.'))
     require(version >= (2, 9, 6), 'Sparkle below security floor 2.9.6')
-    # Validate every actual nested code object against the same publisher pin.
-    nested = [app / 'Contents/Frameworks/llama.framework', framework,
-              app / 'Contents/Resources/LipReading/uv']
-    nested += list((framework / 'Versions/B/XPCServices').glob('*.xpc'))
-    nested += [framework / 'Versions/B/Autoupdate', framework / 'Versions/B/Updater.app']
-    for item in nested:
-        subprocess.run(['codesign', '--verify', '--strict', '-R',
-                        '=certificate leaf = H"' + fingerprint + '"', str(item)], check=True)
+    # The selected admission gate verifies every actual nested code object:
+    # unchanged certificate pin for local beta, Apple trust + pinned team for
+    # Developer ID. Neither path accepts ad-hoc or unsigned code.
     # Includes loading the lazy diagnostics catalog that caused the 0.1.7
     # clean-machine startup trap; reads only bundled resources, never a profile.
     if int(info.get('CFBundleVersion', '0')) >= 12:
@@ -90,7 +81,7 @@ def verify_release(app, dmg, *, local_beta=False):
                 subprocess.run(['hdiutil', 'detach', mount], check=True, stdout=subprocess.DEVNULL)
     require(hashlib.sha256(dmg.read_bytes()).hexdigest() == before, 'installer changed during verification')
     return {'sha256': before, 'version': info['CFBundleShortVersionString'], 'build': info['CFBundleVersion'],
-            'entries': len(reviewed), 'signing': 'pinned-local-beta' if local_beta else 'pinned-apple-developer-id', 'notarized': not local_beta}
+            'entries': len(reviewed), 'signing': 'pinned-local-beta' if local_beta else 'team-pinned-apple-developer-id', 'notarized': not local_beta}
 
 
 def verify_archive(app, archive, *, local_beta=False):

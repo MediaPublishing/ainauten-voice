@@ -10,11 +10,12 @@ p.add_argument('--built-products', type=pathlib.Path, help='Resume explicit loca
 p.add_argument('--build-system', choices=['native', 'swiftbuild'], help='Swift build engine override for compatible CLT packaging')
 p.add_argument('--scratch-path', type=pathlib.Path, help='Task-owned SwiftPM build directory; reuse existing pinned dependencies')
 p.add_argument('--jobs', type=int, default=4, help='Maximum concurrent compilation jobs')
-p.add_argument('--app-only', action='store_true', help='Development UI check only: do not create a duplicate installer')
+p.add_argument('--app-only', action='store_true', help='Development or prepare-distribution app only; do not create an installer')
 p.add_argument('--local-beta', action='store_true', help='Explicit locally signed public beta; no Apple notarization, existing publisher pin required')
 p.add_argument('--development', action='store_true', help='Explicit local test package only; never accepted by public distribution gates')
 p.add_argument('--development-version', help='Version label for a local development candidate; cannot override a public package')
 p.add_argument('--development-build', help='Build number for a local development candidate; requires --development-version')
+p.add_argument('--prepare-distribution', action='store_true', help='Build and verify a Developer ID app locally; no notarization upload, installer or installation')
 p.add_argument('--notary-profile', help='Existing notarytool Keychain profile for Apple distribution; no credentials are created')
 p.add_argument('--adhoc', action='store_true', help='Local test build only: allow ad-hoc signing without the stable identity')
 p.add_argument('--sign-identity', help='SHA-1 of an existing code-signing identity in the macOS keychain')
@@ -26,15 +27,17 @@ if args.development_version or args.development_build:
     if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,2}', args.development_version) or not re.fullmatch(r'[1-9][0-9]*', args.development_build):
         p.error('development version/build labels must be numeric')
 if args.jobs < 1: p.error('--jobs must be positive')
-if args.app_only and (not args.development or args.install):
-    p.error('--app-only requires --development and cannot install or produce a public release')
+if args.prepare_distribution and (args.development or args.local_beta or args.adhoc or args.debug or args.install or args.notary_profile):
+    p.error('--prepare-distribution cannot be combined with development, beta, ad-hoc, debug, install or notarization modes')
+if args.app_only and (not (args.development or args.prepare_distribution) or args.install):
+    p.error('--app-only requires --development or --prepare-distribution and cannot install')
 if args.local_beta and (args.development or args.adhoc or args.debug or args.notary_profile):
     p.error('--local-beta cannot be combined with development, ad-hoc, debug or notarization modes')
 if args.adhoc and not args.development:
     p.error('--adhoc requires --development; ad-hoc signing is never a public release')
 if args.debug and not args.development:
     p.error('--debug requires --development')
-if not args.development and not args.local_beta and not args.notary_profile:
+if not args.development and not args.local_beta and not args.prepare_distribution and not args.notary_profile:
     p.error('public packaging requires --notary-profile; use --development only for local testing')
 # Public update key only. Generating a new private signing identity is a separate
 # explicitly approved action; an absent key leaves the runtime updater inactive.
@@ -46,21 +49,26 @@ if public_key is not None:
     if len(decoded_key) != 32 or not any(decoded_key): p.error('invalid public update key')
 # Only a public fingerprint is stored here. The signing key stays in Keychain.
 identity_file = root / '.local' / 'signing-identity'
+apple_distribution = not args.development and not args.local_beta
+if apple_distribution and not args.sign_identity:
+    p.error('Apple distribution requires an explicit --sign-identity; the local beta identity is never reused implicitly')
 identity = args.sign_identity or (identity_file.read_text().strip() if identity_file.exists() else '-')
 # Ad-hoc bundles lose macOS permissions on every update; never produce them silently.
 if identity == '-' and not args.adhoc: p.error('stable signing identity missing (.local/signing-identity); pass --adhoc only for a local test build')
 if identity != '-':
     pinned = (root/'Resources/release-signing-fingerprint.txt').read_text().strip()
-    if identity.upper() != pinned: p.error('signing identity differs from the reviewed publisher pin')
+    if not apple_distribution and identity.upper() != pinned: p.error('signing identity differs from the reviewed publisher pin')
     if not re.fullmatch(r'[0-9a-fA-F]{40}', identity): p.error('signing identity must be a 40-character certificate fingerprint')
     identities = subprocess.check_output(['security', 'find-identity', '-p', 'codesigning'], text=True)
     if identity.upper() not in identities.upper(): p.error('configured signing identity is unavailable; refusing ad-hoc fallback')
-# Reject a local certificate before expensive builds. Certificate creation and
-# publisher-pin migration are separate, explicitly approved setup steps.
+# Apple certificates are constrained to the verified organization team.
+# The existing beta pin and Sparkle key remain unchanged.
 if not args.development and not args.local_beta:
     valid = subprocess.check_output(['security', 'find-identity', '-v', '-p', 'codesigning'], text=True)
     matches = [line for line in valid.splitlines() if identity.upper() in line.upper()]
-    if not any('"Developer ID Application:' in line for line in matches):
+    from distribution_security import expected_team_id
+    team = expected_team_id()
+    if not any('"Developer ID Application:' in line and f'({team})"' in line for line in matches):
         p.error('existing valid Developer ID Application identity required; local signing cannot be distributed')
 timestamp_options = [] if (args.development or args.local_beta) else ['--timestamp']
 def run(*cmd): return subprocess.run(cmd, cwd=root, check=True)
@@ -89,7 +97,7 @@ info = plistlib.loads((contents/'Info.plist').read_bytes())
 if args.development_version:
     info['CFBundleShortVersionString'] = args.development_version
     info['CFBundleVersion'] = args.development_build
-info['AInautenDistributionMode'] = 'local-beta' if args.local_beta else ('development' if args.development else 'apple-notarized')
+info['AInautenDistributionMode'] = 'local-beta' if args.local_beta else ('development' if args.development else 'apple-developer-id')
 (contents/'Info.plist').write_bytes(plistlib.dumps(info))
 for language in ['de', 'en']:
     source = root/'Resources'/f'{language}.lproj'
@@ -166,6 +174,11 @@ run('codesign', '--verify', '--deep', '--strict', str(app))
 # A build-machine resource fallback can hide a broken .app layout. Execute the
 # signed release's app-only resolver before accepting an installer.
 run(str(contents/'MacOS/VoiceWispr'), '--check-bundled-resources')
+if args.prepare_distribution:
+    from distribution_security import verify_distribution_app
+    print('PREPARED, NOT NOTARIZED', verify_distribution_app(app, notarized=False))
+    print('APP', app)
+    raise SystemExit(0)
 if not args.development and not args.local_beta:
     run('python3', 'scripts/notarize-release.py', str(app), '--keychain-profile', args.notary_profile,
         '--output', str(out/'notarization-app'))
