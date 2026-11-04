@@ -36,6 +36,6 @@ Diese Fassung wird mit der App ausgeliefert. Sie enthält keine Diktate, Namen o
 - Keine vollständige praktische Abnahme für alle Mikrofone, Apps, langen Aufnahmen und macOS-Versionen.
 - macOS 14 ist das Build-Ziel, getestet wurde bisher auf neueren Versionen.
 - Namen und Fachbegriffe können Fehler enthalten. Die Optimierung ersetzt keine inhaltliche Prüfung.
-- Die App ist lokal signiert, aber noch nicht von Apple notarisiert. Die lokale Signatur benötigt weiterhin eine Ausnahme für Bibliotheksvalidierung. Eine Apple-Developer-ID-Signatur steht aus.
+- Veröffentlichte Pakete ab 0.1.20 verwenden Apple Developer ID, aktive Bibliotheksvalidierung und Apple-Notarisierung. Die frühere Bibliotheksvalidierungs-Ausnahme ist entfernt. Notarisierung ersetzt keine vollständige praktische Abnahme aller Ziel-Apps.
 - Kompatibles Einfügen verwendet kurz die systemweite Zwischenablage. Die Option ist bei neuen Installationen eingeschaltet und lässt sich unter Datenschutz ausschalten. Andere lokale Apps können den kurzzeitig abgelegten Text lesen. Gespeicherte Einstellungen bleiben erhalten; ohne die Option werden nicht direkt unterstützte Textfelder nicht automatisch befüllt.
 - Lippenlesen ist im Release vorübergehend gesperrt, bis eine signierte und isolierte Laufzeit verfügbar ist. Mikrofondiktate sind davon nicht betroffen.

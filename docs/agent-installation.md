@@ -22,7 +22,7 @@ Der Agent kann für Integrität und Bundle-Prüfung die vorhandenen macOS-Werkze
 
 ## macOS-Freigaben, die der Nutzer bestätigt
 
-Die Beta ist noch nicht Apple-notarisiert. Falls macOS „Apple konnte die App nicht überprüfen“ meldet: **Fertig (Done)** wählen, dann **Systemeinstellungen → Datenschutz & Sicherheit → Dennoch öffnen (Open Anyway)** und anschließend **Öffnen (Open)** bestätigen. Die Option erscheint nach dem ersten Öffnungsversuch aus Programme. [Anleitung mit Abbildungen](https://voice.ainauten.com/installation.html); auch offline im DMG unter **00 - ZUERST LESEN.html**.
+Die aktuelle Version ist mit Apple Developer ID signiert und Apple-notarisiert. Öffne die App aus Programme und bestätige gegebenenfalls den üblichen ersten Start einer heruntergeladenen App. Prüfe mit `spctl --assess --type execute` und `xcrun stapler validate`, dass die konkrete App zugelassen ist. Bei einer unerwarteten Sicherheitswarnung die Herkunft und Signatur prüfen, statt eine Ausnahme anzulegen. [Installationsanleitung](https://voice.ainauten.com/installation.html).
 
 Danach Mikrofon und Bedienungshilfen für die tatsächlich installierte App erlauben. Bei abweichenden Warnungen über eine beschädigte oder schädliche App stoppen und Ursache prüfen. Keine globalen Sicherheitsregeln abschalten.
 
@@ -32,8 +32,8 @@ Bei neuen Installationen ab 0.1.14 ist kompatibles Einfügen eingeschaltet. Daf�
 
 ## Updates und Entwicklungsbuilds
 
-Der öffentliche Download **0.1.16, Build 20** enthält den signierten Updater. Automatische Suche und Downloads sind für neue Installationen standardmäßig aktiv; ein ausdrücklich gespeichertes Nein bleibt erhalten. Die App prüft täglich, installiert beim Beenden und unterbricht laufende Diktate nicht. Unter **Einstellungen → Updates** lassen sich die Automatik ausschalten und Updates sofort prüfen. Einstellungen, Wörterbuch und Verlauf bleiben erhalten.
+Der öffentliche Download **0.1.20, Build 27** enthält den signierten Updater. Automatische Suche und Downloads sind für neue Installationen standardmäßig aktiv; ein ausdrücklich gespeichertes Nein bleibt erhalten. Die App prüft täglich, installiert beim Beenden und unterbricht laufende Diktate nicht. Unter **Einstellungen → Updates** lassen sich die Automatik ausschalten und Updates sofort prüfen. Einstellungen, Wörterbuch und Verlauf bleiben erhalten.
 
-Apps ohne Updater, insbesondere die frühere Beta 0.1.1, Build 2, benötigen einmalig den aktuellen Installer. Ein Git-Push oder eine Änderung der Website allein verteilt kein Update; dafür wird ein geprüftes App-Paket im signierten Kanal veröffentlicht. Apple-Notarisierung bleibt ein separater Schritt.
+Apps ohne Updater, insbesondere die frühere Beta 0.1.1, Build 2, benötigen einmalig den aktuellen Installer. Ein Git-Push oder eine Änderung der Website allein verteilt kein Update; dafür wird ein geprüftes App-Paket im signierten Kanal veröffentlicht. App und Installer durchlaufen vor der Veröffentlichung Apples Notarisierung.
 
 Quellcode-Builds sind für Entwickler: siehe [native/README.md](../native/README.md). Sie können noch unveröffentlichte Funktionen enthalten und sind nicht mit der geprüften Download-Beta gleichzusetzen. Die Python-Werkzeuge dienen dem Build; Endnutzer benötigen keinen Python- oder Modellserver.

@@ -136,6 +136,29 @@ class DistributionSecurityTests(unittest.TestCase):
             process.assert_not_called()
         self.assertIn('existing valid Developer ID Application identity required', stderr.getvalue())
 
+    def testPreparedDistributionRejectsUploadAndDevelopmentModes(self):
+        for extra in ['--notary-profile=fixture', '--install', '--development', '--local-beta', '--adhoc', '--debug']:
+            process = subprocess.run(['python3', str(ROOT/'scripts/package.py'), '--prepare-distribution', extra], capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(process.returncode, 0)
+            self.assertIn('--prepare-distribution cannot be combined', process.stderr)
+
+    def testDeveloperIDPreparationUsesOwnTeamWithoutOldBetaPin(self):
+        fingerprint = 'A' * 40
+        for team in [security.expected_team_id(), 'OTHER12345']:
+            listing = f'1) {fingerprint} "Developer ID Application: Fixture ({team})"'
+            with patch('sys.argv', ['package.py', '--prepare-distribution', '--sign-identity', fingerprint]), \
+                 patch('subprocess.check_output', return_value=listing), \
+                 patch('subprocess.run', side_effect=RuntimeError('build reached')) as process, \
+                 contextlib.redirect_stderr(io.StringIO()):
+                if team == security.expected_team_id():
+                    with self.assertRaisesRegex(RuntimeError, 'build reached'):
+                        runpy.run_path(str(ROOT/'scripts/package.py'), run_name='__main__')
+                    self.assertEqual(process.call_args.args[0], ('python3', 'scripts/bootstrap.py'))
+                else:
+                    with self.assertRaises(SystemExit):
+                        runpy.run_path(str(ROOT/'scripts/package.py'), run_name='__main__')
+                    process.assert_not_called()
+
     def testAdhocCannotBeImplicitDistribution(self):
         run = subprocess.run(['python3', str(ROOT/'scripts/package.py'), '--adhoc'],
                              capture_output=True, text=True, timeout=10)
@@ -163,7 +186,7 @@ class DistributionSecurityTests(unittest.TestCase):
                  patch.object(security, 'verify_code', return_value='ABCDE12345') as verify, \
                  patch.object(security, 'verify_ticket') as ticket:
                 result = security.verify_distribution_app(app)
-                self.assertEqual(verify.call_args_list[0].args, (app,))
+                self.assertEqual(verify.call_args_list[0].args, (app, security.expected_team_id()))
                 self.assertEqual(verify.call_args_list[1].args, (code, 'ABCDE12345'))
                 ticket.assert_called_once_with(app)
                 self.assertEqual(result['codeObjects'], 1)
