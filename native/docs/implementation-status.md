@@ -1,6 +1,6 @@
 # Entwicklungsstand
 
-AInauten Voice ist eine native lokale Diktier-App für macOS und Apple Silicon. Der öffentliche Download ist Beta 0.1.20, Build 27, mit signierten automatischen Updates, Hilfe und aktivem privaten Fehlerempfang. Automatische Fehlerberichte bleiben standardmäßig aus. Lippenlesen ist in diesem Release vorübergehend gesperrt, bis eine signierte und isolierte Laufzeit verfügbar ist. Die vollständige praktische Abnahme aller Ziel-Apps bleibt offen. Der Release verwendet Apple Developer ID, aktive Bibliotheksvalidierung und Apple-Notarisierung.
+AInauten Voice ist eine native lokale Diktier-App für macOS und Apple Silicon. Der öffentliche Download ist Beta 0.1.21, Build 28, mit signierten automatischen Updates, Hilfe und aktivem privaten Fehlerempfang. Automatische Fehlerberichte bleiben standardmäßig aus. Lippenlesen ist in diesem Release vorübergehend gesperrt, bis eine signierte und isolierte Laufzeit verfügbar ist. Die vollständige praktische Abnahme aller Ziel-Apps bleibt offen. Der Release verwendet Apple Developer ID, aktive Bibliotheksvalidierung und Apple-Notarisierung.
 
 [Prüfstand und offene Grenzen](verification-report.md) · [Entwickeln](../README.md) · [Lizenzen](../Resources/Licenses/NOTICE.md)
 
