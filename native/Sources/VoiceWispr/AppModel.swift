@@ -363,6 +363,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     let speech = SpeechRuntime(modelDirectory: ModelPaths.speech)
     let formatter = LocalFormatter(modelURL: ModelPaths.formatter)
     let capture = AudioCapture()
+    private let mediaPlayback = MediaPlaybackPause()
     let hotkey = GlobalHotkey()
     private var pipeline: ProcessingPipeline?
     private var focus: FocusSnapshot?
@@ -771,7 +772,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         if !quitting {
             quitting = true; cancel(); downloadTask?.cancel(); swissDownloadTask?.cancel(); speechPreparationID = UUID(); swissDownloadID = UUID(); refreshClock?.invalidate(); lipPreparation?.cancel()
             let pendingSave = saveTask, pendingHistory = historyWriteTask
-            Task { await lipRuntime.cancel(); await lipInstaller.cancel(); await pendingSave?.value; await pendingHistory?.value; await formatter.shutdown(); shutdownComplete = true; sender.reply(toApplicationShouldTerminate: true) }
+            Task { await lipRuntime.cancel(); await lipInstaller.cancel(); await pendingSave?.value; await pendingHistory?.value; await formatter.shutdown(); await mediaPlayback.finishPendingCommands(); shutdownComplete = true; sender.reply(toApplicationShouldTerminate: true) }
         }
         return .terminateLater
     }
@@ -1074,6 +1075,12 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                     captureReady = true; level = 0.65; return
                 }
                 #endif
+                await mediaPlayback.pause(for: id)
+                guard sessionID == id, !Task.isCancelled else { return }
+                if state != .recording {
+                    try await pipeline.start(sessionID: id, style: style, dictionary: dictionary, languages: languages)
+                    return
+                }
                 let offsets = CaptureSampleOffsets()
                 try capture.start(onSamples: { [weak self] samples, level in
                     // Capture the clock on the audio callback, before actor scheduling.
@@ -1118,7 +1125,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             traceRecoveryPreview("stopped"); return
         }
         #endif
-        var captured = capture.stop(); captureReady = false; clock?.invalidate(); clock = nil
+        var captured = capture.stop(); mediaPlayback.resume(for: id); captureReady = false; clock?.invalidate(); clock = nil
         // Short recordings may contain a complete word. Let recognition decide;
         // the no-speech path below already avoids opening a recovery window.
         #if DEBUG
@@ -1194,6 +1201,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     /// Sleep must not silently drop what was already said. Finish the recording,
     /// keep processing, and show the text instead of pasting after wake.
     private func prepareForSleep() {
+        mediaPlayback.discard()
         if hasQueuedWork {
             dictationQueue.suppressAutomaticDelivery()
             if queuedCapture != nil { stopQueuedCapture() }
@@ -1236,7 +1244,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         if practiceSession, let id = sessionID { practiceFeedback.cancel(id) }
         sessionID = nil; focus = nil; inputFocusRecovery = nil; historyContext = nil; hotkey.cancellationEnabled = false; operation?.cancel(); appendTask?.cancel(); operation = nil; appendTask = nil
         acceptedSamples = 0; pendingSamples = [:]; practiceSession = false; originalRequested = false
-        _ = capture.stop(); clock?.invalidate(); clock = nil; hotkey.reset()
+        _ = capture.stop(); mediaPlayback.resume(); clock?.invalidate(); clock = nil; hotkey.reset()
         if let pipeline { Task { await pipeline.cancel() } }; pipeline = nil
         state = .paused; level = 0; captureReady = false; updateHotkey()
         if wasLipSession {
@@ -1739,6 +1747,15 @@ extension AppModel {
                 enabled: job.settings.historyEnabled ?? true)
             do {
                 if stream { job.pipeline = try self.makeQueuedPipeline(for: job) }
+                await self.mediaPlayback.pause(for: job.id)
+                guard !Task.isCancelled else { return }
+                if job.stopped {
+                    if let pipeline = job.pipeline {
+                        try await pipeline.start(sessionID: job.id, style: style, dictionary: job.dictionary, languages: job.languages)
+                    }
+                    return
+                }
+                guard self.queuedCapture?.id == job.id else { return }
                 let offsets = CaptureSampleOffsets()
                 try self.capture.start(onSamples: { [weak self] samples in
                     let rms = sqrt(samples.reduce(Float(0)) { $0 + $1 * $1 } / Float(max(1, samples.count)))
@@ -1791,7 +1808,7 @@ extension AppModel {
     }
     private func stopQueuedCapture() {
         guard let job = queuedCapture else { return }
-        job.stopped = true; job.samples = capture.stop()
+        job.stopped = true; job.samples = capture.stop(); mediaPlayback.resume(for: job.id)
         captureReady = false; clock?.invalidate(); clock = nil; level = 0
         queuedCapture = nil; sessionID = nil; hotkey.reset()
         _ = dictationQueue.captured(job.id)

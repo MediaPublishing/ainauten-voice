@@ -1,0 +1,33 @@
+// Read only playback state and player identity through the system JXA host.
+// Never fall back to audio activity or an unverified Play/Pause toggle.
+ObjC.import('Foundation');
+function run(args) {
+    try {
+        $.NSBundle.bundleWithPath('/System/Library/PrivateFrameworks/MediaRemote.framework').load;
+        var request = $.NSClassFromString('MRNowPlayingRequest');
+        ObjC.bindFunction('MRMediaRemoteSendCommand', ['bool', ['int', 'id']]);
+        ObjC.bindFunction('kill', ['int', ['int', 'int']]);
+        function state() {
+            var path = request.localNowPlayingPlayerPath;
+            var client = path.client;
+            var bundle = ObjC.unwrap(client.bundleIdentifier);
+            var player = ObjC.unwrap(path.player.identifier);
+            var pid = Number(client.processIdentifier);
+            if (typeof bundle !== 'string' || !bundle.length || typeof player !== 'string' || !player.length || !(pid > 0) || $.kill(pid, 0) !== 0) return null;
+            return {key: JSON.stringify([bundle, pid, player]), playing: !!request.localIsPlaying};
+        }
+        var before = state();
+        if (!before) return '{}';
+        if (args[0] === 'pause' && before.playing) {
+            if (!$.MRMediaRemoteSendCommand(1, $.NSDictionary.dictionary)) return '{}';
+            for (var i = 0; i < 8; i++) {
+                $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.05));
+                var after = state();
+                if (!after || after.key !== before.key) return '{}';
+                if (!after.playing) return JSON.stringify({pausedPlayer: before.key});
+            }
+        }
+        if (args[0] === 'resume' && before.key === args[1] && !before.playing) $.MRMediaRemoteSendCommand(0, $.NSDictionary.dictionary);
+        return '{}';
+    } catch (_) { return '{}'; }
+}

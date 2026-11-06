@@ -68,6 +68,8 @@ Die Absatzprüfung protokolliert auch fehlgeschlagene Formatierungsversuche mit 
 
 ## Sicherheit und Zustellung
 
+Beim Mikrofonstart pausiert die App laufende Wiedergabe über die macOS-Mediensteuerung. Ein kurzes lokales JXA-Systemskript liest ausschließlich Wiedergabestatus und Playerkennung, keine Titel oder Medieninhalte. Die App merkt sich nur eine bestätigte, selbst gesetzte Pause. Nach Aufnahmeende oder Abbruch wird ausschließlich derselbe weiterhin pausierte Player fortgesetzt, ohne auf die Texterkennung zu warten. Bereits pausierte Medien, Playerwechsel, unbekannte Zustände und Ruhezustand lösen keine Wiederaufnahme aus. Die Befehle werden zwischen aufeinanderfolgenden Aufnahmen serialisiert. Die Abfrage nutzt das private MediaRemote-Framework über den vorhandenen macOS-Systemskripthost; Betriebssystemänderungen können diesen Weg unbrauchbar machen. Bei nicht lesbarem Status sendet die App keine Medienbefehle; eine nicht bestätigte Pause wird nicht automatisch aufgehoben. Zusätzliche Pakete und geänderte macOS-Schutzmechanismen sind dafür nicht nötig.
+
 Lokale Entwicklungskandidaten können mit `scripts/package.py --development
 --app-only --development-version 0.1.17 --development-build 21` eine eigene
 Versionsanzeige erhalten, ohne die Metadaten des öffentlichen Releases zu
