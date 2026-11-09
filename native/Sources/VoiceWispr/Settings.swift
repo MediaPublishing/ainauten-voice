@@ -310,20 +310,35 @@ struct SettingsView: View {
             Button(L10n.text("swiss.openBeta")) { section = .beta; focusedSection = .beta }.buttonStyle(.link)
         }
     }
+    private var speechModelSelection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker(L10n.text("models.speechModel"), selection: Binding(
+                get: { model.document.settings.selectedSpeechModel },
+                set: { model.setSpeechModel($0) })) {
+                ForEach(SpeechModel.allCases) { choice in Text(choice.title).tag(choice) }
+            }.pickerStyle(.menu).disabled(!model.canChangeSpeechProfile || model.swissEnabled || model.swissDownloading)
+            Text(L10n.text(model.swissEnabled ? "models.swissModelHelp" : model.document.settings.selectedSpeechModel == .parakeetUltra ? "models.ultraHelp" : "models.v3Help"))
+                .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    @ViewBuilder private var modelDownloadControls: some View {
+        if model.downloading { ProgressView(value: model.downloadFraction); Text(model.downloadLabel).font(.system(size: 12)).monospacedDigit(); Button(L10n.text("models.pause")) { model.pauseDownload() } }
+        else if model.preparing { ProgressView(L10n.text("models.loading")) }
+        else if model.baseModelsReady { Label(L10n.text("models.loaded"), systemImage: "checkmark.circle").foregroundStyle(.green) }
+        else {
+            Button(L10n.text("models.download")) {
+                model.installModels()
+                // Continue onboarding while the explicitly requested download runs.
+                if section == .setup && step == .models { step = .wispr }
+            }.buttonStyle(.borderedProminent).disabled(model.swissDownloading || model.isUIPreview)
+        }
+    }
     private var models: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(L10n.text("models.installTitle")).font(.system(size: 19, weight: .semibold))
+            speechModelSelection
             Text(L10n.text("models.size")).foregroundStyle(.secondary)
-            if model.downloading { ProgressView(value: model.downloadFraction); Text(model.downloadLabel).font(.system(size: 12)).monospacedDigit(); Button(L10n.text("models.pause")) { model.pauseDownload() } }
-            else if model.preparing { ProgressView(L10n.text("models.loading")) }
-            else if model.baseModelsReady { Label(L10n.text("models.loaded"), systemImage: "checkmark.circle").foregroundStyle(.green) }
-            else {
-                Button(L10n.text("models.download")) {
-                    model.installModels()
-                    // The download continues in the background while the remaining steps are done.
-                    if section == .setup && step == .models { step = .wispr }
-                }.buttonStyle(.borderedProminent).disabled(model.swissDownloading || model.isUIPreview)
-            }
+            modelDownloadControls
             Text(L10n.text("models.resumeHelp")).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -354,6 +369,9 @@ struct SettingsView: View {
             Label(model.status, systemImage: model.state == .ready ? "mic" : model.conflict ? "exclamationmark.circle" : "info.circle").fixedSize(horizontal: false, vertical: true)
             if model.conflict { Button(L10n.text("dictation.switchFlow")) { section = .migration; focusedSection = .migration } }
             Text(L10n.text("dictation.help")).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Divider()
+            speechModelSelection
+            modelDownloadControls
             Divider()
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 28) {

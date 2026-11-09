@@ -81,9 +81,9 @@
 "import.unsupportedFormats" = "Other app writing styles";
 "import.unsupportedStyles" = "Custom writing styles";
 "import.words" = "Words";
-"models.download" = "Download models (about 3 GB)";
+"models.download" = "Download missing models";
 "models.installTitle" = "Install recognition and optimization";
-"models.loaded" = "Both models loaded";
+"models.loaded" = "Selected models are loaded";
 "models.loading" = "Loading models…";
 "models.loadingBrief" = "Loading models…";
 "models.missing" = "Models missing";

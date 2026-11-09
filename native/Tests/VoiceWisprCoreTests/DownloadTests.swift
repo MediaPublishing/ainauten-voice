@@ -3,6 +3,30 @@ import Foundation
 @testable import VoiceWisprCore
 
 final class DownloadTests: XCTestCase {
+    func testUltraIsDownloadedOnlyByExplicitGroupAndKeepsV3Intact() async throws {
+        Self.FixtureProtocol.reset()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("ultra-groups-\(UUID())")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let hash = root.appendingPathComponent("hash"); try Self.FixtureProtocol.payload.write(to: hash)
+        let sha = try ModelDownloader.digest(hash)
+        let v3 = ModelFile(path: "parakeet/model.bin", url: URL(string: "fixture://v3")!, sha256: sha, size: 10, group: "parakeet")
+        let ultra = ModelFile(path: "parakeet-ultra/model.bin", url: URL(string: "fixture://ultra")!, sha256: sha, size: 10, group: "parakeet-ultra")
+        let cfg = URLSessionConfiguration.ephemeral; cfg.protocolClasses = [Self.FixtureProtocol.self]
+        let downloader = ModelDownloader(root: root, manifest: .init(version: 1, files: [v3, ultra]), sessionConfiguration: cfg)
+        try await downloader.install { _, _, group in XCTAssertEqual(group, "parakeet") }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent(ultra.path).path))
+        let before = try Data(contentsOf: root.appendingPathComponent(v3.path))
+        try await downloader.install(groups: ["parakeet-ultra"]) { _, _, group in XCTAssertEqual(group, "parakeet-ultra") }
+        XCTAssertEqual(try Data(contentsOf: root.appendingPathComponent(v3.path)), before)
+        let ultraReady = try await downloader.installed(groups: ["parakeet-ultra"])
+        XCTAssertTrue(ultraReady)
+        try FileManager.default.removeItem(at: root.appendingPathComponent(ultra.path + ".verified"))
+        let incompleteUltra = try await downloader.installed(groups: ["parakeet-ultra"])
+        let v3Ready = try await downloader.installed()
+        XCTAssertFalse(incompleteUltra)
+        XCTAssertTrue(v3Ready)
+    }
     func testOptionalSwissGroupDoesNotChangeDefaultInstallation() async throws {
         Self.FixtureProtocol.reset()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("swiss-groups-\(UUID())")

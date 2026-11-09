@@ -186,6 +186,10 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
 @MainActor final class AppModel: NSObject, ObservableObject, NSWindowDelegate, NSApplicationDelegate {
     let reports = ErrorReportController()
     @Published var document = ExportDocument() { didSet {
+        if !loading, !previewMode, document.settings.selectedSpeechModel != oldValue.settings.selectedSpeechModel {
+            baseModelsReady = false; modelsReady = false
+            speechProfileNeedsPreparation = true
+        }
         if !loading, !previewMode, swissEnabled, document.settings.swissNeedsFormatter != oldValue.settings.swissNeedsFormatter {
             speechProfileNeedsPreparation = true
         }
@@ -360,7 +364,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     private var historyContext: HistoryCaptureContext?
     let store = SettingsStore(url: ModelPaths.support.appendingPathComponent("settings.json"))
     let downloader = ModelDownloader()
-    let speech = SpeechRuntime(modelDirectory: ModelPaths.speech)
+    private(set) var speech = SpeechRuntime(configuration: .init(model: .parakeetUltra))
     let formatter = LocalFormatter(modelURL: ModelPaths.formatter)
     let capture = AudioCapture()
     private let mediaPlayback = MediaPlaybackPause()
@@ -625,7 +629,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
             settingsNavigation = SettingsNavigation(section: document.settings.onboardingComplete ? .overview : .setup, setupStep: nil)
             refreshHistory()
             if !document.settings.onboardingComplete { showSettings() }
-            let installed = (try? await downloader.installed()) == true
+            let installed = (try? await downloader.installed(groups: document.settings.selectedSpeechModel.downloadGroups)) == true
             preparing = false
             baseModelsReady = installed
             if installed || swissEnabled { await prepareModels() }
@@ -837,10 +841,11 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
     }
     func installModels() {
         guard !downloading, !swissDownloading, !preparing, sessionID == nil else { return }; downloading = true; errorMessage = nil
+        let groups = document.settings.selectedSpeechModel.downloadGroups
         downloadTask = Task {
             do {
-                try await downloader.install { [weak self] current, total, group in
-                    Task { @MainActor in self?.downloadFraction = Double(current) / Double(max(1, total)); self?.downloadLabelMessage = .key("models.progress", [L10n.text(group == "parakeet" ? "models.recognition" : "models.optimization"), ByteCountFormatter.string(fromByteCount: current, countStyle: .file), ByteCountFormatter.string(fromByteCount: total, countStyle: .file)]) }
+                try await downloader.install(groups: groups) { [weak self] current, total, group in
+                    Task { @MainActor in self?.downloadFraction = Double(current) / Double(max(1, total)); self?.downloadLabelMessage = .key("models.progress", [L10n.text(group == "parakeet" || group == "parakeet-ultra" ? "models.recognition" : "models.optimization"), ByteCountFormatter.string(fromByteCount: current, countStyle: .file), ByteCountFormatter.string(fromByteCount: total, countStyle: .file)]) }
                 }
                 downloading = false; baseModelsReady = true; await prepareModels()
             } catch is CancellationError { downloading = false; downloadLabel = "Download pausiert. Beim nächsten Start geht es weiter." }
@@ -848,6 +853,11 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         }
     }
     func pauseDownload() { downloadTask?.cancel(); Task { await downloader.cancel() } }
+    func setSpeechModel(_ model: SpeechModel) {
+        guard canChangeSpeechProfile, !swissEnabled, model != document.settings.selectedSpeechModel else { return }
+        document.settings.speechModel = model
+        if previewMode { baseModelsReady = model == .parakeetV3; modelsReady = baseModelsReady }
+    }
     func setSwissGermanEnabled(_ enabled: Bool) {
         guard canChangeSpeechProfile, enabled != swissEnabled else { return }
         if !enabled { pauseSwissDownload() }
@@ -908,9 +918,11 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
                 guard speechPreparationID == token, !quitting else { return }
                 swissReady = true; swissStatusMessage = .key("swiss.ready", [])
             } else {
-                baseModelsReady = try await downloader.installed()
+                let selectedModel = document.settings.selectedSpeechModel
+                baseModelsReady = try await downloader.installed(groups: selectedModel.downloadGroups)
                 guard speechPreparationID == token, !quitting else { return }
                 if !baseModelsReady { preparing = false; state = .needsSetup; updateHotkey(); return }
+                if speech.model != selectedModel { speech = SpeechRuntime(configuration: .init(model: selectedModel)) }
                 try await speech.prepare()
                 guard speechPreparationID == token, !quitting else { return }
                 preparationStatusMessage = .key("status.formatterLoading", []); status = preparationStatusMessage.text

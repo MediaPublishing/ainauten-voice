@@ -10,6 +10,7 @@ public struct SpeechRuntimeConfiguration: Sendable {
     public var sampleRate = 16_000
     public var maxSessionSeconds = 20 * 60
     public var modelDirectory: URL
+    public let model: SpeechModel
     public var activityModelDirectory: URL
     public var encoderPrecision: ParakeetEncoderPrecision
     public var activitySilenceDuration: TimeInterval
@@ -25,10 +26,12 @@ public struct SpeechRuntimeConfiguration: Sendable {
     func blockSeconds(for sampleCount: Int) -> Int? {
         reconciliationBlockSeconds ?? (sampleCount > 10 * 60 * sampleRate ? 60 : nil)
     }
-    public init(modelDirectory: URL = ModelPaths.speech, activityModelDirectory: URL = ModelPaths.activity, encoderPrecision: ParakeetEncoderPrecision = .int8, activitySilenceDuration: TimeInterval = 0.5, trimTrailingSilence: Bool = false, sdkWorkers: Int = 2) {
+    /// Keep unqualified probe calls on v3; the application explicitly supplies its saved model choice.
+    public init(modelDirectory: URL? = nil, activityModelDirectory: URL = ModelPaths.activity, encoderPrecision: ParakeetEncoderPrecision = .int8, activitySilenceDuration: TimeInterval = 0.5, trimTrailingSilence: Bool = false, sdkWorkers: Int = 2, model: SpeechModel = .parakeetV3) {
         precondition(activitySilenceDuration.isFinite && activitySilenceDuration >= 0 && activitySilenceDuration <= 1)
         precondition((1...4).contains(sdkWorkers))
-        self.modelDirectory = modelDirectory; self.activityModelDirectory = activityModelDirectory
+        self.model = model
+        self.modelDirectory = modelDirectory ?? model.directory; self.activityModelDirectory = activityModelDirectory
         self.encoderPrecision = encoderPrecision
         self.activitySilenceDuration = activitySilenceDuration
         self.trimTrailingSilence = trimTrailingSilence
@@ -39,6 +42,7 @@ public struct SpeechRuntimeConfiguration: Sendable {
 /// In-process Core ML recognition. Loading never downloads models or sends audio.
 public actor SpeechRuntime: SpeechTranscribing, SpeechActivityDetecting, SpeechSessionReconciling, SpeechLanguageConfiguring {
     private let configuration: SpeechRuntimeConfiguration
+    public nonisolated var model: SpeechModel { configuration.model }
     private var manager: AsrManager?
     private let activity: VadRuntime
     private var languageSession: UUID?
@@ -60,7 +64,7 @@ public actor SpeechRuntime: SpeechTranscribing, SpeechActivityDetecting, SpeechS
         guard manager == nil else { return }
         guard configuration.sampleRate == 16_000 else { throw VoiceError.message("Spracherkennung benötigt 16 kHz Mono-Audio") }
         // loadLocal is deliberately used instead of the SDK's network-recovering load.
-        let models = try AsrModels.loadLocal(from: configuration.modelDirectory, version: .v3, encoderPrecision: configuration.encoderPrecision)
+        let models = try AsrModels.loadLocal(from: configuration.modelDirectory, version: configuration.model.asrVersion, encoderPrecision: configuration.encoderPrecision)
         let candidate = AsrManager(config: ASRConfig(sampleRate: 16_000, parallelChunkConcurrency: configuration.sdkWorkers, streamingEnabled: false, dualDecodeArbitration: configuration.dualDecodeArbitration))
         try await candidate.loadModels(models)
         // Initialize inference kernels before the app reports readiness. Silence stays in memory.

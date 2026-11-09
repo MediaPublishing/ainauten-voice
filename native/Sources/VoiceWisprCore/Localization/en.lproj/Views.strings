@@ -175,3 +175,7 @@
 "dictionary.lastMessage.empty" = "After your next dictation, you can select a word here.";
 "dictionary.message.older" = "Older message";
 "dictionary.message.newer" = "Newer message";
+"models.speechModel" = "Speech recognition";
+"models.v3Help" = "The original local model. Remains available as an alternative to Ultra.";
+"models.ultraHelp" = "Default model. Separate download of about 630 MB. Better German results in our local comparison; some sentences were lost when switching languages.";
+"models.swissModelHelp" = "Swiss German uses its separate Whisper model.";

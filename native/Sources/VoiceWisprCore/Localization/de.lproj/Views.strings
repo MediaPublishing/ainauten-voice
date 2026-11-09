@@ -175,3 +175,7 @@
 "dictionary.lastMessage.empty" = "Nach deinem nächsten Diktat kannst du hier ein Wort übernehmen.";
 "dictionary.message.older" = "Ältere Nachricht";
 "dictionary.message.newer" = "Neuere Nachricht";
+"models.speechModel" = "Spracherkennung";
+"models.v3Help" = "Bisheriges lokales Modell. Bleibt als Alternative zu Ultra verfügbar.";
+"models.ultraHelp" = "Standardmodell. Separater Download von etwa 630 MB. Im lokalen Vergleich besser bei Deutsch; bei Sprachwechseln wurden teils Sätze ausgelassen.";
+"models.swissModelHelp" = "Für Schweizerdeutsch wird das separate Whisper-Modell verwendet.";

@@ -2,7 +2,9 @@
 
 Ab 0.1.20 (27): Developer-ID-Signierung, aktive Bibliotheksvalidierung und Apple-Notarisierung. [Release-Prüfungen](../docs/apple-distribution.md).
 
-Native Diktier-App für macOS. Apple Silicon, macOS 14+. Audio bleibt lokal; Parakeet v3 (FluidAudio) und Qwen3-4B Q4_K_M (eingebettetes llama.cpp). Optionale OpenAI-kompatible Textglättung ist standardmäßig aus.
+Native Diktier-App für macOS. Apple Silicon, macOS 14+. Audio bleibt lokal; Parakeet Ultra oder v3 (FluidAudio) und Qwen3-4B Q4_K_M (eingebettetes llama.cpp). Optionale OpenAI-kompatible Textglättung ist standardmäßig aus.
+
+Entwicklungskandidat: Ultra ist die Voreinstellung für Profile ohne gespeicherte Modellwahl. Unter **Diktieren → Spracherkennung** bleibt Parakeet v3 auswählbar. Ultra wird erst nach Betätigung des Downloadbuttons in einen separaten Modellordner geladen, mit fester Revision und SHA-256-Prüfung aller 18 Dateien. Vorhandene v3-Dateien bleiben erhalten. Ein fehlendes oder fehlerhaftes Ultra-Modell führt zu einer verständlichen Setup-/Fehleranzeige, ohne automatischen Wechsel zu v3. Für Sprachwechsel zeigt die Auswahl den im lokalen Vergleich beobachteten Qualitätsvorbehalt. Schweizerdeutsch behält seinen separaten Whisper-Ablauf.
 
 ## Installieren
 

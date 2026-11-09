@@ -105,6 +105,8 @@ public actor SettingsStore {
         // The Wispr import never changes clipboard access; undo must retain a
         // later user choice, including a withdrawal or an old disabled profile.
         document.settings.clipboardCompatibility = current.clipboardCompatibility
+        // Model selection is independent of the Wispr import.
+        document.settings.speechModel = current.speechModel
         try write(document, provenance: snapshot.wisprImport)
         // One undo per import; repeating it would roll back later edits again.
         try? FileManager.default.removeItem(at: backup)
