@@ -126,7 +126,7 @@ import VoiceWisprCore
                 let application = AXUIElementCreateApplication(app.processIdentifier)
                 if let rawWindow = attribute(application, kAXFocusedWindowAttribute), CFGetTypeID(rawWindow) == AXUIElementGetTypeID() {
                     let window = rawWindow as! AXUIElement
-                    if ownDocument(window, file), let candidate = FocusSnapshot.capture(), candidate.baseline.trimmingCharacters(in: .newlines) == initial {
+                    if ownDocument(window, file), let candidate = FocusSnapshot.capture(), candidate.baseline?.trimmingCharacters(in: .newlines) == initial {
                         target = candidate; break
                     }
                 }
@@ -139,10 +139,10 @@ import VoiceWisprCore
         var selectedReady: FocusSnapshot?
         for _ in 0..<30 {
             guard NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier else { break }
-            if let candidate = FocusSnapshot.capture(), ownDocument(candidate.window, file), candidate.baseline.trimmingCharacters(in: .newlines) == initial, candidate.selectedRange == selected { selectedReady = candidate; break }
+            if let candidate = FocusSnapshot.capture(), ownDocument(candidate.window, file), candidate.baseline?.trimmingCharacters(in: .newlines) == initial, candidate.selectedRange == selected { selectedReady = candidate; break }
             try await Task.sleep(for: .milliseconds(50))
         }
-        guard setRange == .success, let ready = selectedReady else {
+        guard setRange == .success, let ready = selectedReady, let baseline = ready.baseline else {
             let details: [String: Any] = ["passed": false, "reason": "selectionUnavailable", "selectionSetAccepted": setRange == .success, "foregroundMatches": NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier]
             print(String(decoding: try JSONSerialization.data(withJSONObject: details, options: [.sortedKeys]), as: UTF8.self)); return
         }
@@ -167,7 +167,7 @@ import VoiceWisprCore
         let outcome = await DeliveryCoordinator().deliver(text: insertion, to: ready, allowClipboard: true)
         let postPasteModifiers = CGEventSource.flagsState(.hidSystemState).rawValue
         let duration = started.duration(to: .now).components
-        let expected = mode == "focus" ? ready.baseline : (ready.baseline as NSString).replacingCharacters(in: selected, with: insertion)
+        let expected = mode == "focus" ? baseline : (baseline as NSString).replacingCharacters(in: selected, with: insertion)
         let direct = attribute(ready.element, kAXValueAttribute) as? String
         let ranged = rangedText(ready.element)
         let chunks = chunkReadback(ready.element, expected: expected)

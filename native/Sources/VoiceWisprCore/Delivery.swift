@@ -14,7 +14,9 @@ public struct ClipboardOwnership: Sendable, Equatable {
 public enum DeliveryVerification {
     /// Adjacent recordings are separate utterances. Preserve punctuation and
     /// decimal continuations, but do not glue unpunctuated words together.
-    public static func queuedContinuationText(_ text: String, baseline: String, selection: NSRange) -> String {
+    public static func queuedContinuationText(_ text: String, baseline: String?, selection: NSRange?) -> String {
+        guard let baseline, let selection,
+              expectedValue(baseline: baseline, selection: selection, insertion: "") != nil else { return text }
         let value = baseline as NSString
         guard let first = text.first, first.isLetter || first.isNumber,
               selection.length == 0, selection.location > 0, selection.location <= value.length,
@@ -30,8 +32,9 @@ public enum DeliveryVerification {
     /// Require the exact equivalent caret and complete text on both sides.
     /// Editors may represent spaces, paragraph endings and accents differently.
     /// Never trim the caret prefix: that would accept a move to another line.
-    public static func canAdvanceQueuedInsertion(baseline: String, selection: NSRange, text: String,
+    public static func canAdvanceQueuedInsertion(baseline: String?, selection: NSRange?, text: String,
                                                  observed: String, caret: NSRange) -> Bool {
+        guard let baseline, let selection else { return false }
         let insertion = insertionText(text, baseline: baseline, selection: selection)
         guard let expected = expectedValue(baseline: baseline, selection: selection, insertion: insertion),
               caret.location != NSNotFound, caret.location >= 0, caret.length == 0,
@@ -45,7 +48,9 @@ public enum DeliveryVerification {
                 == normalized(observedValue.substring(to: caret.location), trimTrailingNewlines: false)
             && normalized(expectedValue.substring(from: expectedCaret)) == normalized(observedValue.substring(from: caret.location))
     }
-    public static func insertionText(_ text: String, baseline: String, selection: NSRange) -> String {
+    public static func insertionText(_ text: String, baseline: String?, selection: NSRange?) -> String {
+        guard let baseline, let selection,
+              expectedValue(baseline: baseline, selection: selection, insertion: "") != nil else { return text }
         let value = baseline as NSString
         guard let first = text.first, !first.isWhitespace,
               selection.location != NSNotFound, selection.location > 0,
@@ -60,14 +65,16 @@ public enum DeliveryVerification {
         }
         return " " + text
     }
-    public static func expectedValue(baseline: String, selection: NSRange, insertion: String) -> String? {
+    public static func expectedValue(baseline: String?, selection: NSRange?, insertion: String) -> String? {
+        guard let baseline, let selection else { return nil }
         let value = baseline as NSString
         guard selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,
               selection.location <= value.length, selection.length <= value.length - selection.location else { return nil }
         return value.replacingCharacters(in: selection, with: insertion)
     }
-    public static func confirmed(baseline: String, selection: NSRange, insertion: String, observed: String?, caret: NSRange?) -> Bool {
-        guard let expected = expectedValue(baseline: baseline, selection: selection, insertion: insertion) else { return false }
+    public static func confirmed(baseline: String?, selection: NSRange?, insertion: String, observed: String?, caret: NSRange?) -> Bool {
+        guard let baseline, let selection,
+              let expected = expectedValue(baseline: baseline, selection: selection, insertion: insertion) else { return false }
         let caretTarget = selection.location + (insertion as NSString).length
         if observed == expected && caret == NSRange(location: caretTarget, length: 0) { return true }
         // Web and rich-text editors store the same text with other separators
@@ -111,8 +118,8 @@ public enum DeliveryVerification {
     public let bundleID: String?
     public let window: AXUIElement
     public let element: AXUIElement
-    public let selectedRange: NSRange
-    public let baseline: String
+    public let selectedRange: NSRange?
+    public let baseline: String?
     public let secure: Bool
     public static func capture(expectedPID: pid_t? = nil) -> FocusSnapshot? {
         guard AXIsProcessTrusted(), let app = NSWorkspace.shared.frontmostApplication else { return nil }
@@ -132,9 +139,10 @@ public enum DeliveryVerification {
         guard !secure, [kAXTextFieldRole, kAXTextAreaRole, kAXComboBoxRole].contains(role),
               (AXAccess.value(field, kAXEnabledAttribute) as? Bool) != false,
               AXAccess.settable(field, kAXValueAttribute) || AXAccess.settable(field, kAXSelectedTextAttribute)
-                || AXAccess.pasteMenuEnabled(application),
-              let baseline = AXAccess.completeText(field), let range = AXAccess.range(field),
-              DeliveryVerification.expectedValue(baseline: baseline, selection: range, insertion: "") != nil else { return nil }
+                || AXAccess.pasteMenuEnabled(application) else { return nil }
+        // An editable field can accept Paste even when embedded objects make
+        // its AX text and cursor coordinates unavailable or inconsistent.
+        let baseline = AXAccess.completeText(field), range = AXAccess.range(field)
         guard NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier,
               let currentWindow = AXAccess.element(application, kAXFocusedWindowAttribute), CFEqual(currentWindow, window),
               let currentField = AXAccess.element(application, kAXFocusedUIElementAttribute), CFEqual(currentField, field),
@@ -161,25 +169,27 @@ public enum DeliveryVerification {
             && other.selectedRange == selectedRange && other.baseline == baseline
     }
     public func afterConfirmedInsertion(_ text: String) async -> Self? {
+        guard let baseline, let selectedRange,
+              DeliveryVerification.expectedValue(baseline: baseline, selection: selectedRange, insertion: "") != nil else { return nil }
         let deadline = ContinuousClock.now.advanced(by: .milliseconds(600))
         var failure = "readbackUnavailable"
         while ContinuousClock.now < deadline, !Task.isCancelled {
             guard !secure, !IsSecureEventInputEnabled(), NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
                 failure = "foregroundChanged"; break
             }
-            if let current = Self.capture(expectedPID: pid) {
+            if let current = Self.capture(expectedPID: pid), let currentBaseline = current.baseline, let currentRange = current.selectedRange {
                 guard !current.secure, current.bundleID == bundleID,
                       CFEqual(current.window, window), CFEqual(current.element, element) else { failure = "fieldChanged"; break }
                 if DeliveryVerification.canAdvanceQueuedInsertion(baseline: baseline, selection: selectedRange,
-                    text: text, observed: current.baseline, caret: current.selectedRange) {
+                    text: text, observed: currentBaseline, caret: currentRange) {
                     guard !Task.isCancelled, !IsSecureEventInputEnabled(),
                           NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else { return nil }
                     return current
                 }
                 let insertion = DeliveryVerification.insertionText(text, baseline: baseline, selection: selectedRange)
                 guard let expected = DeliveryVerification.expectedValue(baseline: baseline, selection: selectedRange, insertion: insertion),
-                      DeliveryVerification.normalized(current.baseline) == DeliveryVerification.normalized(expected)
-                        || current.baseline == baseline else { failure = "textChanged"; break }
+                      DeliveryVerification.normalized(currentBaseline) == DeliveryVerification.normalized(expected)
+                        || currentBaseline == baseline else { failure = "textChanged"; break }
                 failure = "caretOrValueNotSettled"
             }
             do { try await Task.sleep(for: .milliseconds(40)) } catch { return nil }
@@ -189,7 +199,7 @@ public enum DeliveryVerification {
             .notice("Queued insertion not advanced: \(failure, privacy: .public)")
         return nil
     }
-    public var selection: NSRange { selectedRange }
+    public var selection: NSRange? { selectedRange }
 }
 
 @MainActor enum AXAccess {
@@ -499,9 +509,11 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         let text = DeliveryVerification.insertionText(text, baseline: target.baseline, selection: target.selectedRange)
         let role = AXAccess.string(target.element, kAXRoleAttribute)
         let selected = AXAccess.string(target.element, kAXSelectedTextAttribute)
-        let expectedSelected = (target.baseline as NSString).substring(with: target.selectedRange)
         // Use a single selected-text operation only when native AX explicitly exposes the exact selection.
-        if allowDirectSelection, Self.usesDirectSelection(bundleID: target.bundleID, role: role), selected == expectedSelected,
+        if allowDirectSelection, Self.usesDirectSelection(bundleID: target.bundleID, role: role),
+           let baseline = target.baseline, let range = target.selectedRange,
+           DeliveryVerification.expectedValue(baseline: baseline, selection: range, insertion: "") != nil,
+           selected == (baseline as NSString).substring(with: range),
            AXAccess.settable(target.element, kAXSelectedTextAttribute) {
             #if DEBUG
             if CommandLine.arguments.contains("--test-delivery") { print("DELIVERY_TEST_METHOD selectedText"); fflush(stdout) }
