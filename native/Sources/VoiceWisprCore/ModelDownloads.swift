@@ -54,8 +54,9 @@ public actor ModelDownloader {
     private func activeManifest() throws -> ModelManifest { try manifest ?? ModelManifest.bundled() }
     public func cancel() { current?.cancel() }
     private func selectedFiles(includeFormatter: Bool, groups: Set<String>?) throws -> [ModelFile] {
+        // Legacy command-line probes use v3 without a group. The app always passes its selected groups.
         try activeManifest().files.filter { file in
-            (groups.map { $0.contains(file.group) } ?? (file.group != SwissGermanModel.group)) && (includeFormatter || file.group != "qwen")
+            (groups.map { $0.contains(file.group) } ?? (file.group != SwissGermanModel.group && file.group != SpeechModel.parakeetUltra.group)) && (includeFormatter || file.group != "qwen")
         }
     }
     public func installed(includeFormatter: Bool = true, groups: Set<String>? = nil) async throws -> Bool {

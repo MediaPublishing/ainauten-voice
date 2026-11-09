@@ -463,6 +463,7 @@ final class MigrationDeliveryTests: XCTestCase {
         let url = root.appendingPathComponent("target/settings.json"), store = SettingsStore(url: url)
         let undo = url.deletingLastPathComponent().appendingPathComponent("wispr-import-undo.json")
         var before = ExportDocument(dictionary: [DictionaryEntry(phrase: "Vorher", manuallyModified: true)])
+        before.settings.speechModel = .parakeetV3
         before.settings.cloudEnabled = true; before.settings.cloudEndpoint = "https://old.example/v1"
         before.settings.lipReadingEnabled = true; before.settings.lipReadingLanguage = "en"
         try await store.save(before)
@@ -476,6 +477,7 @@ final class MigrationDeliveryTests: XCTestCase {
         current.settings.lipReadingEnabled = false; current.settings.lipReadingLanguage = "de"
         current.settings.historyEnabled = false; current.settings.paused = true
         current.settings.clipboardCompatibility = false
+        current.settings.speechModel = .parakeetUltra
         try await store.save(current)
         try await store.undoWisprImport()
         let restored = try await store.load()
@@ -485,6 +487,7 @@ final class MigrationDeliveryTests: XCTestCase {
         XCTAssertEqual(restored.settings.lipReadingEnabled, false); XCTAssertEqual(restored.settings.lipReadingLanguage, "de")
         XCTAssertEqual(restored.settings.historyEnabled, false); XCTAssertTrue(restored.settings.paused)
         XCTAssertFalse(restored.settings.usesClipboardForInsertion)
+        XCTAssertEqual(restored.settings.selectedSpeechModel, .parakeetUltra)
         XCTAssertFalse(FileManager.default.fileExists(atPath: undo.path))
         let after = try Data(contentsOf: url)
         do { try await store.undoWisprImport(); XCTFail("A second undo must not roll back later edits") } catch {}

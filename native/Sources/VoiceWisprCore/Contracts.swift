@@ -78,6 +78,9 @@ public struct DictionaryEntry: Codable, Identifiable, Equatable, Sendable {
 
 public struct Settings: Codable, Equatable, Sendable {
     public var languages: [String] = ["de", "en"]
+    /// Profiles without a model choice use Ultra; explicit v3 choices remain available.
+    public var speechModel: SpeechModel?
+    public var selectedSpeechModel: SpeechModel { speechModel ?? .parakeetUltra }
     public var shortcut = Shortcut()
     public var shortcutBindings: ShortcutBindings?
     public var defaultStyle: TextStyle = .cleaned

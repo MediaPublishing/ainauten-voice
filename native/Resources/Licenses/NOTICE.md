@@ -10,6 +10,8 @@ llama.cpp b11361: MIT. Embedded official XCFramework SHA256 `6f7684c7b00bdf13e47
 
 Parakeet multilingual model weights, converted by FluidInference, from NVIDIA Parakeet TDT 0.6B v3: CC BY 4.0 according to pinned Hugging Face metadata. https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml/tree/7dd20fe6b1797d35f5e3307e8b1732d9a178edfe . This model license is distinct from the SDK license. Modifications: distribution of selected compiled CoreML files only, no model retraining. Credit NVIDIA and FluidInference.
 
+Parakeet Ultra by Moondream, post-trained from NVIDIA Parakeet TDT 0.6B v3, converted by FluidInference: CC BY 4.0. Optional download pinned to https://huggingface.co/FluidInference/parakeet-ultra-coreml/tree/95eaa59a39d4394f047a4dc5cce480388a60d1b6 . Credit Moondream, NVIDIA and FluidInference. Selected compiled files are unmodified. See Parakeet-Ultra-model-card.md; model weights are not included in the app bundle or source repository.
+
 Qwen3-4B-Instruct-2507, quantized by Unsloth to Q4_K_M: Apache 2.0. https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/tree/a06e946bb6b655725eafa393f4a9745d460374c9 . Credit Qwen/Alibaba and Unsloth.
 
 Silero VAD v6.2.1, 256 ms CoreML conversion by FluidInference: MIT according to the pinned model card. https://huggingface.co/FluidInference/silero-vad-coreml/tree/b419383c55c110e2c9271fa6ee0ea83d03c70d96 . Credit Silero Team and FluidInference. Selected compiled model files are unmodified; their SHA256 digests are recorded in the model manifest. The upstream v6.2.1 MIT license is included as Silero-MIT.txt; source: https://github.com/snakers4/silero-vad/blob/v6.2.1/LICENSE .
