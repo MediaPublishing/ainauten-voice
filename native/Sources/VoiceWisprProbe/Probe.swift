@@ -367,7 +367,7 @@ private struct StageFormatter: TextFormatting {
               (count as? NSNumber)?.intValue == 0 else { throw VoiceError.message("Empty WhatsApp composer not prepared; no other control inspected") }
         let valueError = AXUIElementCopyAttributeValue(field, kAXValueAttribute as CFString, &value)
         guard valueError == .noValue, value == nil else { throw VoiceError.message("WhatsApp no-value regression precondition unavailable") }
-        guard let snapshot = FocusSnapshot.capture(), snapshot.pid == app.processIdentifier, snapshot.baseline.isEmpty,
+        guard let snapshot = FocusSnapshot.capture(), snapshot.pid == app.processIdentifier, snapshot.baseline?.isEmpty == true,
               snapshot.selectedRange == NSRange(location: 0, length: 0), CFEqual(snapshot.element, field),
               snapshot.isUnchanged() else { throw VoiceError.message("Empty WhatsApp composer rejected by focus capture") }
         try emit(["event": "whatsapp-empty-focus-check", "passed": true, "sourceValueError": valueError.rawValue,

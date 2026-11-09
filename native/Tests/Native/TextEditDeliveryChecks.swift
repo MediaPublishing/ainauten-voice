@@ -7,6 +7,9 @@ import VoiceWisprCore
 /// Explicit UI test: only generated fixture documents, never user documents.
 @main struct TextEditDeliveryChecks {
     @MainActor static func checkInterruptedCaptureHandoff(_ target: FocusSnapshot, initial: String, cancel: Bool, revoke: Bool = false) async -> (DeliveryOutcome, String, NSRange, Bool) {
+        guard let originalSelection = target.selectedRange else {
+            return (DeliveryOutcome(.notAttempted), initial, NSRange(location: 0, length: 0), false)
+        }
         let boardCount = NSPasteboard.general.changeCount
         var moved = false
         let end = ProcessInfo.processInfo.systemUptime + 2
@@ -23,7 +26,7 @@ import VoiceWisprCore
         }
         if cancel { try? await Task.sleep(for: .milliseconds(100)); delivery.cancel() }
         let outcome = await delivery.value
-        return (outcome, initial, cancel || revoke ? target.selectedRange : NSRange(location: 0, length: 0),
+        return (outcome, initial, cancel || revoke ? originalSelection : NSRange(location: 0, length: 0),
             outcome.status == .notAttempted && !outcome.inputWasSubmitted && NSPasteboard.general.changeCount == boardCount)
     }
     @MainActor static func checkQueue(_ first: FocusSnapshot, initial: String, changeCaret: Bool, duringRecording: Bool = false) async -> (DeliveryOutcome, String, NSRange, Bool) {
@@ -31,8 +34,9 @@ import VoiceWisprCore
         let texts = ["Erster Teil", "Second sentence.", "Troisième phrase."]
         var queue = DictationQueue(maximumBytes: 30, reservationBytes: 10)
         var snapshots = [first, first, first]
-        var expected = initial, expectedCaret = first.selectedRange
         var last = DeliveryOutcome(.notAttempted, reason: "fixture")
+        guard let selection = first.selectedRange else { return (last, initial, NSRange(location: 0, length: 0), false) }
+        var expected = initial, expectedCaret = selection
         var passed = queue.reserve(ids[0]) && queue.captured(ids[0]) && queue.beginNext() == ids[0]
         // These captures finish while the first result is still processing.
         for id in ids.dropFirst() { passed = queue.reserve(id) && queue.captured(id) && passed }

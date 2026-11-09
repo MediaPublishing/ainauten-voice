@@ -8,6 +8,9 @@ import VoiceWisprCore
     var delayCaret = false
     var pasteOnly = false
     var truncatedValue = false
+    var inconsistentCaret = false
+    var unavailableText = false
+    var unavailableCaret = false
     private(set) var staleCaretReads = 0
     private var readbackAfter: TimeInterval = 0
     func delayReadback() { if delayCaret { readbackAfter = ProcessInfo.processInfo.systemUptime + 0.18 } }
@@ -21,14 +24,17 @@ import VoiceWisprCore
         delayReadback()
     }
     override func accessibilitySelectedTextRange() -> NSRange {
+        if unavailableCaret { return NSRange(location: NSNotFound, length: 0) }
         if ProcessInfo.processInfo.systemUptime < readbackAfter { staleCaretReads += 1; return NSRange(location: 0, length: 0) }
-        return super.accessibilitySelectedTextRange()
+        let range = super.accessibilitySelectedTextRange()
+        return inconsistentCaret ? NSRange(location: range.location + 1, length: range.length) : range
     }
     override func isAccessibilitySelectorAllowed(_ selector: Selector) -> Bool {
         if pasteOnly && [NSSelectorFromString("setAccessibilityValue:"), NSSelectorFromString("setAccessibilitySelectedText:")].contains(selector) { return false }
         return super.isAccessibilitySelectorAllowed(selector)
     }
-    override func accessibilityValue() -> String? { truncatedValue ? "" : super.accessibilityValue() }
+    override func accessibilityValue() -> String? { unavailableText ? nil : truncatedValue ? "" : super.accessibilityValue() }
+    override func accessibilityNumberOfCharacters() -> Int { unavailableText ? -1 : super.accessibilityNumberOfCharacters() }
     override func accessibilityIsAttributeSettable(_ attribute: NSAccessibility.Attribute) -> Bool {
         if pasteOnly && [NSAccessibility.Attribute.value, .selectedText].contains(attribute) { return false }
         return super.accessibilityIsAttributeSettable(attribute)
@@ -72,6 +78,12 @@ import VoiceWisprCore
         view.pasteOnly = mode == "paste-only" || mode == "read-only"
         view.truncatedValue = mode == "range-value"
         if view.truncatedValue { view.string = "Anfang. "; view.setSelectedRange(NSRange(location: view.string.utf16.count, length: 0)) }
+        view.inconsistentCaret = mode.hasPrefix("unmapped-caret")
+        view.unavailableText = mode == "unreadable-text"
+        view.unavailableCaret = mode == "unreadable-caret"
+        if view.inconsistentCaret || view.unavailableText || view.unavailableCaret {
+            view.string = "."; view.setSelectedRange(NSRange(location: 1, length: 0))
+        }
         view.delayCaret = CommandLine.arguments.contains("delayed") || CommandLine.arguments.contains("cancelled")
         let window = NSWindow(contentRect: NSRect(x: 300, y: 220, width: 600, height: 280), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -91,8 +103,17 @@ import VoiceWisprCore
     }
     @MainActor static func check(view: QueueRichTextView, window: NSWindow) async -> [String: Any] {
         let mode = CommandLine.arguments.dropFirst().first ?? "normalized"
+        for _ in 0..<60 {
+            if NSApp.isActive && window.isKeyWindow && window.firstResponder === view { break }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        guard NSApp.isActive, window.isKeyWindow, window.firstResponder === view else {
+            return ["passed": false, "reason": "ownEditorNotReadyForKeyboard", "appActive": NSApp.isActive,
+                    "windowKey": window.isKeyWindow, "responderIsView": window.firstResponder === view]
+        }
+        // Let AppKit finish activation before posting the fixture's first key.
+        try? await Task.sleep(for: .milliseconds(300))
         if mode == "read-only" {
-            try? await Task.sleep(for: .milliseconds(300))
             let count = NSPasteboard.general.changeCount
             let target = FocusSnapshot.capture(expectedPID: getpid())
             let outcome = await DeliveryCoordinator().deliver(text: "Kein Einfügen", to: target, allowClipboard: true)
@@ -101,11 +122,37 @@ import VoiceWisprCore
         }
         var first: FocusSnapshot?
         for _ in 0..<60 {
-            if let snapshot = FocusSnapshot.capture(expectedPID: getpid()), snapshot.baseline == view.string { first = snapshot; break }
+            if let snapshot = FocusSnapshot.capture(expectedPID: getpid()),
+               view.unavailableText ? snapshot.baseline == nil : snapshot.baseline == view.string { first = snapshot; break }
             try? await Task.sleep(for: .milliseconds(50))
         }
         guard let first else { return ["passed": false, "reason": "ownEditorNotFocused"] }
         guard let before = clipboard() else { return ["passed": false, "reason": "clipboardUnavailable"] }
+        if view.inconsistentCaret || view.unavailableText || view.unavailableCaret {
+            guard first.baseline == (view.unavailableText ? nil : "."),
+                  first.selectedRange == NSRange(location: view.unavailableCaret ? NSNotFound : view.inconsistentCaret ? 2 : 1, length: 0) else {
+                return ["passed": false, "reason": "inconsistentCaretNotReproduced"]
+            }
+            let boardCount = NSPasteboard.general.changeCount
+            var other: NSTextView?
+            if mode == "unmapped-caret-moved" { view.setSelectedRange(NSRange(location: 0, length: 0)) }
+            if mode == "unmapped-caret-field" {
+                other = NSTextView(frame: view.frame)
+                window.contentView = other; window.makeFirstResponder(other)
+            }
+            let allowed = ["unmapped-caret", "unreadable-text", "unreadable-caret"].contains(mode)
+            let outcome = await DeliveryCoordinator().deliver(text: "Weiter.", to: first,
+                allowClipboard: mode != "unmapped-caret-no-clipboard")
+            let advanced = await first.afterConfirmedInsertion("Weiter.")
+            return ["passed": outcome.status == (allowed ? .uncertain : .notAttempted)
+                    && outcome.inputWasSubmitted == allowed && !outcome.shouldShowRecovery == allowed
+                    && view.string == (allowed ? ".Weiter." : ".") && advanced == nil
+                    && clipboard() == before && (allowed || NSPasteboard.general.changeCount == boardCount)
+                    && (other == nil || other?.string.isEmpty == true),
+                "mode": mode, "status": outcome.status.rawValue, "inputWasSubmitted": outcome.inputWasSubmitted,
+                "clipboardByteEqual": clipboard() == before, "clipboardContentsLogged": false,
+                "scope": "Owned editor with inconsistent or unavailable AX text/caret; one paste without added spacing, unchanged-field and clipboard guards"]
+        }
         let texts = ["Erster Abschnitt.", "Second part.", "Troisième partie."]
         var targets = [first, first, first]
         var statuses: [String] = []
