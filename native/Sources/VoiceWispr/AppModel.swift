@@ -772,7 +772,7 @@ private struct NoSpeechDetected: LocalizedError { let errorDescription: String? 
         if !quitting {
             quitting = true; cancel(); downloadTask?.cancel(); swissDownloadTask?.cancel(); speechPreparationID = UUID(); swissDownloadID = UUID(); refreshClock?.invalidate(); lipPreparation?.cancel()
             let pendingSave = saveTask, pendingHistory = historyWriteTask
-            Task { await lipRuntime.cancel(); await lipInstaller.cancel(); await pendingSave?.value; await pendingHistory?.value; await formatter.shutdown(); await mediaPlayback.finishPendingCommands(); shutdownComplete = true; sender.reply(toApplicationShouldTerminate: true) }
+            Task { await lipRuntime.cancel(); await lipInstaller.cancel(); await pendingSave?.value; await pendingHistory?.value; await DeliveryCoordinator.finishPendingDelivery(); await formatter.shutdown(); await mediaPlayback.finishPendingCommands(); shutdownComplete = true; sender.reply(toApplicationShouldTerminate: true) }
         }
         return .terminateLater
     }

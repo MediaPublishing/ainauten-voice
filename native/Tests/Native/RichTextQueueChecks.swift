@@ -8,11 +8,24 @@ import VoiceWisprCore
     var delayCaret = false
     var pasteOnly = false
     var truncatedValue = false
+    var pasteDelay: TimeInterval = 0
+    var readBeforeDelay = false
+    var discardPaste = false
+    private(set) var pasteCalls = 0
+    private(set) var clipboardReadFailures = 0
     private(set) var staleCaretReads = 0
     private var readbackAfter: TimeInterval = 0
     func delayReadback() { if delayCaret { readbackAfter = ProcessInfo.processInfo.systemUptime + 0.18 } }
     override func paste(_ sender: Any?) {
-        guard let text = NSPasteboard.general.string(forType: .string) else { return }
+        pasteCalls += 1
+        if readBeforeDelay { _ = NSPasteboard.general.string(forType: .string) }
+        guard !discardPaste else { return }
+        if pasteDelay > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + pasteDelay) { [weak self] in self?.readClipboard() }
+        } else { readClipboard() }
+    }
+    private func readClipboard() {
+        guard let text = NSPasteboard.general.string(forType: .string) else { clipboardReadFailures += 1; return }
         insertText(text, replacementRange: selectedRange())
     }
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
@@ -72,10 +85,17 @@ import VoiceWisprCore
         view.pasteOnly = mode == "paste-only" || mode == "read-only"
         view.truncatedValue = mode == "range-value"
         if view.truncatedValue { view.string = "Anfang. "; view.setSelectedRange(NSRange(location: view.string.utf16.count, length: 0)) }
+        if mode.hasPrefix("slow-paste") || mode == "read-without-paste" || mode == "overlapping-paste" {
+            view.string = "Vorheriger Satz."
+            view.setSelectedRange(NSRange(location: view.string.utf16.count, length: 0))
+            view.pasteDelay = 2
+            view.readBeforeDelay = mode != "slow-paste"
+            view.discardPaste = mode == "read-without-paste"
+        }
         view.delayCaret = CommandLine.arguments.contains("delayed") || CommandLine.arguments.contains("cancelled")
         let window = NSWindow(contentRect: NSRect(x: 300, y: 220, width: 600, height: 280), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        window.title = "AInauten Voice – eigener Rich-Text-Test"
+        window.title = "AInauten Voice: eigener Rich-Text-Test"
         window.contentView = view
         window.makeKeyAndOrderFront(nil); window.makeFirstResponder(view)
         app.activate(ignoringOtherApps: true)
@@ -106,6 +126,29 @@ import VoiceWisprCore
         }
         guard let first else { return ["passed": false, "reason": "ownEditorNotFocused"] }
         guard let before = clipboard() else { return ["passed": false, "reason": "clipboardUnavailable"] }
+        if mode.hasPrefix("slow-paste") || mode == "read-without-paste" || mode == "overlapping-paste" {
+            let began = ProcessInfo.processInfo.systemUptime
+            let firstDelivery = Task { await DeliveryCoordinator().deliver(text: "Neuer Satz.", to: first, allowClipboard: true) }
+            var secondDelivery: Task<DeliveryOutcome, Never>?
+            if mode == "overlapping-paste" {
+                try? await Task.sleep(for: .milliseconds(200))
+                secondDelivery = Task { await DeliveryCoordinator().deliver(text: "Zweiter Text.", to: first, allowClipboard: true) }
+                await DeliveryCoordinator.finishPendingDelivery()
+                guard clipboard() == before else { return ["passed": false, "reason": "pendingDeliveryNotSettled"] }
+            }
+            let outcome = await firstDelivery.value
+            let secondOutcome = await secondDelivery?.value
+            let duration = ProcessInfo.processInfo.systemUptime - began
+            let expected = view.discardPaste ? "Vorheriger Satz." : "Vorheriger Satz.\u{00A0}Neuer\u{00A0}Satz."
+            let status: DeliveryStatus = view.discardPaste ? .uncertain : .confirmed
+            return ["passed": outcome.status == status && view.string == expected && view.pasteCalls == 1
+                        && (secondOutcome == nil || secondOutcome?.status == .notAttempted)
+                        && clipboard() == before && duration >= (view.discardPaste ? 5 : 2) && duration < 7,
+                    "status": outcome.status.rawValue, "seconds": duration, "pasteCalls": view.pasteCalls,
+                    "clipboardByteEqual": clipboard() == before, "readBeforeDelay": view.readBeforeDelay,
+                    "secondStatus": secondOutcome?.status.rawValue ?? "not-requested",
+                    "scope": "Own editor: delayed clipboard consumption or a read without insertion; full readback required"]
+        }
         let texts = ["Erster Abschnitt.", "Second part.", "Troisième partie."]
         var targets = [first, first, first]
         var statuses: [String] = []
@@ -118,7 +161,10 @@ import VoiceWisprCore
             let outcome = await DeliveryCoordinator().deliver(text: text, to: target, allowClipboard: true)
             statuses.append(outcome.status.rawValue)
             guard outcome.status == .confirmed else { return ["passed": false, "reason": "delivery", "statuses": statuses,
-                "deliveryReason": outcome.reason, "characters": view.string.utf16.count, "clipboardByteEqual": clipboard() == before] }
+                "deliveryReason": outcome.reason, "characters": view.string.utf16.count, "clipboardByteEqual": clipboard() == before,
+                "pasteCalls": view.pasteCalls, "clipboardReadFailures": view.clipboardReadFailures,
+                "foregroundUnchanged": NSWorkspace.shared.frontmostApplication?.processIdentifier == getpid(),
+                "keyWindow": window.isKeyWindow, "firstResponderUnchanged": window.firstResponder === view] }
             expected += (i == 0 ? "" : " ") + texts[i]
             // Start the stale AX caret after the paste is confirmed, so the
             // continuation check itself must wait, rather than only verify().

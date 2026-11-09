@@ -15,17 +15,7 @@ public enum DeliveryVerification {
     /// Adjacent recordings are separate utterances. Preserve punctuation and
     /// decimal continuations, but do not glue unpunctuated words together.
     public static func queuedContinuationText(_ text: String, baseline: String, selection: NSRange) -> String {
-        let value = baseline as NSString
-        guard let first = text.first, first.isLetter || first.isNumber,
-              selection.length == 0, selection.location > 0, selection.location <= value.length,
-              let previous = value.substring(to: selection.location).last else { return text }
-        if previous.isLetter || previous.isNumber { return " " + text }
-        if previous == "," || previous == ";" || previous == ":" {
-            let prefix = value.substring(to: selection.location).dropLast()
-            if previous == ",", first.isNumber, prefix.last?.isNumber == true { return text }
-            return " " + text
-        }
-        return text
+        insertionText(text, baseline: baseline, selection: selection)
     }
     /// Require the exact equivalent caret and complete text on both sides.
     /// Editors may represent spaces, paragraph endings and accents differently.
@@ -47,18 +37,45 @@ public enum DeliveryVerification {
     }
     public static func insertionText(_ text: String, baseline: String, selection: NSRange) -> String {
         let value = baseline as NSString
-        guard let first = text.first, !first.isWhitespace,
-              selection.location != NSNotFound, selection.location > 0,
-              selection.location <= value.length,
-              [0x2E, 0x3F, 0x21].contains(value.character(at: selection.location - 1)) else { return text }
-        if value.character(at: selection.location - 1) == 0x2E {
-            let prefix = value.substring(to: selection.location)
-            // A decimal point or unfinished URL is not a sentence boundary.
-            if first.isNumber, prefix.dropLast().last?.isNumber == true { return text }
-            let token = prefix.split(whereSeparator: { $0.isWhitespace }).last?.lowercased() ?? ""
-            if token.contains("://") || token.hasPrefix("www.") { return text }
+        guard !text.isEmpty, selection.location != NSNotFound, selection.location >= 0,
+              selection.length >= 0, selection.location <= value.length,
+              selection.length <= value.length - selection.location else { return text }
+        let before = value.substring(to: selection.location)
+        let after = value.substring(from: selection.location + selection.length)
+        let leftToken = before.split(omittingEmptySubsequences: false, whereSeparator: \.isWhitespace).last.map(String.init) ?? ""
+        let rightToken = after.prefix { !$0.isWhitespace }
+        let wrappers = CharacterSet(charactersIn: "\"'“„”’«»()[]{}")
+        let token = (leftToken + rightToken).lowercased().trimmingCharacters(in: wrappers)
+        // A cursor inside a URL, email address or numeric token must not split it.
+        if !leftToken.isEmpty, token.contains("://") || token.hasPrefix("www.") || token.contains("@") { return text }
+        if !token.isEmpty, token.contains(where: \.isNumber),
+           token.allSatisfy({ $0.isNumber || ".,+-%".contains($0) }),
+           text.trimmingCharacters(in: .whitespacesAndNewlines).allSatisfy({ $0.isNumber || ".,+-%".contains($0) }) { return text }
+        // Replacing only part of a word is an edit, rather than a new word boundary.
+        if selection.length > 0 {
+            let selected = value.substring(with: selection)
+            if before.last?.isLetter == true && selected.first?.isLetter == true
+                || after.first?.isLetter == true && selected.last?.isLetter == true { return text }
         }
-        return " " + text
+        var result = text
+        let next = after.first { $0 != "\u{200B}" && $0 != "\u{FEFF}" }
+        if let first = result.first, first.isLetter || first.isNumber,
+           needsWordGap(after: before) {
+            result = " " + result
+        }
+        if let next, next.isLetter || next.isNumber, needsWordGap(after: result) {
+            result += " "
+        }
+        return result
+    }
+    private static func needsWordGap(after text: String) -> Bool {
+        // Ignore editor sentinels for boundary decisions, retaining every source character.
+        guard let index = text.lastIndex(where: { $0 != "\u{200B}" && $0 != "\u{FEFF}" }) else { return false }
+        let last = text[index]
+        if "\"'“".contains(last) {
+            return text[..<index].last.map { !$0.isWhitespace && !"([{=<>".contains($0) } ?? false
+        }
+        return last.isLetter || last.isNumber || ".?!,;:)]}”’»".contains(last)
     }
     public static func expectedValue(baseline: String, selection: NSRange, insertion: String) -> String? {
         let value = baseline as NSString
@@ -342,9 +359,11 @@ public enum TransientPasteboard {
     let items: [[NSPasteboard.PasteboardType: Data]]
     let changeCount: Int
     /// Our own temporary write: text, ownership nonce and the transient markers.
-    static func ownedItem(_ text: String, nonce: UUID, transient: Bool = true) -> NSPasteboardItem? {
+    static func ownedItem(_ text: String, nonce: UUID, transient: Bool = true,
+                          provider: NSPasteboardItemDataProvider? = nil) -> NSPasteboardItem? {
         let item = NSPasteboardItem()
-        guard item.setString(text, forType: .string), item.setString(nonce.uuidString, forType: nonceType), !transient || TransientPasteboard.mark(item) else { return nil }
+        let supplied = provider.map { item.setDataProvider($0, forTypes: [.string]) } ?? item.setString(text, forType: .string)
+        guard supplied, item.setString(nonce.uuidString, forType: nonceType), !transient || TransientPasteboard.mark(item) else { return nil }
         return item
     }
     static func capture(_ board: NSPasteboard) -> ClipboardSnapshot? {
@@ -451,6 +470,14 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
 }
 
 @MainActor public struct DeliveryCoordinator {
+    // A second asynchronous delivery must not snapshot another temporary dictation.
+    private static var deliveryInProgress = false
+    /// Keep a promised clipboard payload alive until its posted paste has settled.
+    public static func finishPendingDelivery() async {
+        while deliveryInProgress {
+            await Task.detached(priority: .utility) { try? await Task.sleep(for: .milliseconds(50)) }.value
+        }
+    }
     private let allowDirectSelection: Bool
     public init(allowDirectSelection: Bool = true) { self.allowDirectSelection = allowDirectSelection }
     /// Browser/Electron fields can advertise writable selected text yet ignore
@@ -467,6 +494,13 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
                         recordingInProgress: @MainActor () -> Bool = { false },
                         insertionAllowed: @MainActor () -> Bool = { true }) async -> DeliveryOutcome {
         guard !Task.isCancelled else { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
+        while Self.deliveryInProgress {
+            guard !Task.isCancelled, insertionAllowed() else { return DeliveryOutcome(.notAttempted, reason: "Automatisches Einfügen angehalten; Text bleibt verfügbar.") }
+            do { try await Task.sleep(for: .milliseconds(20)) }
+            catch { return DeliveryOutcome(.notAttempted, reason: "Diktat verworfen") }
+        }
+        Self.deliveryInProgress = true
+        defer { Self.deliveryInProgress = false }
         var readiness = DictationDeliveryReadiness()
         let physicalModifiers: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift]
         deliveryReadiness: while true {
@@ -523,8 +557,9 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         }
         guard !Task.isCancelled, target.isUnchanged(), board.changeCount == saved.changeCount else { return DeliveryOutcome(.notAttempted, reason: "Ziel oder Zwischenablage verändert") }
         let nonce = UUID()
-        guard let item = ClipboardSnapshot.ownedItem(text, nonce: nonce) else { return DeliveryOutcome(.notAttempted, reason: "Zwischenablage oder Ziel nicht sicher lesbar. Wiederherstellung verwenden.") }
-        let clearedAt = board.clearContents()
+        let consumption = ClipboardConsumption(text: text)
+        guard let item = ClipboardSnapshot.ownedItem(text, nonce: nonce, provider: consumption) else { return DeliveryOutcome(.notAttempted, reason: "Zwischenablage oder Ziel nicht sicher lesbar. Wiederherstellung verwenden.") }
+        let clearedAt = board.prepareForNewContents(with: .currentHostOnly)
         guard board.writeObjects([item]) else {
             saved.restoreAfterFailedWrite(board, clearedAt: clearedAt, nonce: nonce)
             return DeliveryOutcome(.failed, reason: "Zwischenablage konnte nicht geschrieben werden")
@@ -532,13 +567,21 @@ public enum ClipboardUndoResult: Equatable, Sendable { case restored, changed, f
         let ownership = ClipboardOwnership(nonce: nonce, changeCount: board.changeCount)
         guard !Task.isCancelled, target.isUnchanged() else { saved.restore(board, ownership: ownership); return DeliveryOutcome(.notAttempted, reason: "Ziel verändert oder Diktat verworfen") }
         down.flags = .maskCommand; up.flags = []
+        let submittedAt = ProcessInfo.processInfo.systemUptime
         down.post(tap: .cghidEventTap); up.post(tap: .cghidEventTap)
-        let outcome = await verify(text: text, target: target)
+        let outcome = await verify(text: text, target: target, timeout: .seconds(ClipboardConsumption.maximumHold))
+        // Reads only govern clipboard lifetime. Full target readback alone confirms delivery.
+        while ProcessInfo.processInfo.systemUptime < consumption.restoreAt(submittedAt: submittedAt),
+              ownership.owns(changeCount: board.changeCount, nonce: board.string(forType: ClipboardSnapshot.nonceType).flatMap(UUID.init(uuidString:))),
+              let current = FocusSnapshot.capture(expectedPID: target.pid),
+              CFEqual(current.window, target.window), CFEqual(current.element, target.element) {
+            await Task.detached(priority: .utility) { try? await Task.sleep(for: .milliseconds(50)) }.value
+        }
         saved.restore(board, ownership: ownership)
         return outcome
     }
-    private func verify(text: String, target: FocusSnapshot) async -> DeliveryOutcome {
-        let deadline = ContinuousClock.now.advanced(by: .milliseconds(1500))
+    private func verify(text: String, target: FocusSnapshot, timeout: Duration = .milliseconds(1500)) async -> DeliveryOutcome {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
         var focusChanged = false
         while ContinuousClock.now < deadline {
             if let app = NSWorkspace.shared.frontmostApplication {
