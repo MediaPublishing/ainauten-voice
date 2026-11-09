@@ -1,5 +1,11 @@
 # Einfügen in echte lokale Textfelder prüfen
 
+Aktueller Entwicklungskandidat: `--rich-editor` prüft zusätzlich zwei Sekunden verzögertes Lesen der Zwischenablage, einen frühen Lesezugriff vor der verzögerten Einfügung, einen Lesezugriff ohne tatsächliches Einfügen und überlappende Zustellungsversuche. Erfolg verlangt weiterhin vollständigen Text im ursprünglichen Feld. Alle Fälle verwenden eigene synthetische Textfelder; ein grüner Lauf belegt keine Abnahme im echten Teams-Composer.
+
+`InsertionSpacingTests.swift` prüft Wortabstände auf beiden Seiten des Cursors, Anführungszeichen, Editorzeichen, NBSP, Zeilenumbrüche, URL-/E-Mail-Komponenten, Dezimalzahlen, Wortteilersetzung und unveränderte Cursorprüfung. `ClipboardConsumptionTests.swift` ergänzt die vorhandenen Zwischenablageschutztests um begrenzte Haltezeiten und tatsächliche verzögerte Materialisierung auf einer isolierten Testzwischenablage.
+
+Am 9. November 2026 bestanden 96 gezielte Vertragsfälle mit dem CLT-Adapter, der vollständige App-Target-Build und alle zwölf nativen Rich-Text-Fälle im kontrollierten Lauf ohne parallele Bedienung. Beide verzögerten Einfügungen wurden vollständig bestätigt; ein Lesezugriff ohne Einfügung blieb unbestätigt. Die Zwischenablage wurde in jedem Fall unverändert wiederhergestellt. Vorangehende Läufe mit beobachtetem App-Wechsel wurden nicht als erfolgreiche Abnahme gewertet. Das Ergebnis betrifft den Entwicklungskandidaten; die installierte Dev-App und der öffentliche Download wurden nicht ersetzt.
+
 Die Tests verwenden ausschließlich neu angelegte synthetische Dokumente und eigene Browser-Tabs. Bestehende Bedienungshilfenfreigabe ist erforderlich. Testfenster werden geschlossen und die zuvor aktive App wieder aktiviert; Testdateien bleiben erhalten. Zwischenablageformate werden nur im RAM gesichert, nicht protokolliert.
 
 Im Ordner `native`:
